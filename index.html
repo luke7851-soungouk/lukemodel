@@ -674,84 +674,140 @@ async function idbGet(id){
     rq.onerror=()=>rej(rq.error);
   });
 }
-function triggerDownload(filename, blob){
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download=filename;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+/* Save a Blob as a real local file on phone/PC (picker → share → anchor → tab) */
+async function saveBlobToDevice(filename, blob, mime){
+  const type = mime || (blob && blob.type) || 'application/octet-stream';
+  const data = blob instanceof Blob ? blob : new Blob([blob], {type});
+
+  // 1) File System Access (Chromium desktop / Android Chrome)
+  if(typeof window.showSaveFilePicker === 'function'){
+    try{
+      const ext = (String(filename).includes('.') ? '.'+String(filename).split('.').pop() : '');
+      const opts = { suggestedName: filename };
+      if(ext){
+        try{ opts.types = [{ description:'File', accept:{ [type]:[ext] } }]; }catch(_){}
+      }
+      const handle = await window.showSaveFilePicker(opts);
+      const writable = await handle.createWritable();
+      await writable.write(data);
+      await writable.close();
+      return 'picker';
+    }catch(e){
+      if(e && (e.name==='AbortError')) throw e; // user cancelled
+      /* fall through to share/anchor */
+    }
+  }
+
+  // 2) Web Share Level 2 (iOS Safari / Android Chrome) — real Files app / share sheet
+  try{
+    const file = new File([data], filename, { type });
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], title: filename });
+      return 'share';
+    }
+  }catch(e){
+    if(e && e.name==='AbortError') throw e;
+    /* fall through */
+  }
+
+  // 3) Classic <a download> (desktop browsers; some Android)
+  try{
+    const url = URL.createObjectURL(data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    try{ a.type = type; }catch(_){}
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+    return 'anchor';
+  }catch(e){ /* fall through */ }
+
+  // 4) Open blob in new tab — user can Share/Save As
+  const url = URL.createObjectURL(data);
+  const w = window.open(url, '_blank');
+  setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  if(!w) throw new Error('popup blocked');
+  return 'tab';
 }
 
-/* Minimal ZIP (STORE only) + CRC32 */
-const CRC_TABLE=(()=>{ const t=new Uint32Array(256);
-  for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; }
-  return t; })();
-function crc32(u8){ let c=0xFFFFFFFF; for(let i=0;i<u8.length;i++) c=CRC_TABLE[(c^u8[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
-function u16le(n){ return new Uint8Array([n&255,(n>>>8)&255]); }
-function u32le(n){ return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]); }
-function zipStore(files){
-  const enc=new TextEncoder(), parts=[], central=[]; let offset=0;
-  const now=new Date();
-  const dosTime=((now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1))&0xFFFF;
-  const dosDate=(((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate())&0xFFFF;
-  for(const f of files){
-    const name=enc.encode(f.name);
-    const data=f.data instanceof Uint8Array?f.data:new Uint8Array(f.data);
-    const crc=crc32(data);
-    const local=new Uint8Array(30+name.length);
-    local.set([0x50,0x4b,0x03,0x04],0);
-    local.set(u16le(20),4); local.set(u16le(0),6); local.set(u16le(0),8);
-    local.set(u16le(dosTime),10); local.set(u16le(dosDate),12);
-    local.set(u32le(crc),14); local.set(u32le(data.length),18); local.set(u32le(data.length),22);
-    local.set(u16le(name.length),26); local.set(u16le(0),28); local.set(name,30);
-    parts.push(local, data);
-    const cen=new Uint8Array(46+name.length);
-    cen.set([0x50,0x4b,0x01,0x02],0);
-    cen.set(u16le(20),4); cen.set(u16le(20),6); cen.set(u16le(0),8); cen.set(u16le(0),10);
-    cen.set(u16le(dosTime),12); cen.set(u16le(dosDate),14);
-    cen.set(u32le(crc),16); cen.set(u32le(data.length),20); cen.set(u32le(data.length),24);
-    cen.set(u16le(name.length),28); cen.set(u16le(0),30); cen.set(u16le(0),32);
-    cen.set(u16le(0),34); cen.set(u16le(0),36); cen.set(u32le(0),38); cen.set(u32le(offset),42);
-    cen.set(name,46); central.push(cen);
-    offset+=local.length+data.length;
-  }
-  const centralSize=central.reduce((s,c)=>s+c.length,0);
-  const end=new Uint8Array(22);
-  end.set([0x50,0x4b,0x05,0x06],0);
-  end.set(u16le(0),4); end.set(u16le(0),6);
-  end.set(u16le(files.length),8); end.set(u16le(files.length),10);
-  end.set(u32le(centralSize),12); end.set(u32le(offset),16); end.set(u16le(0),20);
-  return new Blob([...parts,...central,end],{type:'application/zip'});
+function modelCardJson(m){
+  return JSON.stringify({
+    name:m.name, kind:m.kind, base:m.base, tags:m.tags, words:m.words,
+    sMin:m.sMin, sMax:m.sMax, clip:m.clip, desc:m.desc, consent:m.consent, file:m.file||null
+  }, null, 2);
 }
-async function buildFacePackBlob(m){
-  const enc=new TextEncoder(), files=[];
-  const card={ name:m.name, kind:m.kind, base:m.base, tags:m.tags, words:m.words,
-    sMin:m.sMin, sMax:m.sMax, clip:m.clip, desc:m.desc, consent:m.consent, file:m.file||null };
-  files.push({name:'model.json', data:enc.encode(JSON.stringify(card,null,2))});
-  const readme='이 팩은 표지+모델카드입니다. 실제 .safetensors 가중치는 업로더가 올린 모델만 IndexedDB에서 제공됩니다.\n\n'
-    +'모델: '+(m.name||'')+'\n종류: '+(m.kind||'')+'\n베이스: '+(m.base||'')+'\n';
-  files.push({name:'README.txt', data:enc.encode(readme)});
-  if(m.photos&&m.photos[0]){
-    try{
-      const r=await fetch(m.photos[0]);
-      if(r.ok){
-        const buf=new Uint8Array(await r.arrayBuffer());
-        const u=String(m.photos[0]).toLowerCase();
-        files.push({name:'cover.'+(u.endsWith('.png')?'png':'jpg'), data:buf});
+
+async function fetchCoverBlob(m){
+  if(!(m.photos && m.photos[0])) return null;
+  const r = await fetch(m.photos[0]);
+  if(!r.ok) return null;
+  let blob = await r.blob();
+  const u = String(m.photos[0]).toLowerCase();
+  let ext = 'jpg', mime = 'image/jpeg';
+  if(u.endsWith('.png') || (blob.type||'').includes('png')){ ext='png'; mime='image/png'; }
+  else if(u.endsWith('.webp') || (blob.type||'').includes('webp')){ ext='webp'; mime='image/webp'; }
+  if(!blob.type || blob.type==='application/octet-stream') blob = new Blob([blob], {type:mime});
+  return { blob, ext, mime };
+}
+
+async function shareFilesOrFallback(files, title, text){
+  try{
+    if(navigator.canShare && navigator.canShare({ files })){
+      const payload = { files, title: title||files[0].name };
+      if(text) payload.text = text;
+      await navigator.share(payload);
+      return 'share';
+    }
+  }catch(e){
+    if(e && e.name==='AbortError') throw e;
+  }
+  let method = 'anchor';
+  for(let i=0;i<files.length;i++){
+    const f = files[i];
+    const m = await saveBlobToDevice(f.name, f, f.type||'application/octet-stream');
+    if(i===0) method = m;
+    /* if first used share, remaining go through saveBlobToDevice which may share again — prefer anchor for rest */
+    if(m==='share' && i===0 && files.length>1){
+      for(let j=1;j<files.length;j++){
+        const fj = files[j];
+        const url = URL.createObjectURL(fj);
+        const a = document.createElement('a');
+        a.href=url; a.download=fj.name; a.rel='noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 60000);
       }
-    }catch(e){}
+      return 'share';
+    }
   }
-  return zipStore(files);
+  return method;
 }
+
 async function downloadModelFile(m){
-  const blob=await idbGet(m.id);
-  if(blob){
-    triggerDownload((m.file&&m.file.name)||((m.name||'model')+'.safetensors'), blob);
-    return 'weights';
+  const weights = await idbGet(m.id);
+  if(weights){
+    const name = (m.file && m.file.name) || ((m.name||'model')+'.safetensors');
+    const method = await saveBlobToDevice(name, weights, weights.type||'application/octet-stream');
+    return { kind:'weights', method };
   }
-  const zip=await buildFacePackBlob(m);
-  const safeName=(m.name||'model').replace(/[\\/:*?"<>|]+/g,'_').slice(0,48);
-  triggerDownload(safeName+'-facepack.zip', zip);
-  return 'pack';
+
+  /* Seed/catalog: save real local files (cover image + model card JSON) — NOT a zip package */
+  const safeName = (m.name||'model').replace(/[\\/:*?"<>|]+/g,'_').slice(0,48);
+  const cover = await fetchCoverBlob(m);
+  const jsonStr = modelCardJson(m);
+  const jsonBlob = new Blob([jsonStr], {type:'application/json'});
+  const jsonName = safeName+'.json';
+  const files = [];
+  if(cover && cover.blob && cover.blob.size){
+    files.push(new File([cover.blob], safeName+'.'+cover.ext, {type:cover.mime}));
+  }
+  files.push(new File([jsonBlob], jsonName, {type:'application/json'}));
+
+  /* Prefer multi-file share in the same user-gesture async turn (iOS) */
+  const method = await shareFilesOrFallback(files, m.name||safeName, jsonStr);
+  return { kind:'files', method };
 }
 
 function userKey(){ if(!DB.user) return null; return (DB.user.email&&DB.user.email.trim()) || DB.user.nick; }
@@ -1270,17 +1326,39 @@ function renderDetail(app){
   dl.textContent = !scanOk ? '스캔 완료 후 다운로드 가능'
                  : !DB.user ? '로그인하고 무료 다운로드'
                  : '무료 다운로드  ('+mb(f.kb)+')';
-  dl.onclick=async()=>{
+  dl.onclick=async(ev)=>{
+    if(ev && ev.preventDefault) ev.preventDefault();
     if(!scanOk) return;
     if(!requireLogin('로그인하면 모든 얼굴 모델을 무제한 무료로 받을 수 있습니다.')) return;
     dl.disabled=true;
     try{
-      const kind=await downloadModelFile(m);
+      const result=await downloadModelFile(m);
+      const kind=result && result.kind;
+      const method=result && result.method;
       m.dl++; m.log.push(Date.now()); recordDownload(m.id); save();
-      toast(kind==='weights' ? '모델 파일 다운로드를 시작했습니다' : '얼굴팩(표지+모델카드) 다운로드를 시작했습니다. 가중치 파일은 직접 업로드한 모델만 제공됩니다.','ok');
+      let msg;
+      if(kind==='weights'){
+        msg = method==='share'
+          ? '공유/저장 시트가 열렸습니다. 파일에 저장을 눌러 주세요'
+          : method==='tab'
+          ? '파일이 새 탭에서 열렸습니다. 브라우저 공유/저장으로 기기에 저장해 주세요'
+          : '모델 파일을 기기에 저장했습니다';
+      }else{
+        msg = method==='share'
+          ? '공유/저장 시트가 열렸습니다. 파일에 저장을 눌러 주세요'
+          : method==='tab'
+          ? '파일이 새 탭에서 열렸습니다. 브라우저 공유/저장으로 기기에 저장해 주세요'
+          : '표지 사진과 모델 정보를 기기에 저장했습니다';
+      }
+      toast(msg,'ok');
       render();
     }catch(e){
-      toast('다운로드에 실패했습니다. 다시 시도해 주세요.','err');
+      console.error(e);
+      if(e && e.name==='AbortError'){
+        toast('저장이 취소되었습니다');
+      }else{
+        toast('저장에 실패했습니다. 다시 시도해 주세요.','err');
+      }
       dl.disabled=false;
     }
   };
