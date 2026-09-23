@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
+      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
 <title>페이스루크 — 얼굴 모델 전문 공유 플랫폼</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -76,11 +76,8 @@ nav.top button.on{background:var(--panel);color:#fff}
 .av{width:16px;height:16px;border-radius:50%}
 
 .detail{padding:20px 0 60px;display:grid;grid-template-columns:1fr 346px;gap:26px;align-items:start}
-.hero{height:390px;border-radius:12px;background:#14171f;margin-bottom:10px;overflow:hidden;perspective:1100px;position:relative}
+.hero{height:390px;border-radius:12px;background:#14171f center 16%/cover no-repeat;margin-bottom:10px;overflow:hidden;position:relative}
 .herospin{width:100%;height:100%;background:#14171f center 16%/cover no-repeat;transform-origin:center;transition:transform .28s ease;backface-visibility:hidden}
-.orbitcv{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
-.orbitcv:active{cursor:grabbing}
-.orbithint{font-size:12.3px;color:var(--dim);font-weight:600;margin:8px 0 14px}
 .angles{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:22px}
 .angles .a{border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#14171f;height:78px;position:relative;perspective:520px}
 .angles .a.on{border-color:var(--acc)}
@@ -197,30 +194,6 @@ textarea.inp{min-height:92px;resize:vertical;line-height:1.7}
 .toast.show{transform:translateX(-50%) translateY(0)}
 .toast.ok{border-color:#2a5a42}.toast.err{border-color:#5a2a2a}
 .back{font-size:13px;color:var(--dim);font-weight:600;padding:16px 0 0;display:inline-block}
-
-/* AI 스튜디오 */
-.studio{padding:20px 0 60px}
-.studio-head{margin-bottom:18px}
-.studio-head h1{font-size:22px;font-weight:800;letter-spacing:-.4px;margin-bottom:6px}
-.studio-head p{font-size:13px;color:var(--dim);line-height:1.7}
-.studio-grid{display:grid;grid-template-columns:minmax(280px,420px) 1fr;gap:22px;align-items:start}
-.studio-panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
-.studio-panel h2{font-size:13px;font-weight:800;color:var(--dim);letter-spacing:.5px;margin-bottom:12px}
-.studio-preview{background:#14171f;border:1px solid var(--line);border-radius:12px;min-height:420px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-.studio-preview img{max-width:100%;max-height:560px;object-fit:contain;display:block}
-.studio-preview .ph{color:var(--dim);font-size:13.5px;font-weight:600;text-align:center;padding:24px;line-height:1.7}
-.studio-hist{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px;-webkit-overflow-scrolling:touch}
-.studio-hist button{flex:0 0 auto;width:72px;height:96px;border-radius:8px;border:2px solid transparent;background:#14171f center/cover no-repeat;padding:0}
-.studio-hist button.on{border-color:var(--acc)}
-.studio-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
-.studio-presets{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 4px}
-.studio-presets .chip{cursor:pointer}
-.studio-note{font-size:12px;color:var(--dim);line-height:1.65;margin-top:10px}
-@media(max-width:900px){
-  .studio-grid{grid-template-columns:1fr}
-  .studio-preview{min-height:320px}
-}
-
 @media(max-width:900px){.detail{grid-template-columns:1fr}.side{position:static}.facegrid{grid-template-columns:repeat(2,1fr)}}
 
 /* ===== 모바일 대응 =====================================================
@@ -230,11 +203,6 @@ textarea.inp{min-height:92px;resize:vertical;line-height:1.7}
 html{-webkit-text-size-adjust:100%}
 body{overflow-x:hidden}
 @media (max-width:760px){
-
-  .studio{padding:12px 0 50px}
-  .studio-head h1{font-size:18px}
-  .studio-panel{padding:14px}
-  .studio-preview{min-height:280px}
   .wrap{padding:0 14px}
   .hbar{height:auto;padding:10px 0;display:grid;grid-template-columns:1fr auto;
         grid-template-areas:"logo auth" "search search" "nav nav";gap:9px;align-items:center}
@@ -465,63 +433,6 @@ function applyFacePose(el, ai, photoPose){
   if(photoPose) el.style.transform='perspective(900px) rotateY('+p.y+'deg) rotateX('+p.x+'deg) scale(1.08)';
   else el.style.transform='none';
 }
-function mountOrbit(host, imgUrl){
-  host.textContent='';
-  const canvas=document.createElement('canvas'); canvas.className='orbitcv'; host.appendChild(canvas);
-  const ctx=canvas.getContext('2d');
-  const im=new Image(); im.crossOrigin='anonymous';
-  let hair='#2a221c';
-  function size(){
-    const r=host.getBoundingClientRect(); const dpr=Math.min(2, window.devicePixelRatio||1);
-    canvas.width=Math.max(2, r.width*dpr); canvas.height=Math.max(2, r.height*dpr);
-    canvas.style.width=r.width+'px'; canvas.style.height=r.height+'px';
-  }
-  function draw(){
-    size();
-    const W=canvas.width, H=canvas.height;
-    ctx.fillStyle='#14171f'; ctx.fillRect(0,0,W,H);
-    if(!im.naturalWidth) return;
-    const cx=W/2, cy=H/2 + orbitPitch*H*0.0045;
-    const Rx=Math.min(W,H)*0.36, Ry=Math.min(W,H)*0.48;
-    const yaw=orbitYaw*Math.PI/180, N=80;
-    for(let pass=0; pass<2; pass++){
-      for(let i=0;i<N;i++){
-        const t0=i/N, t1=(i+1)/N;
-        const a0=t0*Math.PI*2 + yaw, a1=t1*Math.PI*2 + yaw;
-        const z=(Math.cos(a0)+Math.cos(a1))/2, isF=z>0;
-        if(pass===0 && isF) continue; if(pass===1 && !isF) continue;
-        const x0=cx+Math.sin(a0)*Rx, x1=cx+Math.sin(a1)*Rx;
-        const w=x1-x0; if(w<=0.6) continue;
-        const y=cy-Ry, hh=Ry*2;
-        if(isF){
-          const u0=(0.5+Math.sin(a0)*0.5)*im.width;
-          const u1=(0.5+Math.sin(a1)*0.5)*im.width;
-          const uw=u1-u0; if(uw<=0.6) continue;
-          ctx.drawImage(im, u0, 0, uw, im.height, x0, y, w, hh);
-        } else {
-          ctx.fillStyle=hair; ctx.fillRect(x0, y, w, hh);
-        }
-      }
-    }
-  }
-  im.onload=()=>{
-    const c=document.createElement('canvas'); c.width=16; c.height=16;
-    const x=c.getContext('2d'); x.drawImage(im,0,0,16,16);
-    const d=x.getImageData(0,0,16,5).data; let r=0,g=0,b=0,n=0;
-    for(let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; }
-    hair='rgb('+(r/n|0)+','+(g/n|0)+','+(b/n|0)+')';
-    draw();
-  };
-  im.src=imgUrl;
-  canvas.addEventListener('pointerdown', e=>{
-    canvas.setPointerCapture(e.pointerId);
-    let lx=e.clientX, ly=e.clientY;
-    const move=ev=>{ orbitYaw+=(ev.clientX-lx)*0.55; orbitPitch=Math.max(-30, Math.min(30, orbitPitch+(ev.clientY-ly)*0.35)); lx=ev.clientX; ly=ev.clientY; draw(); };
-    const up=()=>{ canvas.removeEventListener('pointermove', move); canvas.removeEventListener('pointerup', up); };
-    canvas.addEventListener('pointermove', move); canvas.addEventListener('pointerup', up);
-  });
-  new ResizeObserver(draw).observe(host);
-}
 function avatar(name){
   const n=hashCode(name);
   return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(
@@ -683,8 +594,7 @@ function mkModel(s, id, createdAt){
            kb:s.kb||131072, scan:'Success',
            sha:[...Array(64)].map((_,i)=>'0123456789abcdef'[hashCode(s.name+i)%16]).join('') },
     dl:s.dl||0, log:s.log||[], reviews:s.reviews||[],
-    photos:s.photos||null, photoKey:s.photoKey||null, auto:!!s.auto,
-    aiProvider:s.aiProvider||null, aiStudio:!!s.aiStudio };
+    photos:s.photos||null, photoKey:s.photoKey||null, auto:!!s.auto };
 }
 
 /* 다운로드 카운팅: 총 / 오늘 / 최근 7일 */
@@ -797,8 +707,7 @@ function requireLogin(reason){
 }
 
 /* ── 라우팅 ──────────────────────────────────────────────────────────── */
-let view='browse', curId=null, curAngle=0, mineTab='fav', orbitYaw=0, orbitPitch=0;
-const ANGLE_ORBIT=[{yaw:0,pitch:0},{yaw:42,pitch:0},{yaw:-42,pitch:0},{yaw:90,pitch:0},{yaw:-90,pitch:0},{yaw:0,pitch:28}];
+let view='browse', curId=null, curAngle=0, mineTab='fav';
 let filt={ kind:'', gender:'', age:'', style:'', sort:'dl', q:'' };
 function go(v,id){ view=v; if(id!=null){curId=id;curAngle=0;} window.scrollTo(0,0); render(); }
 function toast(msg,kind){ const t=$('toast'); t.textContent=msg; t.className='toast show '+(kind||'');
@@ -842,7 +751,7 @@ function openLogin(reason){
 /* ── 렌더 ────────────────────────────────────────────────────────────── */
 function render(){
   const nav=$('nav'); nav.textContent='';
-  [['browse','모델 탐색'],['studio','AI 스튜디오'],['mine','내 페이지']].forEach(([k,l])=>{
+  [['browse','모델 탐색'],['mine','내 페이지']].forEach(([k,l])=>{
     const b=document.createElement('button'); b.textContent=l; if(view===k)b.className='on';
     b.onclick=()=>go(k); nav.appendChild(b); });
 
@@ -863,7 +772,6 @@ function render(){
 
   const app=$('app'); app.textContent='';
   if(view==='browse') renderBrowse(app);
-  else if(view==='studio') renderStudio(app);
   else if(view==='detail') renderDetail(app);
   else if(view==='upload') renderUpload(app);
   else if(view==='mine') renderMine(app);
@@ -887,14 +795,11 @@ function renderBrowse(app){
   const bt=document.createElement('div'); bt.className='t';
   const bh=document.createElement('h2'); bh.textContent='매일 새 얼굴 모델이 올라옵니다';
   const bp=document.createElement('p');
-  bp.textContent='자동 등록 봇이 하루 '+AUTO_PER_DAY+'개씩 새 모델을 올립니다. 오늘 등록된 모델 '+todayCnt+'개 · 마지막 실행 '+(DB.lastAuto||'없음')+' · AI 스튜디오에서 합성 얼굴을 직접 생성해 카탈로그에 올릴 수 있습니다.';
+  bp.textContent='자동 등록 봇이 하루 '+AUTO_PER_DAY+'개씩 새 모델을 올립니다. 오늘 등록된 모델 '+todayCnt+'개 · 마지막 실행 '+(DB.lastAuto||'없음');
   bt.appendChild(bh); bt.appendChild(bp); bn.appendChild(bt);
-  const brow=document.createElement('div'); brow.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-  const bstudio=document.createElement('button'); bstudio.className='btn'; bstudio.textContent='AI 스튜디오';
-  bstudio.onclick=()=>go('studio');
   const brun=document.createElement('button'); brun.className='btn ghost'; brun.textContent='지금 실행';
   brun.onclick=()=>{ const n=runDailyAuto(true); toast('새 모델 '+n+'개를 등록했습니다','ok'); render(); };
-  brow.appendChild(bstudio); brow.appendChild(brun); bn.appendChild(brow); app.appendChild(bn);
+  bn.appendChild(brun); app.appendChild(bn);
 
   const f=document.createElement('div'); f.className='filters';
   const chip=(label,on,fn)=>{ const b=document.createElement('button'); b.className='chip'+(on?' on':''); b.textContent=label; b.onclick=fn; f.appendChild(b); };
@@ -1031,21 +936,13 @@ function renderDetail(app){
   const rt=document.createElement('span'); rt.innerText='\u00b7 '+(m.reviews.length?starStr(ar)+' '+ar.toFixed(1)+' ('+m.reviews.length+'개 리뷰)':'리뷰 없음')+' \u00b7 '+dstr(m.createdAt)+' 등록';
   by.appendChild(av); by.appendChild(nm); by.appendChild(rt); left.appendChild(by);
 
-  /* 360 궤도 뷰어: 사진을 잡고 드래그하면 전 각도 */
+  /* 6방향 각도: 사진은 크게 유지하고, 각도 버튼으로 고개만 돌린다 */
   const photoPose = !!(m.photos && m.photos.length);
   const hero=document.createElement('div'); hero.className='hero';
-  if(photoPose){ mountOrbit(hero, faceSrc(m,0,760,780)); }
-  else {
-    const spin=document.createElement('div'); spin.className='herospin';
-    spin.style.backgroundImage='url("'+faceSrc(m,curAngle,760,780)+'")';
-    applyFacePose(spin, curAngle, false); hero.appendChild(spin);
-  }
-  left.appendChild(hero);
-  if(photoPose){
-    const hint=document.createElement('div'); hint.className='orbithint';
-    hint.textContent='사진을 잡고 좌우로 드래그하면 360° 모든 각도를 볼 수 있습니다. 위아래는 하이앵글입니다.';
-    left.appendChild(hint);
-  }
+  const spin=document.createElement('div'); spin.className='herospin';
+  spin.style.backgroundImage='url("'+faceSrc(m,curAngle,760,780)+'")';
+  applyFacePose(spin, curAngle, photoPose);
+  hero.appendChild(spin); left.appendChild(hero);
   const ang=document.createElement('div'); ang.className='angles';
   ANGLES.forEach((a,i)=>{
     const d=document.createElement('div'); d.className='a'+(i===curAngle?' on':'');
@@ -1054,7 +951,7 @@ function renderDetail(app){
     applyFacePose(sp, i, photoPose);
     const s=document.createElement('span'); s.textContent=a.ko;
     d.appendChild(sp); d.appendChild(s);
-    d.onclick=()=>{ curAngle=i; orbitYaw=ANGLE_ORBIT[i].yaw; orbitPitch=ANGLE_ORBIT[i].pitch; render(); };
+    d.onclick=()=>{ curAngle=i; render(); };
     ang.appendChild(d);
   });
   left.appendChild(ang);
@@ -1392,448 +1289,6 @@ function doSubmit(){
     toast('보안 스캔 통과 · 다운로드가 열렸습니다','ok');
   }, 4000);
 }
-
-
-/* ── AI 생성 스튜디오 ─────────────────────────────────────────────────── */
-const STUDIO_KEY = 'facenaru.studio.v1';
-const DEFAULT_PROMPT = 'portrait photo of a Korean woman in her 20s, natural skin, studio soft light, face only, photorealistic';
-let studioHistory = [];
-let studioState = {
-  provider: 'pollinations',
-  prompt: DEFAULT_PROMPT,
-  gender: 'female', age: 'twenties', style: 'real', base: 'FLUX.1 D',
-  modelName: '',
-  last: null,
-  busy: false
-};
-const STUDIO_PRESETS = [
-  { ko:'20대 여성 실사', gender:'female', age:'twenties', style:'real', base:'FLUX.1 D',
-    prompt:'portrait photo of a Korean woman in her 20s, natural skin, studio soft light, face only, photorealistic' },
-  { ko:'30대 남성', gender:'male', age:'thirties', style:'real', base:'FLUX.1 D',
-    prompt:'portrait photo of a Korean man in his 30s, confident look, natural skin, soft studio light, face only, photorealistic' },
-  { ko:'시니어', gender:'neutral', age:'senior', style:'real', base:'SDXL 1.0',
-    prompt:'portrait photo of an East Asian senior in their 50s, gentle expression, natural aging, soft light, face only, photorealistic' },
-  { ko:'애니 소녀', gender:'female', age:'twenties', style:'anime', base:'Illustrious',
-    prompt:'anime style portrait of a young East Asian girl, detailed eyes, clean lineart, soft shading, face close-up' },
-  { ko:'중성 반실사', gender:'neutral', age:'twenties', style:'semi', base:'Pony',
-    prompt:'semi-realistic portrait of an androgynous East Asian person in their 20s, soft lighting, face only, detailed skin' }
-];
-
-function loadStudioCfg(){
-  try{
-    const r = localStorage.getItem(STUDIO_KEY);
-    if(r){
-      const o = JSON.parse(r);
-      return {
-        falKey: String(o.falKey||''),
-        replicateKey: String(o.replicateKey||''),
-        higgsCredentials: String(o.higgsCredentials||''),
-        defaultProvider: String(o.defaultProvider||'pollinations')
-      };
-    }
-  }catch(e){}
-  return { falKey:'', replicateKey:'', higgsCredentials:'', defaultProvider:'pollinations' };
-}
-function saveStudioCfg(cfg){
-  const next = {
-    falKey: String((cfg&&cfg.falKey)||''),
-    replicateKey: String((cfg&&cfg.replicateKey)||''),
-    higgsCredentials: String((cfg&&cfg.higgsCredentials)||''),
-    defaultProvider: String((cfg&&cfg.defaultProvider)||'pollinations')
-  };
-  try{ localStorage.setItem(STUDIO_KEY, JSON.stringify(next)); }catch(e){}
-  return next;
-}
-
-async function genPollinations(prompt, seed){
-  const model = 'flux';
-  const url = 'https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt)
-    +'?width=768&height=1024&model='+encodeURIComponent(model)+'&nologo=true&seed='+encodeURIComponent(String(seed));
-  /* 이미지 URL을 직접 사용 (img-src https: 허용). HEAD로 존재 확인은 CORS 이슈 가능 → 바로 반환 */
-  return { url:url, meta:{ provider:'pollinations', model:model, seed:seed } };
-}
-
-async function genFal(endpoint, prompt, falKey){
-  const res = await fetch('https://fal.run/'+endpoint, {
-    method:'POST',
-    headers:{
-      'Authorization':'Bearer '+falKey,
-      'Content-Type':'application/json'
-    },
-    body: JSON.stringify({ prompt:prompt, image_size:'portrait_4_3', num_images:1 })
-  });
-  if(!res.ok){
-    let msg = 'Fal 요청 실패 ('+res.status+')';
-    try{ const j=await res.json(); if(j && (j.detail||j.message||j.error)) msg = String(j.detail||j.message||j.error); }catch(e){}
-    throw new Error(msg);
-  }
-  const data = await res.json();
-  const img = (data.images && data.images[0] && data.images[0].url)
-    || (data.image && data.image.url)
-    || (data.output && data.output[0])
-    || null;
-  if(!img) throw new Error('Fal 응답에서 이미지 URL을 찾지 못했습니다');
-  return { url:img, meta:{ provider:'fal', endpoint:endpoint } };
-}
-
-async function genFalFlux(prompt){
-  const cfg = loadStudioCfg();
-  if(!cfg.falKey){ toast('스튜디오 설정에서 Fal API 키를 먼저 입력해주세요','err'); throw new Error('no-fal-key'); }
-  try{
-    return await genFal('fal-ai/flux/dev', prompt, cfg.falKey);
-  }catch(e){
-    if(String(e.message)==='no-fal-key') throw e;
-    /* Flux 실패 시 SDXL 폴백은 호출부에서 처리 */
-    throw e;
-  }
-}
-
-async function genFalSdxl(prompt){
-  const cfg = loadStudioCfg();
-  if(!cfg.falKey){ toast('스튜디오 설정에서 Fal API 키를 먼저 입력해주세요','err'); throw new Error('no-fal-key'); }
-  return await genFal('fal-ai/fast-sdxl', prompt, cfg.falKey);
-}
-
-async function pollHiggsStatus(statusUrl, headers, maxTries){
-  const n = maxTries||40;
-  for(let i=0;i<n;i++){
-    await new Promise(r=>setTimeout(r, 1500));
-    const r = await fetch(statusUrl, { headers:headers });
-    if(!r.ok) continue;
-    const j = await r.json();
-    const st = String(j.status||'').toLowerCase();
-    if(st==='completed' || st==='succeeded' || st==='success'){
-      const url = (j.images && j.images[0] && (j.images[0].url||j.images[0]))
-        || (j.output && j.output.images && j.output.images[0] && (j.output.images[0].url||j.output.images[0]))
-        || (j.output && j.output.url)
-        || (j.result && j.result.images && j.result.images[0] && j.result.images[0].url)
-        || (j.jobs && j.jobs[0] && j.jobs[0].results && j.jobs[0].results.raw && j.jobs[0].results.raw.url)
-        || null;
-      if(!url) throw new Error('Higgsfield 완료 응답에 이미지 URL이 없습니다');
-      return url;
-    }
-    if(st==='failed'||st==='canceled'||st==='cancelled'||st==='moderated'||st==='error'){
-      throw new Error('Higgsfield 생성 실패: '+st);
-    }
-  }
-  throw new Error('Higgsfield 대기 시간 초과');
-}
-
-async function genHiggsfield(prompt, seed){
-  const cfg = loadStudioCfg();
-  const cred = String(cfg.higgsCredentials||'').trim();
-  if(!cred || cred.indexOf(':')<0){
-    toast('스튜디오 설정에서 Higgsfield 자격증명(key-id:key-secret)을 입력해주세요','err');
-    throw new Error('no-higgs');
-  }
-  const headers = {
-    'Authorization':'Key '+cred,
-    'Content-Type':'application/json',
-    'Accept':'application/json'
-  };
-  /* z-image/turbo — 문서화된 텍스트→이미지 엔드포인트 */
-  const endpoints = [
-    { url:'https://api.higgsfield.ai/z-image/turbo', body:{ prompt:prompt, resolution:'1k', aspect_ratio:'2:3', seed:seed%2147483647 } },
-    { url:'https://platform.higgsfield.ai/higgsfield-ai/soul/standard', body:{ prompt:prompt, aspect_ratio:'2:3', resolution:'720p' } }
-  ];
-  let lastErr = null;
-  for(const ep of endpoints){
-    try{
-      const res = await fetch(ep.url, { method:'POST', headers:headers, body:JSON.stringify(ep.body) });
-      if(!res.ok){
-        let msg = 'HTTP '+res.status;
-        try{ const j=await res.json(); msg = String(j.message||j.error||j.detail||msg); }catch(e){}
-        lastErr = new Error(msg);
-        continue;
-      }
-      const data = await res.json();
-      const immediate = (data.images && data.images[0] && (data.images[0].url||data.images[0]))
-        || (data.output && data.output.url) || null;
-      if(immediate) return { url:immediate, meta:{ provider:'higgsfield', endpoint:ep.url } };
-      const statusUrl = data.status_url || (data.request_id ? 'https://platform.higgsfield.ai/requests/'+data.request_id+'/status' : null);
-      if(!statusUrl){ lastErr = new Error('status_url 없음'); continue; }
-      const url = await pollHiggsStatus(statusUrl, headers, 40);
-      return { url:url, meta:{ provider:'higgsfield', endpoint:ep.url } };
-    }catch(e){ lastErr = e; }
-  }
-  throw lastErr || new Error('Higgsfield 연동 실패');
-}
-
-async function genDemo(prompt, seed){
-  const url = faceImg('studio-'+seed+'-'+(prompt||'').slice(0,40), 0, 768, 1024);
-  return { url:url, meta:{ provider:'demo', seed:seed } };
-}
-
-async function runStudioGenerate(){
-  if(studioState.busy) return;
-  const prompt = (studioState.prompt||'').trim();
-  if(!prompt){ toast('프롬프트를 입력해주세요','err'); return; }
-  const seed = (Date.now() % 1000000) ^ hashCode(prompt);
-  studioState.busy = true;
-  render(); /* busy UI */
-  try{
-    let result = null;
-    const p = studioState.provider;
-    if(p==='pollinations') result = await genPollinations(prompt, seed);
-    else if(p==='fal-flux'){
-      try{ result = await genFalFlux(prompt); }
-      catch(e){
-        if(String(e.message)==='no-fal-key') throw e;
-        toast('Flux 실패 → Fal SDXL로 재시도…');
-        result = await genFalSdxl(prompt);
-      }
-    }
-    else if(p==='fal-sdxl') result = await genFalSdxl(prompt);
-    else if(p==='higgsfield') result = await genHiggsfield(prompt, seed);
-    else result = await genDemo(prompt, seed);
-
-    const item = {
-      id: 'g'+Date.now(),
-      url: result.url,
-      blobUrl: result.blobUrl||null,
-      meta: result.meta||{},
-      prompt: prompt,
-      provider: p,
-      gender: studioState.gender,
-      age: studioState.age,
-      style: studioState.style,
-      base: studioState.base,
-      at: Date.now()
-    };
-    studioState.last = item;
-    studioHistory.unshift(item);
-    if(studioHistory.length>12) studioHistory.length=12;
-    toast('생성 완료','ok');
-  }catch(e){
-    if(String(e.message)!=='no-fal-key' && String(e.message)!=='no-higgs'){
-      toast('생성 실패: '+(e.message||e),'err');
-    }
-  }finally{
-    studioState.busy = false;
-    if(view==='studio') render();
-  }
-}
-
-function openStudioSettings(){
-  const cfg = loadStudioCfg();
-  const m = $('modal'); m.textContent='';
-  const ov = document.createElement('div'); ov.className='modal';
-  ov.onclick = e=>{ if(e.target===ov) closeModal(); };
-  const box = document.createElement('div'); box.className='mbox'; box.style.maxWidth='480px';
-  const h = document.createElement('h2'); h.textContent='스튜디오 API 설정'; box.appendChild(h);
-  const p = document.createElement('p');
-  p.textContent='키는 이 브라우저 localStorage(facenaru.studio.v1)에만 저장됩니다. 서버로 전송되지 않습니다. Higgsfield는 key-id:key-secret 형식입니다.';
-  box.appendChild(p);
-
-  function field(label, key, ph, type){
-    const l=document.createElement('label'); l.className='fl'; l.textContent=label; box.appendChild(l);
-    const i=document.createElement('input'); i.className='inp'; i.type=type||'password'; i.placeholder=ph; i.value=cfg[key]||''; i.autocomplete='off';
-    i.dataset.key=key; box.appendChild(i); return i;
-  }
-  const iFal = field('Fal API Key','falKey','fal_…');
-  const iRep = field('Replicate API Token','replicateKey','r8_… (예약)');
-  const iHg  = field('Higgsfield Credentials','higgsCredentials','key-id:key-secret');
-
-  const ldp=document.createElement('label'); ldp.className='fl'; ldp.textContent='기본 엔진'; box.appendChild(ldp);
-  const sel=document.createElement('select'); sel.className='inp';
-  [['pollinations','Pollinations Flux (무료)'],['fal-flux','Fal Flux'],['fal-sdxl','Fal SDXL'],['higgsfield','Higgsfield'],['demo','데모(오프라인)']].forEach(([v,t])=>{
-    const o=document.createElement('option'); o.value=v; o.textContent=t; if((cfg.defaultProvider||'pollinations')===v)o.selected=true; sel.appendChild(o);
-  });
-  box.appendChild(sel);
-
-  const note=document.createElement('div'); note.className='alert info'; note.style.marginTop='12px';
-  note.innerHTML='<b>안내</b><span> · Pollinations는 키 없이 바로 동작합니다. Higgsfield Seedance는 비디오(Phase 2)이며, 이미지는 z-image/turbo 등으로 연결을 시도합니다.</span>';
-  box.appendChild(note);
-
-  const row=document.createElement('div'); row.style.cssText='display:flex;gap:9px;margin-top:18px';
-  const c=document.createElement('button'); c.className='btn ghost'; c.textContent='닫기'; c.onclick=closeModal;
-  const s=document.createElement('button'); s.className='btn'; s.style.flex='1'; s.textContent='저장';
-  s.onclick=()=>{
-    const next = saveStudioCfg({
-      falKey: iFal.value.trim(),
-      replicateKey: iRep.value.trim(),
-      higgsCredentials: iHg.value.trim(),
-      defaultProvider: sel.value
-    });
-    studioState.provider = next.defaultProvider || studioState.provider;
-    toast('설정 저장됨','ok');
-    closeModal();
-    if(view==='studio') render();
-  };
-  row.appendChild(c); row.appendChild(s); box.appendChild(row);
-  ov.appendChild(box); m.appendChild(ov);
-  iFal.focus();
-}
-
-function publishStudioResult(){
-  if(!requireLogin('카탈로그에 올리려면 로그인이 필요합니다.')) return;
-  const item = studioState.last;
-  if(!item || !item.url){ toast('먼저 이미지를 생성해주세요','err'); return; }
-  const name = (studioState.modelName||'').trim()
-    || ('AI 스튜디오 · '+(AGES[item.age]||'')+' '+(GENDERS[item.gender]||'')+' '+(STYLES[item.style]||'')+' 얼굴').replace(/\s+/g,' ').trim();
-  const tags = ['ai-studio', item.provider||'ai', GENDERS[item.gender]||'', AGES[item.age]||'', STYLES[item.style]||'']
-    .map(s=>String(s).trim()).filter(Boolean);
-  const s = {
-    name: name,
-    kind: 'FaceLORA',
-    gender: item.gender||'female',
-    age: item.age||'twenties',
-    style: item.style||'real',
-    consent: 'synthetic',
-    user: DB.user.nick,
-    base: item.base || studioState.base || 'FLUX.1 D',
-    desc: 'AI 스튜디오에서 생성한 합성 얼굴입니다. 실존 인물이 아닙니다.\n\n엔진: '+(item.provider||'')+'\n프롬프트: '+item.prompt,
-    tags: tags,
-    words: ['ai_studio', String(item.provider||'ai')],
-    photos: [item.url],
-    kb: 163840,
-    dl: 0, log: [], reviews: [],
-    aiProvider: item.provider||null,
-    aiStudio: true
-  };
-  const id = DB.nextId++;
-  const m = mkModel(s, id, Date.now());
-  m.user = DB.user.nick;
-  m.file.scan = 'Success';
-  m.aiProvider = item.provider||null;
-  m.aiStudio = true;
-  DB.models.unshift(m); save();
-  toast('카탈로그에 등록했습니다','ok');
-  go('detail', id);
-}
-
-function renderStudio(app){
-  const cfg = loadStudioCfg();
-  if(!studioState._init){
-    studioState.provider = cfg.defaultProvider || 'pollinations';
-    studioState._init = true;
-  }
-
-  const root=document.createElement('div'); root.className='studio';
-
-  const head=document.createElement('div'); head.className='studio-head';
-  const h1=document.createElement('h1'); h1.textContent='AI 얼굴 생성 스튜디오';
-  const hp=document.createElement('p');
-  hp.textContent='여러 엔진으로 합성 얼굴을 만들고, 로그인 후 카탈로그에 바로 올릴 수 있습니다. Pollinations는 키 없이 동작하며, Fal·Higgsfield는 설정에서 API 키를 저장하세요.';
-  head.appendChild(h1); head.appendChild(hp); root.appendChild(head);
-
-  const grid=document.createElement('div'); grid.className='studio-grid';
-
-  /* ── 좌측 폼 ── */
-  const left=document.createElement('div'); left.className='studio-panel';
-  const lh=document.createElement('h2'); lh.textContent='생성 설정'; left.appendChild(lh);
-
-  const lp=document.createElement('label'); lp.className='fl'; lp.textContent='엔진'; left.appendChild(lp);
-  const psel=document.createElement('select'); psel.className='inp';
-  [['pollinations','Pollinations Flux (무료)'],['fal-flux','Fal Flux'],['fal-sdxl','Fal SDXL'],['higgsfield','Higgsfield'],['demo','데모(오프라인)']].forEach(([v,t])=>{
-    const o=document.createElement('option'); o.value=v; o.textContent=t; if(studioState.provider===v)o.selected=true; psel.appendChild(o);
-  });
-  psel.onchange=()=>{ studioState.provider=psel.value; render(); };
-  left.appendChild(psel);
-
-  if(studioState.provider==='higgsfield'){
-    const note=document.createElement('div'); note.className='alert info'; note.style.marginTop='10px';
-    const has = !!(cfg.higgsCredentials && cfg.higgsCredentials.indexOf(':')>=0);
-    note.innerHTML = has
-      ? '<b>연동 준비됨</b><span> — z-image/turbo 등 이미지 엔드포인트로 요청합니다. Seedance 얼굴 비디오는 Phase 2입니다.</span>'
-      : '<b>키 필요</b><span> — 설정에서 key-id:key-secret을 저장하세요. 얼굴 비디오(Seedance)는 Phase 2 · 지금은 이미지 슬롯입니다.</span>';
-    left.appendChild(note);
-  }
-
-  const lpr=document.createElement('label'); lpr.className='fl'; lpr.textContent='프롬프트 (영문 권장)'; left.appendChild(lpr);
-  const ta=document.createElement('textarea'); ta.className='inp'; ta.style.minHeight='110px';
-  ta.placeholder='portrait photo of a Korean woman in her 20s, natural skin, studio soft light, face only, photorealistic';
-  ta.value=studioState.prompt; ta.oninput=()=>{ studioState.prompt=ta.value; };
-  left.appendChild(ta);
-
-  const pret=document.createElement('div'); pret.className='studio-presets';
-  STUDIO_PRESETS.forEach(pr=>{
-    const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=pr.ko;
-    b.onclick=()=>{
-      studioState.prompt=pr.prompt; studioState.gender=pr.gender; studioState.age=pr.age;
-      studioState.style=pr.style; studioState.base=pr.base;
-      render();
-    };
-    pret.appendChild(b);
-  });
-  left.appendChild(pret);
-
-  const row=document.createElement('div'); row.className='two';
-  function mkSelect(label, key, mapOrArr){
-    const w=document.createElement('div');
-    const l=document.createElement('label'); l.className='fl'; l.textContent=label; w.appendChild(l);
-    const s=document.createElement('select'); s.className='inp';
-    const entries = Array.isArray(mapOrArr) ? mapOrArr.map(x=>[x,x]) : Object.keys(mapOrArr).map(k=>[k,mapOrArr[k]]);
-    entries.forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; if(studioState[key]===v)o.selected=true; s.appendChild(o); });
-    s.onchange=()=>{ studioState[key]=s.value; }; w.appendChild(s); return w;
-  }
-  row.appendChild(mkSelect('성별','gender',GENDERS));
-  row.appendChild(mkSelect('연령','age',AGES));
-  left.appendChild(row);
-  const row2=document.createElement('div'); row2.className='two';
-  row2.appendChild(mkSelect('스타일','style',STYLES));
-  row2.appendChild(mkSelect('베이스','base',BASES));
-  left.appendChild(row2);
-
-  const lmn=document.createElement('label'); lmn.className='fl'; lmn.textContent='모델 이름 (카탈로그 등록용)'; left.appendChild(lmn);
-  const inm=document.createElement('input'); inm.className='inp'; inm.placeholder='비우면 자동 생성'; inm.value=studioState.modelName;
-  inm.oninput=()=>{ studioState.modelName=inm.value; }; left.appendChild(inm);
-
-  const cons=document.createElement('div'); cons.className='alert ok'; cons.style.marginTop='12px';
-  cons.innerHTML='<b>합성 얼굴 (AI 생성)</b><span> — 초상권은 가상 인물로 고정됩니다. 실존 인물 재현용으로 쓰지 마세요.</span>';
-  left.appendChild(cons);
-
-  const acts=document.createElement('div'); acts.className='studio-actions';
-  const gen=document.createElement('button'); gen.className='btn'; gen.textContent=studioState.busy?'생성 중…':'생성하기';
-  gen.disabled=!!studioState.busy; gen.onclick=()=>runStudioGenerate();
-  const setb=document.createElement('button'); setb.className='btn ghost'; setb.textContent='설정(API 키)'; setb.onclick=openStudioSettings;
-  acts.appendChild(gen); acts.appendChild(setb); left.appendChild(acts);
-
-  const tip=document.createElement('p'); tip.className='studio-note';
-  tip.textContent='무료 경로: Pollinations · 오프라인: 데모 SVG. Fal/Higgsfield 키는 브라우저에만 저장됩니다.';
-  left.appendChild(tip);
-
-  /* ── 우측 결과 ── */
-  const right=document.createElement('div');
-  const rp=document.createElement('div'); rp.className='studio-panel'; rp.style.marginBottom='14px';
-  const rh=document.createElement('h2'); rh.textContent='미리보기'; rp.appendChild(rh);
-  const prev=document.createElement('div'); prev.className='studio-preview';
-  if(studioState.last && studioState.last.url){
-    const im=document.createElement('img'); im.src=studioState.last.url; im.alt='생성 결과';
-    im.referrerPolicy='no-referrer'; im.loading='lazy';
-    im.onerror=()=>{ prev.textContent=''; const ph=document.createElement('div'); ph.className='ph';
-      ph.textContent='이미지를 불러오지 못했습니다. 다른 엔진을 시도하거나 데모로 전환해보세요.'; prev.appendChild(ph); };
-    prev.appendChild(im);
-  } else {
-    const ph=document.createElement('div'); ph.className='ph';
-    ph.textContent='프롬프트를 입력하고 생성하기를 누르면\n여기에 결과가 표시됩니다.'; prev.appendChild(ph);
-  }
-  rp.appendChild(prev);
-
-  if(studioHistory.length){
-    const hist=document.createElement('div'); hist.className='studio-hist';
-    studioHistory.forEach(it=>{
-      const b=document.createElement('button'); b.type='button';
-      b.style.backgroundImage='url("'+String(it.url).replace(/"/g,'%22')+'")';
-      if(studioState.last && studioState.last.id===it.id) b.className='on';
-      b.title=(it.provider||'')+' · '+new Date(it.at).toLocaleTimeString('ko-KR');
-      b.onclick=()=>{ studioState.last=it; studioState.prompt=it.prompt; studioState.provider=it.provider; render(); };
-      hist.appendChild(b);
-    });
-    rp.appendChild(hist);
-  }
-
-  const pub=document.createElement('button'); pub.className='btn'; pub.style.width='100%'; pub.style.marginTop='12px';
-  pub.textContent='카탈로그에 올리기';
-  pub.disabled=!studioState.last; pub.onclick=publishStudioResult;
-  rp.appendChild(pub);
-  right.appendChild(rp);
-
-  grid.appendChild(left); grid.appendChild(right);
-  root.appendChild(grid);
-  app.appendChild(root);
-}
-
 
 $('q').addEventListener('input', e=>{ filt.q=e.target.value; if(view!=='browse') view='browse'; render(); });
 
