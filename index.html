@@ -52,6 +52,18 @@ nav.top button.on{background:var(--panel);color:#fff}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .13s,border-color .13s}
 .card:hover{transform:translateY(-3px);border-color:#3f4660}
 .cover{height:214px;position:relative;background:#14171f center/cover no-repeat;display:flex;align-items:flex-end;padding:9px}
+.heart{position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:50%;background:rgba(8,10,16,.55);color:#fff;font-size:16px;z-index:2;line-height:1}
+.heart.on{color:#ff7a9a}
+.heart:hover{background:rgba(8,10,16,.75)}
+.favbtn{width:100%;margin-top:8px;padding:10px;border-radius:9px;font-weight:700;font-size:13.5px;border:1px solid var(--line);background:var(--panel);color:var(--tx)}
+.favbtn.on{border-color:#ff7a9a;color:#ff7a9a}
+.minehead{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:18px 20px;margin:18px 0 14px}
+.minehead img{width:52px;height:52px;border-radius:50%;object-fit:cover}
+.minehead h2{font-size:18px;font-weight:800;margin:0 0 4px}
+.minehead p{font-size:12.8px;color:var(--dim);line-height:1.55}
+.minetabs{display:flex;gap:6px;margin:0 0 16px;flex-wrap:wrap}
+.minetabs button{background:var(--panel);border:1px solid var(--line);color:var(--dim);padding:8px 14px;border-radius:20px;font-size:13px;font-weight:700}
+.minetabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .tags{display:flex;gap:4px;flex-wrap:wrap}
 .tag{font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:5px;background:rgba(0,0,0,.66);color:#fff}
 .tag.new{background:#2f9e6e}.tag.pend{background:var(--warn);color:#241a06}
@@ -490,9 +502,32 @@ let DB = load();
 function load(){
   try{ const r=localStorage.getItem(KEY); if(r) return JSON.parse(r); }catch(e){}
   const models = SEED.map((s,i)=>mkModel(s, i+1, Date.now()-(9-i)*DAY));
-  return { models, nextId:100, poolIdx:0, lastAuto:null, user:null, saved:[] };
+  return { models, nextId:100, poolIdx:0, lastAuto:null, user:null, saved:[], library:{} };
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
+function userKey(){ if(!DB.user) return null; return (DB.user.email&&DB.user.email.trim()) || DB.user.nick; }
+function lib(){
+  if(!DB.library) DB.library={};
+  const k=userKey(); if(!k) return { favs:[], dls:[] };
+  if(!DB.library[k]) DB.library[k]={ favs:[], dls:[] };
+  const L=DB.library[k];
+  if(!Array.isArray(L.favs)) L.favs=[];
+  if(!Array.isArray(L.dls)) L.dls=[];
+  return L;
+}
+function isFav(id){ return !!DB.user && lib().favs.indexOf(id)>=0; }
+function toggleFav(id){
+  if(!requireLogin('관심얼굴로 등록하려면 로그인이 필요합니다.')) return;
+  const L=lib(); const i=L.favs.indexOf(id);
+  if(i>=0){ L.favs.splice(i,1); toast('관심얼굴에서 뺐습니다'); }
+  else { L.favs.unshift(id); toast('관심얼굴에 등록했습니다','ok'); }
+  save(); render();
+}
+function recordDownload(id){
+  const L=lib();
+  L.dls=L.dls.filter(x=>x.id!==id);
+  L.dls.unshift({ id, at:Date.now() });
+}
 
 function mkModel(s, id, createdAt){
   return { id, name:s.name, kind:s.kind, gender:s.gender, age:s.age, style:s.style,
@@ -617,7 +652,7 @@ function requireLogin(reason){
 }
 
 /* ── 라우팅 ──────────────────────────────────────────────────────────── */
-let view='browse', curId=null, curAngle=0;
+let view='browse', curId=null, curAngle=0, mineTab='fav';
 let filt={ kind:'', gender:'', age:'', style:'', sort:'dl', q:'' };
 function go(v,id){ view=v; if(id!=null){curId=id;curAngle=0;} window.scrollTo(0,0); render(); }
 function toast(msg,kind){ const t=$('toast'); t.textContent=msg; t.className='toast show '+(kind||'');
@@ -661,14 +696,15 @@ function openLogin(reason){
 /* ── 렌더 ────────────────────────────────────────────────────────────── */
 function render(){
   const nav=$('nav'); nav.textContent='';
-  [['browse','모델 탐색'],['mine','내 모델']].forEach(([k,l])=>{
+  [['browse','모델 탐색'],['mine','내 페이지']].forEach(([k,l])=>{
     const b=document.createElement('button'); b.textContent=l; if(view===k)b.className='on';
     b.onclick=()=>go(k); nav.appendChild(b); });
 
   const au=$('auth'); au.textContent='';
   au.style.cssText='display:flex;align-items:center;gap:9px';
   if(DB.user){
-    const me=document.createElement('div'); me.className='me';
+    const me=document.createElement('button'); me.className='me'; me.title='내 페이지';
+    me.onclick=()=>go('mine');
     const im=document.createElement('img'); im.src=DB.user.photo||avatar(DB.user.nick); im.alt=''; im.referrerPolicy='no-referrer';
     const nm=document.createElement('span'); nm.textContent=DB.user.nick;
     me.appendChild(im); me.appendChild(nm); au.appendChild(me);
@@ -735,14 +771,55 @@ function renderBrowse(app){
 }
 
 function renderMine(app){
-  if(!DB.user){ app.appendChild(emptyBox('로그인이 필요합니다','닉네임만 입력하면 바로 시작할 수 있습니다')); return; }
-  const list=DB.models.filter(m=>m.user===DB.user.nick);
-  if(!list.length){ app.appendChild(emptyBox('올린 모델이 없습니다','+ 업로드 버튼으로 첫 얼굴 모델을 등록해보세요')); return; }
-  const lab=document.createElement('div'); lab.className='seclabel';
-  const t=document.createElement('span'); t.textContent=DB.user.nick+'님이 올린 모델 '+list.length+'개';
-  const ln=document.createElement('span'); ln.className='ln';
-  lab.appendChild(t); lab.appendChild(ln); app.appendChild(lab);
-  app.appendChild(gridOf(list));
+  if(!DB.user){
+    const e=emptyBox('로그인이 필요합니다','로그인하면 관심얼굴과 받은 얼굴을 한곳에서 볼 수 있습니다');
+    const b=document.createElement('button'); b.className='btn'; b.style.marginTop='14px'; b.textContent='로그인';
+    b.onclick=()=>openLogin('내 페이지를 보려면 로그인이 필요합니다.'); e.appendChild(b);
+    app.appendChild(e); return;
+  }
+  const L=lib();
+  const favModels=L.favs.map(id=>DB.models.find(m=>m.id===id)).filter(Boolean);
+  const dlModels=L.dls.map(x=>DB.models.find(m=>m.id===x.id)).filter(Boolean);
+  const upModels=DB.models.filter(m=>m.user===DB.user.nick);
+  const prov={ google:'구글', kakao:'카카오', naver:'네이버', nick:'닉네임' }[DB.user.provider||'nick']||'로그인';
+
+  const head=document.createElement('div'); head.className='minehead';
+  const av=document.createElement('img'); av.src=DB.user.photo||avatar(DB.user.nick); av.alt=''; av.referrerPolicy='no-referrer';
+  const tx=document.createElement('div'); tx.style.flex='1';
+  const h2=document.createElement('h2'); h2.textContent=DB.user.nick;
+  const p=document.createElement('p');
+  p.textContent=prov+' 로그인 · 관심얼굴 '+favModels.length+' · 받은 얼굴 '+dlModels.length+' · 올린 모델 '+upModels.length;
+  tx.appendChild(h2); tx.appendChild(p); head.appendChild(av); head.appendChild(tx); app.appendChild(head);
+
+  const tabs=document.createElement('div'); tabs.className='minetabs';
+  [['fav','관심얼굴 '+favModels.length],['dl','받은 얼굴 '+dlModels.length],['up','올린 모델 '+upModels.length]].forEach(([k,l])=>{
+    const b=document.createElement('button'); b.textContent=l; if(mineTab===k)b.className='on';
+    b.onclick=()=>{ mineTab=k; render(); }; tabs.appendChild(b);
+  });
+  app.appendChild(tabs);
+
+  if(mineTab==='fav'){
+    if(!favModels.length){
+      const e=emptyBox('아직 관심얼굴이 없습니다','탐색에서 ♡를 누르면 여기에 모입니다');
+      const b=document.createElement('button'); b.className='btn'; b.style.marginTop='14px'; b.textContent='얼굴 탐색하기';
+      b.onclick=()=>go('browse'); e.appendChild(b); app.appendChild(e); return;
+    }
+    app.appendChild(gridOf(favModels));
+  } else if(mineTab==='dl'){
+    if(!dlModels.length){
+      const e=emptyBox('받은 얼굴이 없습니다','상세 페이지에서 무료 다운로드하면 여기에 쌓입니다');
+      const b=document.createElement('button'); b.className='btn'; b.style.marginTop='14px'; b.textContent='얼굴 탐색하기';
+      b.onclick=()=>go('browse'); e.appendChild(b); app.appendChild(e); return;
+    }
+    app.appendChild(gridOf(dlModels));
+  } else {
+    if(!upModels.length){
+      const e=emptyBox('올린 모델이 없습니다','+ 업로드로 첫 얼굴 모델을 등록해보세요');
+      const b=document.createElement('button'); b.className='btn'; b.style.marginTop='14px'; b.textContent='+ 업로드';
+      b.onclick=()=>go('upload'); e.appendChild(b); app.appendChild(e); return;
+    }
+    app.appendChild(gridOf(upModels));
+  }
 }
 
 function emptyBox(t1,t2){ const e=document.createElement('div'); e.className='empty';
@@ -762,6 +839,12 @@ function gridOf(list){
     if(new Date(m.createdAt).toISOString().slice(0,10)===today()){
       const t3=document.createElement('span'); t3.className='tag new'; t3.textContent='오늘 등록'; tg.appendChild(t3); }
     if(m.file.scan!=='Success'){ const t4=document.createElement('span'); t4.className='tag pend'; t4.textContent='스캔 대기'; tg.appendChild(t4); }
+    const ht=document.createElement('button'); ht.type='button';
+    ht.className='heart'+(isFav(m.id)?' on':'');
+    ht.textContent=isFav(m.id)?'♥':'♡';
+    ht.title=isFav(m.id)?'관심얼굴 해제':'관심얼굴 등록';
+    ht.onclick=e=>{ e.stopPropagation(); toggleFav(m.id); };
+    cv.appendChild(ht);
     cv.appendChild(tg); c.appendChild(cv);
     const b=document.createElement('div'); b.className='cbody';
     const h3=document.createElement('h3'); h3.textContent=m.name; b.appendChild(h3);
@@ -939,10 +1022,15 @@ function renderDetail(app){
   dl.onclick=()=>{
     if(!scanOk) return;                                   // 게이트 1: 스캔
     if(!requireLogin('로그인하면 모든 얼굴 모델을 무제한 무료로 받을 수 있습니다.')) return; // 게이트 2: 로그인
-    m.dl++; m.log.push(Date.now()); save();
-    toast('다운로드를 시작합니다 (프로토타입)','ok'); render();
+    m.dl++; m.log.push(Date.now()); recordDownload(m.id); save();
+    toast('다운로드했습니다. 내 페이지에서 받은 얼굴을 확인할 수 있습니다.','ok'); render();
   };
   vb.appendChild(dl);
+  const fv=document.createElement('button'); fv.type='button';
+  fv.className='favbtn'+(isFav(m.id)?' on':'');
+  fv.textContent=isFav(m.id)?'♥  관심얼굴에 등록됨':'♡  관심얼굴로 등록';
+  fv.onclick=()=>toggleFav(m.id);
+  vb.appendChild(fv);
   const ft=document.createElement('div'); ft.className='freetag';
   ft.textContent = DB.user ? '모든 모델 무료 · 다운로드 제한 없음' : '로그인하면 전 모델 무료';
   vb.appendChild(ft);
