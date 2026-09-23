@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://*.replicate.com https://api.openai.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai; media-src data: blob: https: http:; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
+      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://*.replicate.com https://api.openai.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai https://generativelanguage.googleapis.com; media-src data: blob: https: http:; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
 <title>페이스루크 — 얼굴 모델 전문 공유 플랫폼</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -703,6 +703,55 @@ function ensureModelFields(m){
   if(m.aiProvider===undefined) m.aiProvider=null;
   return m;
 }
+/* Ensure uploaded / catalog faces can lock identity for studio generate */
+function ensureFaceIdentity(m){
+  ensureModelFields(m);
+  if(!m.faceId){
+    const seedBase=(m.name||'')+(m.file&&m.file.sha||'')+String(m.id||'');
+    m.faceId='face_up_'+String(m.id||Date.now())+'_'+(Math.abs(hashCode(seedBase))%100000);
+  }
+  if(m.faceSeed==null){
+    m.faceSeed=Math.abs(hashCode(String(m.faceId)+'|'+(m.name||'')))%1000000;
+  }
+  if(!m.facePrompt){
+    const g=GENDERS[m.gender]||'';
+    const a=AGES[m.age]||'';
+    const st=STYLES[m.style]||'';
+    m.facePrompt='portrait photo of the same '+((m.gender==='male')?'man':(m.gender==='female')?'woman':'adult')+', '+a+' '+g+' '+st+', consistent identity, adult only';
+  }
+  if(!m.faceRef){
+    const ph=(m.photos&&m.photos[0])||null;
+    if(ph) m.faceRef=ph;
+    else m.faceRef=facePollinationsUrl(m.name||m.faceId||'face', 768, 1024);
+  }
+  if(!m.ownerKey && DB.user && m.user===DB.user.nick) m.ownerKey=userKey();
+  return m;
+}
+async function resolveFaceRef(m){
+  ensureFaceIdentity(m);
+  let src=m.faceRef||(m.photos&&m.photos[0])||null;
+  let dataUrl=null, httpUrl=null;
+  try{
+    const blob=await idbAssetGet('face-'+m.id);
+    if(blob) dataUrl=await blobToDataUrl(blob);
+  }catch(e){}
+  if(!dataUrl && src){
+    if(String(src).startsWith('data:')) dataUrl=src;
+    else if(String(src).indexOf('http')===0){
+      httpUrl=src;
+      try{ dataUrl=await urlToDataUrl(src); }catch(e){}
+    }
+  }
+  if(!httpUrl && src && String(src).indexOf('http')===0) httpUrl=src;
+  // Prefer http for providers that reject huge data URIs; keep dataUrl for OpenAI edits / Fal
+  const imageUrl=httpUrl||dataUrl||null;
+  return { dataUrl:dataUrl||null, httpUrl:httpUrl||null, imageUrl, mode: imageUrl ? 'image-ref' : 'prompt' };
+}
+function canFaceLockGenerate(m){
+  if(!m||!DB.user) return false;
+  ensureModelFields(m);
+  return isModelOwner(m) || !!m.aiStudio || !!m.faceId || !!(m.photos&&m.photos.length) || !!(m.file&&m.file.name);
+}
 let DB = load();
 if(DB&&Array.isArray(DB.models)) DB.models.forEach(ensureModelFields);
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
@@ -968,12 +1017,16 @@ const AUTH = {
   kakaoJsKey: '',
   naverClientId: ''
 };
-function loginSocial(provider, nick, email, photo){
+function loginSocial(provider, nick, email, photo, extra){
+  extra=extra||{};
   const name = String(nick||'').trim() || String(email||'').split('@')[0] || '사용자';
-  DB.user = { nick:name, email:String(email||'').trim(), provider:provider||'nick', photo:photo||'' };
+  DB.user = { nick:name, email:String(email||'').trim(), provider:provider||'nick', photo:photo||'', sub:String(extra.sub||'').trim() };
   save(); closeModal();
   toast(DB.user.nick+'님 환영합니다. 이제 모든 모델을 무료로 받을 수 있습니다.','ok');
+  const reopen=!!window._reopenStudioSettingsAfterLogin;
+  window._reopenStudioSettingsAfterLogin=false;
   render();
+  if(reopen) setTimeout(()=>{ try{ openStudioSettings(); }catch(e){} }, 120);
 }
 function login(nick, email){
   if(!nick.trim()) return toast('닉네임을 입력해주세요','err');
@@ -998,7 +1051,7 @@ async function loginGoogle(){
         if(tok.error) return toast('구글 로그인이 취소되었습니다','err');
         const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+tok.access_token}});
         const u=await r.json();
-        loginSocial('google', u.name||u.email, u.email, u.picture);
+        loginSocial('google', u.name||u.email, u.email, u.picture, {sub:u.sub||''});
       }
     });
     client.requestAccessToken();
@@ -1305,6 +1358,23 @@ function renderDetail(app){
     d.onclick=()=>{ curAngle=i; render(); }; ang.appendChild(d);
   });
   left.appendChild(ang);
+
+  if(canFaceLockGenerate(m)){
+    const cta=document.createElement('div'); cta.className='sec'; cta.style.cssText='padding:14px 16px;border:1px solid var(--acc);border-radius:12px;background:rgba(88,120,255,.08)';
+    const ctaH=document.createElement('h2'); ctaH.style.color='var(--tx)'; ctaH.textContent='이 얼굴로 AI 생성'; cta.appendChild(ctaH);
+    const ctaP=document.createElement('div'); ctaP.style.cssText='font-size:13px;color:var(--dim);margin:6px 0 12px;line-height:1.55';
+    ctaP.textContent='업로드·저장된 얼굴을 그대로 유지하면서, 연결해 둔 AI(Fal / Replicate / Higgsfield / OpenAI / Pollinations)로 이미지·영상을 만듭니다. 결과는 이 모델 작품에 자동 저장됩니다.';
+    cta.appendChild(ctaP);
+    const ctaRow=document.createElement('div'); ctaRow.className='studio-actions';
+    const c1=document.createElement('button'); c1.className='btn'; c1.textContent='이미지 생성'; c1.onclick=()=>openStudioForModel(m,'add-image');
+    const c2=document.createElement('button'); c2.className='btn ghost'; c2.textContent='영상 생성';
+    c2.onclick=()=>{
+      const cfg=loadStudioCfg();
+      if(!firstReadyVideoConnection(cfg)){ toast('영상용 API 키·연결이 필요합니다 (Fal / Replicate / Higgsfield)','err'); return; }
+      openStudioForModel(m,'add-video');
+    };
+    ctaRow.appendChild(c1); ctaRow.appendChild(c2); cta.appendChild(ctaRow); left.appendChild(cta);
+  }
 
   const s1=document.createElement('div'); s1.className='sec';
   const s1h=document.createElement('h2'); s1h.textContent='모델 소개'; s1.appendChild(s1h);
@@ -1661,7 +1731,8 @@ async function doSubmit(){
     clip:draft.clip?parseInt(draft.clip,10):null,
     createdAt:Date.now(), angles:ANGLES.map(a=>a.k),   /* 6방향 자동 첨부 */
     file:{ name:draft.file.name, kb:draft.file.kb, scan:'Pending', sha:draft.file.sha },
-    dl:0, log:[], reviews:[] };
+    dl:0, log:[], reviews:[], photos:[], ownerKey:userKey() };
+  ensureFaceIdentity(m);
   DB.models.unshift(m); save();
   if(draft.fileBlob){
     try{ await idbPut(id, draft.fileBlob); }
@@ -1707,27 +1778,49 @@ const STUDIO_PRESETS=[
 ];
 
 function isModelOwner(m){ if(!DB.user||!m) return false; const me=_userKey(); if(m.ownerKey&&me&&m.ownerKey===me) return true; return m.user===DB.user.nick; }
+function isGoogleUser(){ return !!(DB.user&&DB.user.provider==='google'); }
+function studioAccountId(){
+  if(!isGoogleUser()) return '';
+  return String(DB.user.sub||DB.user.email||DB.user.nick||'').trim().toLowerCase();
+}
+function studioStorageKey(){
+  const id=studioAccountId();
+  return id ? (STUDIO_KEY+':google:'+id) : STUDIO_KEY;
+}
+function emptyStudioCfg(defaults){
+  return {falKey:'',replicateKey:'',higgsCredentials:'',openaiKey:'',googleGeminiKey:'',defaultProvider:'pollinations',defaultConnectionId:'',connections:(defaults||defaultStudioConnections()).slice()};
+}
+function parseStudioCfgRaw(raw, defaults){
+  const o=JSON.parse(raw)||{};
+  let connections=Array.isArray(o.connections)?o.connections.map(normalizeConnection).filter(Boolean):[];
+  if(!connections.length) connections=defaults.slice();
+  else connections=mergeDefaultConnections(connections, defaults);
+  return {
+    falKey:String(o.falKey||''),
+    replicateKey:String(o.replicateKey||''),
+    higgsCredentials:String(o.higgsCredentials||''),
+    openaiKey:String(o.openaiKey||''),
+    googleGeminiKey:String(o.googleGeminiKey||''),
+    defaultProvider:String(o.defaultProvider||'pollinations'),
+    defaultConnectionId:String(o.defaultConnectionId||''),
+    connections
+  };
+}
 function loadStudioCfg(){
   const defaults=defaultStudioConnections();
+  const key=studioStorageKey();
   try{
-    const r=localStorage.getItem(STUDIO_KEY);
-    if(r){
-      const o=JSON.parse(r)||{};
-      let connections=Array.isArray(o.connections)?o.connections.map(normalizeConnection).filter(Boolean):[];
-      if(!connections.length) connections=defaults.slice();
-      else connections=mergeDefaultConnections(connections, defaults);
-      return {
-        falKey:String(o.falKey||''),
-        replicateKey:String(o.replicateKey||''),
-        higgsCredentials:String(o.higgsCredentials||''),
-        openaiKey:String(o.openaiKey||''),
-        defaultProvider:String(o.defaultProvider||'pollinations'),
-        defaultConnectionId:String(o.defaultConnectionId||''),
-        connections
-      };
+    let r=localStorage.getItem(key);
+    // Migrate legacy unscoped keys into Google-scoped slot once
+    if(!r && key!==STUDIO_KEY){
+      const legacy=localStorage.getItem(STUDIO_KEY);
+      if(legacy){
+        try{ localStorage.setItem(key, legacy); r=legacy; }catch(e){ r=legacy; }
+      }
     }
+    if(r) return parseStudioCfgRaw(r, defaults);
   }catch(e){}
-  return {falKey:'',replicateKey:'',higgsCredentials:'',openaiKey:'',defaultProvider:'pollinations',defaultConnectionId:'',connections:defaults.slice()};
+  return emptyStudioCfg(defaults);
 }
 function saveStudioCfg(cfg){
   const connections=(cfg&&Array.isArray(cfg.connections)?cfg.connections:defaultStudioConnections()).map(normalizeConnection).filter(Boolean);
@@ -1736,20 +1829,24 @@ function saveStudioCfg(cfg){
     replicateKey:String((cfg&&cfg.replicateKey)||''),
     higgsCredentials:String((cfg&&cfg.higgsCredentials)||''),
     openaiKey:String((cfg&&cfg.openaiKey)||''),
+    googleGeminiKey:String((cfg&&cfg.googleGeminiKey)||''),
     defaultProvider:String((cfg&&cfg.defaultProvider)||'pollinations'),
     defaultConnectionId:String((cfg&&cfg.defaultConnectionId)||''),
     connections
   };
-  try{ localStorage.setItem(STUDIO_KEY, JSON.stringify(next)); }catch(e){}
+  try{ localStorage.setItem(studioStorageKey(), JSON.stringify(next)); }catch(e){}
   return next;
 }
 function defaultStudioConnections(){
   return [
+    {id:'c_google_img', name:'Google AI (Gemini/Imagen)', provider:'google', kind:'image', model:'gemini-2.5-flash-image', enabled:true},
     {id:'c_poll_flux', name:'Pollinations Flux (무료)', provider:'pollinations', kind:'image', model:'flux', enabled:true},
     {id:'c_fal_flux', name:'Fal Flux Dev', provider:'fal', kind:'image', model:'fal-ai/flux/dev', enabled:true},
+    {id:'c_fal_flux_i2i', name:'Fal Flux 얼굴참조(I2I)', provider:'fal', kind:'image', model:'fal-ai/flux/dev/image-to-image', enabled:true},
     {id:'c_fal_sdxl', name:'Fal SDXL', provider:'fal', kind:'image', model:'fal-ai/fast-sdxl', enabled:true},
     {id:'c_fal_minimax', name:'Fal MiniMax Video', provider:'fal', kind:'video', model:'fal-ai/minimax/video-01', enabled:true},
     {id:'c_fal_kling', name:'Fal Kling T2V', provider:'fal', kind:'video', model:'fal-ai/kling-video/v1/standard/text-to-video', enabled:true},
+    {id:'c_fal_kling_i2v', name:'Fal Kling 얼굴참조(I2V)', provider:'fal', kind:'video', model:'fal-ai/kling-video/v1/standard/image-to-video', enabled:true},
     {id:'c_rep_img', name:'Replicate 이미지', provider:'replicate', kind:'image', model:'black-forest-labs/flux-schnell', enabled:true},
     {id:'c_rep_vid', name:'Replicate 영상', provider:'replicate', kind:'video', model:'', enabled:true},
     {id:'c_higgs_img', name:'Higgsfield 이미지', provider:'higgsfield', kind:'image', model:'z-image/turbo', enabled:true},
@@ -1762,7 +1859,7 @@ function normalizeConnection(c){
   if(!c||typeof c!=='object') return null;
   const provider=String(c.provider||'').trim();
   const kind=c.kind==='video'?'video':'image';
-  if(!['pollinations','fal','replicate','higgsfield','openai','demo'].includes(provider)) return null;
+  if(!['pollinations','fal','replicate','higgsfield','openai','google','demo'].includes(provider)) return null;
   return {
     id:String(c.id||('c'+Date.now()+Math.floor(Math.random()*9999))),
     name:String(c.name||provider).trim()||provider,
@@ -1780,7 +1877,7 @@ function mergeDefaultConnections(existing, defaults){
     if(ids.has(d.id)) return;
     if(names.has(d.provider+'|'+d.kind+'|'+d.model)) return;
     // keep seeded defaults available for fresh installs / upgrades
-    if(['c_fal_minimax','c_fal_kling','c_rep_img','c_rep_vid','c_openai_img'].includes(d.id)) out.push(d);
+    if(['c_google_img','c_fal_minimax','c_fal_kling','c_fal_flux_i2i','c_fal_kling_i2v','c_rep_img','c_rep_vid','c_openai_img'].includes(d.id)) out.push(d);
   });
   return out;
 }
@@ -1811,6 +1908,7 @@ function connectionKeyMissing(conn, cfg){
   if(conn.provider==='fal') return !String(cfg.falKey||'').trim();
   if(conn.provider==='replicate') return !String(cfg.replicateKey||'').trim();
   if(conn.provider==='openai') return !String(cfg.openaiKey||'').trim();
+  if(conn.provider==='google') return !String(cfg.googleGeminiKey||'').trim();
   if(conn.provider==='higgsfield'){ const c=String(cfg.higgsCredentials||'').trim(); return !c||c.indexOf(':')<0; }
   return true;
 }
@@ -1906,14 +2004,49 @@ async function studioGenPollinations(prompt, seed, opts){
   const p=opts&&opts.raw?sanitizeStudioPrompt(prompt+(opts.extra?', '+opts.extra:'')):photorealPrompt(prompt, opts&&opts.extra);
   const model=(opts&&opts.model)||'flux';
   let url='https://image.pollinations.ai/prompt/'+encodeURIComponent(p)+'?width=768&height=1024&model='+encodeURIComponent(model)+'&nologo=true&nofeed=true&enhance=false&seed='+encodeURIComponent(String(seed));
-  if(opts&&opts.refUrl&&String(opts.refUrl).indexOf('http')===0) url+='&image='+encodeURIComponent(opts.refUrl);
-  return {url, meta:{provider:'pollinations',model,seed}};
+  const refHttp=(opts&&(opts.refHttp||opts.refUrl))||null;
+  if(refHttp&&String(refHttp).indexOf('http')===0) url+='&image='+encodeURIComponent(refHttp);
+  return {url, meta:{provider:'pollinations',model,seed,faceRef:!!refHttp}};
+}
+function falUpgradeEndpointForFace(endpoint, wantVideo, hasRef){
+  if(!hasRef) return endpoint;
+  const ep=String(endpoint||'');
+  if(wantVideo){
+    if(/text-to-video/i.test(ep)) return ep.replace(/text-to-video/i,'image-to-video');
+    if(/kling-video/i.test(ep) && !/image-to-video/i.test(ep)) return 'fal-ai/kling-video/v1/standard/image-to-video';
+    return ep;
+  }
+  if(ep==='fal-ai/flux/dev' || ep==='fal-ai/flux/schnell') return ep+'/image-to-image';
+  if(/\/flux\/dev$/.test(ep) && !/image-to-image/.test(ep)) return ep+'/image-to-image';
+  return ep;
+}
+function falInjectFaceRef(body, endpoint, imageUrl, wantVideo){
+  if(!imageUrl) return body;
+  const ep=String(endpoint||'').toLowerCase();
+  body=Object.assign({}, body);
+  if(wantVideo || /video|minimax|kling|luma|runway/.test(ep)){
+    if(/minimax/.test(ep)){ body.first_frame_image=imageUrl; if(!body.image_url) body.image_url=imageUrl; }
+    else { body.image_url=imageUrl; if(!body.image) body.image=imageUrl; }
+  } else if(/image-to-image|img2img|pulid|ip-adapter|face/.test(ep)){
+    body.image_url=imageUrl;
+    if(body.strength==null) body.strength=0.55;
+    if(body.num_inference_steps==null) body.num_inference_steps=28;
+  } else {
+    // best-effort: many Fal image models accept image_url / image_urls
+    body.image_url=imageUrl;
+    body.image_urls=[imageUrl];
+    if(body.strength==null) body.strength=0.55;
+  }
+  return body;
 }
 async function studioGenFal(endpoint, prompt, falKey, opts){
   opts=opts||{};
   const wantVideo=!!opts.video;
   const p=opts.raw?sanitizeStudioPrompt(prompt):photorealPrompt(prompt);
-  const body=wantVideo?{prompt:p}:{prompt:p,image_size:'portrait_4_3',num_images:1};
+  const imageUrl=opts.refImage||opts.refUrl||null;
+  endpoint=falUpgradeEndpointForFace(endpoint, wantVideo, !!imageUrl);
+  let body=wantVideo?{prompt:p}:{prompt:p,image_size:'portrait_4_3',num_images:1};
+  body=falInjectFaceRef(body, endpoint, imageUrl, wantVideo);
   const tryAuths=['Key '+falKey,'Bearer '+falKey];
   let lastErr=null, data=null;
   for(const auth of tryAuths){
@@ -1925,7 +2058,6 @@ async function studioGenFal(endpoint, prompt, falKey, opts){
         lastErr=new Error(msg); continue;
       }
       data=await res.json();
-      // queue response
       if(data&&data.request_id&&!falExtractMedia(data, wantVideo)){
         data=await studioPollFalQueue(endpoint, data.request_id, falKey);
       }
@@ -1935,7 +2067,7 @@ async function studioGenFal(endpoint, prompt, falKey, opts){
   if(!data) throw lastErr||new Error('Fal 실패');
   const url=falExtractMedia(data, wantVideo);
   if(!url) throw new Error(wantVideo?'Fal 응답에 영상 없음':'Fal 응답에 이미지 없음');
-  return {url, meta:{provider:'fal',endpoint,video:wantVideo}};
+  return {url, meta:{provider:'fal',endpoint,video:wantVideo,faceRef:!!imageUrl}};
 }
 async function studioGenFalFlux(prompt){ const cfg=loadStudioCfg(); if(!cfg.falKey){ toast('스튜디오 설정에서 Fal API 키를 입력해주세요','err'); throw new Error('no-fal-key'); } return studioGenFal('fal-ai/flux/dev', prompt, cfg.falKey); }
 async function studioGenFalSdxl(prompt){ const cfg=loadStudioCfg(); if(!cfg.falKey){ toast('스튜디오 설정에서 Fal API 키를 입력해주세요','err'); throw new Error('no-fal-key'); } return studioGenFal('fal-ai/fast-sdxl', prompt, cfg.falKey); }
@@ -1947,9 +2079,15 @@ async function studioGenHiggs(prompt, seed, asVideo, opts){
   if(!cred||cred.indexOf(':')<0){ toast('Higgsfield 자격증명(key-id:key-secret)을 설정해주세요','err'); throw new Error('no-higgs'); }
   const headers={'Authorization':'Key '+cred,'Content-Type':'application/json','Accept':'application/json'};
   const p=opts.raw?sanitizeStudioPrompt(prompt):photorealPrompt(prompt, asVideo?'short portrait video same adult face':null);
+  const imageUrl=opts.refImage||opts.refUrl||null;
   const endpoints=asVideo
     ?[{url:'https://platform.higgsfield.ai/higgsfield-ai/seedance/standard',body:{prompt:p,aspect_ratio:'9:16',duration:2}}]
     :[{url:'https://api.higgsfield.ai/z-image/turbo',body:{prompt:p,resolution:'1k',aspect_ratio:'2:3',seed:seed%2147483647}},{url:'https://platform.higgsfield.ai/higgsfield-ai/soul/standard',body:{prompt:p,aspect_ratio:'2:3',resolution:'720p'}}];
+  if(imageUrl){
+    endpoints.forEach(ep=>{
+      ep.body=Object.assign({}, ep.body, {image_url:imageUrl, input_image:imageUrl, image:imageUrl});
+    });
+  }
   let lastErr=null;
   for(const ep of endpoints){
     try{
@@ -1957,10 +2095,10 @@ async function studioGenHiggs(prompt, seed, asVideo, opts){
       if(!res.ok){ let msg='HTTP '+res.status; try{ const j=await res.json(); msg=String(j.message||j.error||j.detail||msg);}catch(e){} lastErr=new Error(msg); continue; }
       const data=await res.json();
       const immediate=(data.images&&data.images[0]&&(data.images[0].url||data.images[0]))||(data.video&&(data.video.url||data.video))||(data.output&&data.output.url)||null;
-      if(immediate) return {url:immediate, meta:{provider:'higgsfield',endpoint:ep.url,video:!!asVideo}};
+      if(immediate) return {url:immediate, meta:{provider:'higgsfield',endpoint:ep.url,video:!!asVideo,faceRef:!!imageUrl}};
       const statusUrl=data.status_url||(data.request_id?'https://platform.higgsfield.ai/requests/'+data.request_id+'/status':null);
       if(!statusUrl){ lastErr=new Error('status_url 없음'); continue; }
-      return {url:await studioPollHiggs(statusUrl, headers), meta:{provider:'higgsfield',endpoint:ep.url,video:!!asVideo}};
+      return {url:await studioPollHiggs(statusUrl, headers), meta:{provider:'higgsfield',endpoint:ep.url,video:!!asVideo,faceRef:!!imageUrl}};
     }catch(e){ lastErr=e; }
   }
   throw lastErr||new Error('Higgsfield 실패');
@@ -1976,18 +2114,23 @@ async function studioGenReplicate(model, prompt, kind, opts){
   model=String(model||'').trim();
   if(!model) throw new Error('Replicate 모델 ID를 연결 설정에 입력해주세요 (예: black-forest-labs/flux-schnell)');
   const headers={'Authorization':'Token '+key,'Content-Type':'application/json','Prefer':'wait=60'};
-  let startUrl, body;
-  // version hash (64 hex) → classic predictions API; owner/name → models API
+  const imageUrl=opts.refImage||opts.refUrl||null;
+  let startUrl, input={prompt:p};
+  if(imageUrl){
+    // common field names across Replicate image/video models
+    input.image=imageUrl; input.image_url=imageUrl; input.input_image=imageUrl;
+    if(kind==='video'){ input.start_image=imageUrl; input.first_frame_image=imageUrl; }
+  }
   if(/^[0-9a-f]{64}$/i.test(model)){
     startUrl='https://api.replicate.com/v1/predictions';
-    body={version:model, input:{prompt:p}};
+    var body={version:model, input:input};
   } else {
     const parts=model.replace(/^https?:\/\/replicate\.com\//,'').split(/[:@]/);
     const ownerName=parts[0].includes('/')?parts[0]:model;
     const segs=ownerName.split('/').filter(Boolean);
     if(segs.length<2) throw new Error('Replicate 모델은 owner/name 형식이어야 합니다');
     startUrl='https://api.replicate.com/v1/models/'+encodeURIComponent(segs[0])+'/'+encodeURIComponent(segs[1])+'/predictions';
-    body={input:{prompt:p}};
+    var body={input:input};
   }
   const res=await fetch(startUrl,{method:'POST',headers,body:JSON.stringify(body)});
   if(!res.ok){ let msg='Replicate 요청 실패 ('+res.status+')'; try{ const j=await res.json(); msg=String((j&&(j.detail||j.title||j.error))||msg);}catch(e){} throw new Error(msg); }
@@ -2000,7 +2143,7 @@ async function studioGenReplicate(model, prompt, kind, opts){
       if(Array.isArray(out)) out=out[0];
       if(out&&typeof out==='object') out=out.url||out.href||null;
       if(!out||typeof out!=='string') throw new Error('Replicate 출력 URL 없음');
-      return {url:out, meta:{provider:'replicate',model,video:kind==='video'}};
+      return {url:out, meta:{provider:'replicate',model,video:kind==='video',faceRef:!!imageUrl}};
     }
     if(st==='failed'||st==='canceled'||st==='cancelled') throw new Error('Replicate 실패: '+(data.error||st));
     if(!getUrl) throw new Error('Replicate 상태 URL 없음');
@@ -2018,17 +2161,103 @@ async function studioGenOpenAI(prompt, key, model, opts){
   if(!key){ toast('스튜디오 설정에서 OpenAI API 키를 입력해주세요','err'); throw new Error('no-openai-key'); }
   model=String(model||'gpt-image-1').trim()||'gpt-image-1';
   const p=opts.raw?sanitizeStudioPrompt(prompt):photorealPrompt(prompt);
+  const imageUrl=opts.refImage||opts.refUrl||null;
+  // Prefer edits/variations when we have a face blob (identity lock)
+  if(imageUrl && (String(imageUrl).startsWith('data:') || String(imageUrl).indexOf('http')===0)){
+    try{
+      let blob;
+      if(String(imageUrl).startsWith('data:')) blob=await (await fetch(imageUrl)).blob();
+      else blob=await fetchAsBlob(imageUrl);
+      const fd=new FormData();
+      fd.append('image', blob, 'face.png');
+      fd.append('prompt', p);
+      fd.append('n', '1');
+      fd.append('size', '1024x1024');
+      if(model.indexOf('dall-e')===0){ fd.append('model', model.indexOf('dall-e-2')===0?'dall-e-2':'dall-e-2'); fd.append('response_format','b64_json'); }
+      else { fd.append('model', model); }
+      const res=await fetch('https://api.openai.com/v1/images/edits',{method:'POST',headers:{'Authorization':'Bearer '+key},body:fd});
+      if(res.ok){
+        const data=await res.json();
+        const item=(data.data&&data.data[0])||null;
+        if(item&&item.b64_json) return {url:'data:image/png;base64,'+item.b64_json, meta:{provider:'openai',model,faceRef:true,via:'edits'}};
+        if(item&&item.url) return {url:item.url, meta:{provider:'openai',model,faceRef:true,via:'edits'}};
+      }
+      // fall through to generations if edits unsupported for this model
+    }catch(e){ /* prompt-only fallback */ }
+  }
   const body={model, prompt:p, size:'1024x1024', n:1};
-  // b64 preferred when supported; some models use url
   if(model.indexOf('dall-e')===0) body.response_format='b64_json';
   const res=await fetch('https://api.openai.com/v1/images/generations',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(!res.ok){ let msg='OpenAI 요청 실패 ('+res.status+')'; try{ const j=await res.json(); if(j&&j.error&&j.error.message) msg=String(j.error.message);}catch(e){} throw new Error(msg); }
   const data=await res.json();
   const item=(data.data&&data.data[0])||null;
   if(!item) throw new Error('OpenAI 응답에 이미지 없음');
-  if(item.b64_json) return {url:'data:image/png;base64,'+item.b64_json, meta:{provider:'openai',model}};
-  if(item.url) return {url:item.url, meta:{provider:'openai',model}};
+  if(item.b64_json) return {url:'data:image/png;base64,'+item.b64_json, meta:{provider:'openai',model,faceRef:false}};
+  if(item.url) return {url:item.url, meta:{provider:'openai',model,faceRef:false}};
   throw new Error('OpenAI 이미지 데이터 없음');
+}
+
+async function studioGenGoogle(prompt, key, model, opts){
+  opts=opts||{};
+  key=String(key||'').trim();
+  if(!key){ toast('Google AI Studio API 키를 설정해주세요','err'); throw new Error('no-google-key'); }
+  model=String(model||'gemini-2.5-flash-image').trim()||'gemini-2.5-flash-image';
+  const p=opts.raw?sanitizeStudioPrompt(prompt):photorealPrompt(prompt);
+  const imageUrl=opts.refImage||opts.refUrl||null;
+  const parts=[{text:p}];
+  if(imageUrl){
+    try{
+      let dataUrl=imageUrl;
+      if(!String(imageUrl).startsWith('data:')) dataUrl=await urlToDataUrl(imageUrl);
+      if(dataUrl&&String(dataUrl).startsWith('data:')){
+        const m=String(dataUrl).match(/^data:([^;]+);base64,(.+)$/);
+        if(m) parts.unshift({inline_data:{mime_type:m[1],data:m[2]}});
+      }
+    }catch(e){}
+  }
+  const tryModels=[model,'gemini-2.5-flash-image','gemini-2.0-flash-preview-image-generation','gemini-2.0-flash-exp-image-generation'];
+  let lastErr=null;
+  for(const md of tryModels){
+    try{
+      const body={
+        contents:[{role:'user', parts}],
+        generationConfig:{ responseModalities:['TEXT','IMAGE'] }
+      };
+      const url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(md)+':generateContent?key='+encodeURIComponent(key);
+      const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(!res.ok){
+        let msg='Google AI 요청 실패 ('+res.status+')';
+        try{ const j=await res.json(); if(j&&j.error&&j.error.message) msg=String(j.error.message);}catch(e){}
+        lastErr=new Error(msg); continue;
+      }
+      const data=await res.json();
+      const cands=data.candidates||[];
+      for(const c of cands){
+        const ps=(c.content&&c.content.parts)||[];
+        for(const part of ps){
+          const inline=part.inlineData||part.inline_data;
+          if(inline&&inline.data){
+            const mime=inline.mimeType||inline.mime_type||'image/png';
+            return {url:'data:'+mime+';base64,'+inline.data, meta:{provider:'google',model:md,faceRef:!!imageUrl}};
+          }
+        }
+      }
+      lastErr=new Error('Google AI 응답에 이미지 없음');
+    }catch(e){ lastErr=e; }
+  }
+  try{
+    const imagenModels=['imagen-3.0-generate-002','imagen-4.0-generate-001'];
+    for(const md of imagenModels){
+      const url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(md)+':predict?key='+encodeURIComponent(key);
+      const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({instances:[{prompt:p}],parameters:{sampleCount:1,aspectRatio:'3:4'}})});
+      if(!res.ok) continue;
+      const data=await res.json();
+      const pred=(data.predictions&&data.predictions[0])||null;
+      const b64=pred&&(pred.bytesBase64Encoded||pred.image||null);
+      if(b64) return {url:'data:image/png;base64,'+b64, meta:{provider:'google',model:md,faceRef:false,via:'imagen'}};
+    }
+  }catch(e){}
+  throw lastErr||new Error('Google AI 이미지 생성 실패');
 }
 
 async function runStudioGenerate(){
@@ -2041,41 +2270,70 @@ async function runStudioGenerate(){
   if(!conn||conn.kind!==kind){ conn=pickDefaultConnection(kind, cfg); if(conn) studioState.connectionId=conn.id; }
   if(!conn){ toast('사용 가능한 연결이 없습니다. 설정에서 연결을 추가하세요','err'); return; }
   if(connectionKeyMissing(conn, cfg)){ toast('이 연결에 필요한 API 키가 없습니다. 설정에서 키를 저장하세요','err'); return; }
-  if((conn.provider==='replicate'||conn.provider==='fal'||conn.provider==='openai')&&!String(conn.model||'').trim()){ toast('연결에 모델/엔드포인트 ID를 입력해주세요','err'); return; }
+  if((conn.provider==='replicate'||conn.provider==='fal'||conn.provider==='openai'||conn.provider==='google')&&!String(conn.model||'').trim()){ toast('연결에 모델/엔드포인트 ID를 입력해주세요','err'); return; }
 
-  let seed=(Date.now()%1000000)^_hash(prompt); let extra=''; let refUrl=null;
-  // face-attach: identity extras + photoreal; free-form: light sanitize only (presets already include photoreal text)
+  let seed=(Date.now()%1000000)^_hash(prompt); let extra=''; let refUrl=null; let refImage=null; let refHttp=null; let faceLockMode='none';
   const attached=studioState.attachToModelId!=null;
-  if(attached){ const m=DB.models.find(x=>x.id===studioState.attachToModelId); if(m){ ensureModelFields(m); if(m.faceSeed!=null) seed=Number(m.faceSeed)||seed; extra='same identity as previous portrait, consistent face, same person, faceId '+(m.faceId||''); const maybe=m.faceRef||(m.photos&&m.photos[0]); if(maybe&&String(maybe).indexOf('http')===0) refUrl=maybe; } }
+  let attachedModel=null;
+  if(attached){
+    attachedModel=DB.models.find(x=>x.id===studioState.attachToModelId);
+    if(attachedModel){
+      ensureFaceIdentity(attachedModel);
+      if(attachedModel.faceSeed!=null) seed=Number(attachedModel.faceSeed)||seed;
+      extra='same identity as reference face photo, consistent face, same person, faceId '+(attachedModel.faceId||'')+', do not change identity';
+      try{
+        const ref=await resolveFaceRef(attachedModel);
+        refHttp=ref.httpUrl; refImage=ref.imageUrl; refUrl=ref.httpUrl||ref.imageUrl;
+        faceLockMode=ref.imageUrl?'image-ref':'prompt';
+        if(ref.dataUrl && (!attachedModel.faceRef || String(attachedModel.faceRef).indexOf('http')===0)){
+          // persist dataUrl cover when we successfully resolved one
+          if(ref.dataUrl.indexOf('data:')===0){ attachedModel.faceRef=ref.dataUrl; if(!attachedModel.photos||!attachedModel.photos.length) attachedModel.photos=[ref.dataUrl]; save(); }
+        }
+      }catch(e){ faceLockMode='prompt'; }
+    }
+  }
   const useRaw=!attached;
 
-  studioState.busy=true; render();
+  studioState.busy=true; studioState._faceLockMode=faceLockMode; render();
   try{
     let result=null;
     const finalPrompt=useRaw?studioBuildPrompt(prompt,{extra}):studioBuildPrompt(prompt,{forcePhotoreal:true,extra});
-    const genOpts={raw:useRaw, extra, refUrl, model:conn.model, video:kind==='video'};
+    const genOpts={raw:useRaw, extra, refUrl, refHttp, refImage, model:conn.model, video:kind==='video'};
     if(conn.provider==='pollinations'){
       if(kind==='video') throw new Error('Pollinations는 이미지 전용입니다');
       result=await studioGenPollinations(prompt, seed, genOpts);
     } else if(conn.provider==='fal'){
       if(!cfg.falKey){ toast('Fal API 키가 필요합니다','err'); throw new Error('no-fal-key'); }
-      result=await studioGenFal(conn.model, finalPrompt, cfg.falKey, {video:kind==='video', raw:true});
+      result=await studioGenFal(conn.model, finalPrompt, cfg.falKey, {video:kind==='video', raw:true, refImage:refImage||refUrl, refUrl});
     } else if(conn.provider==='replicate'){
-      result=await studioGenReplicate(conn.model, finalPrompt, kind, {raw:true});
+      result=await studioGenReplicate(conn.model, finalPrompt, kind, {raw:true, refImage:refImage||refUrl, refUrl});
     } else if(conn.provider==='openai'){
       if(kind==='video') throw new Error('OpenAI Images는 이미지 전용입니다');
-      result=await studioGenOpenAI(finalPrompt, cfg.openaiKey, conn.model||'gpt-image-1', {raw:true});
+      result=await studioGenOpenAI(finalPrompt, cfg.openaiKey, conn.model||'gpt-image-1', {raw:true, refImage:refImage||refUrl, refUrl});
+    } else if(conn.provider==='google'){
+      if(kind==='video') throw new Error('Google AI(Gemini/Imagen)는 현재 이미지 전용입니다. 영상은 Fal·Replicate·Higgsfield를 쓰세요');
+      result=await studioGenGoogle(finalPrompt, cfg.googleGeminiKey, conn.model||'gemini-2.5-flash-image', {raw:true, refImage:refImage||refUrl, refUrl});
     } else if(conn.provider==='higgsfield'){
-      result=await studioGenHiggs(finalPrompt, seed, kind==='video', {raw:true});
+      result=await studioGenHiggs(finalPrompt, seed, kind==='video', {raw:true, refImage:refImage||refUrl, refUrl});
     } else {
       result=await studioGenDemo(prompt, seed);
       if(kind==='video') toast('데모는 영상 대신 이미지를 만듭니다');
     }
-    const item={ id:'g'+Date.now(), url:result.url, meta:result.meta||{}, prompt, provider:conn.provider, connectionId:conn.id, connectionName:conn.name, gender:studioState.gender, age:studioState.age, style:studioState.style, base:studioState.base, seed:(result.meta&&result.meta.seed!=null)?result.meta.seed:seed, at:Date.now(), isVideo:!!(kind==='video'||(result.meta&&result.meta.video)) };
-    studioState.last=item; studioState.provider=conn.provider; studioHistory.unshift(item); if(studioHistory.length>12) studioHistory.length=12; toast('생성 완료','ok');
+    const item={ id:'g'+Date.now(), url:result.url, meta:result.meta||{}, prompt, provider:conn.provider, connectionId:conn.id, connectionName:conn.name, gender:studioState.gender, age:studioState.age, style:studioState.style, base:studioState.base, seed:(result.meta&&result.meta.seed!=null)?result.meta.seed:seed, at:Date.now(), isVideo:!!(kind==='video'||(result.meta&&result.meta.video)), faceLock:faceLockMode, attachToModelId:studioState.attachToModelId };
+    studioState.last=item; studioState.provider=conn.provider; studioHistory.unshift(item); if(studioHistory.length>12) studioHistory.length=12;
+    // Auto-attach under the face model when generating in face-lock mode
+    if(attached && studioState.attachToModelId!=null){
+      try{
+        await addAssetToOwnedModel(studioState.attachToModelId, item, {quiet:true});
+        toast('생성 완료 · 이 얼굴에 작품으로 저장됨','ok');
+        return;
+      }catch(e){ toast('생성은 됐지만 저장 실패 — 「이 얼굴에 작품 추가」를 눌러주세요','err'); }
+    } else {
+      toast('생성 완료','ok');
+    }
   }catch(e){
     const msg=String(e&&e.message||e);
-    if(!['no-fal-key','no-higgs','no-replicate-key','no-openai-key'].includes(msg)) toast('생성 실패: '+msg,'err');
+    if(!['no-fal-key','no-higgs','no-replicate-key','no-openai-key','no-google-key'].includes(msg)) toast('생성 실패: '+msg,'err');
   } finally{ studioState.busy=false; if(view==='studio'||view==='detail') render(); }
 }
 
@@ -2084,9 +2342,46 @@ function openStudioSettings(){
   const m=$('modal'); m.textContent='';
   const ov=document.createElement('div'); ov.className='modal'; ov.onclick=e=>{ if(e.target===ov) _closeModal(); };
   const box=document.createElement('div'); box.className='mbox'; box.style.maxWidth='560px'; box.style.maxHeight='86vh'; box.style.overflow='auto';
-  box.innerHTML='<h2>내 AI 연결 · API 설정</h2><p>키와 연결은 이 브라우저 localStorage(<code>facenaru.studio.v1</code>)에만 저장됩니다. 서버로 보내지 않습니다. Higgsfield는 <code>key-id:key-secret</code> 형식입니다.</p>';
+  const scopedKey=studioStorageKey();
+  const googleOn=isGoogleUser();
+  box.innerHTML='<h2>내 AI 연결 · API 설정</h2>';
+
+  // Google easy-connect CTA
+  const gBox=document.createElement('div'); gBox.className='alert '+(googleOn?'ok':'info'); gBox.style.marginBottom='14px';
+  if(googleOn){
+    gBox.innerHTML='<b>Google 계정 연결됨</b><span> — '+String(DB.user.email||DB.user.nick)+' · 키/연결은 <code>'+scopedKey+'</code> 에만 저장 (서버 전송 없음)</span>';
+  } else {
+    gBox.innerHTML='<b>Google로 쉽게 연결</b><span> — Google 로그인 후 AI 키가 계정별로 이 브라우저에 저장됩니다. 한 번 로그인 → 키 붙여넣기 → 저장.</span>';
+    const gBtn=document.createElement('button'); gBtn.className='btn'; gBtn.style.marginTop='10px'; gBtn.textContent='Google로 연결';
+    gBtn.onclick=()=>{ window._reopenStudioSettingsAfterLogin=true; _closeModal(); loginGoogle(); };
+    gBox.appendChild(gBtn);
+  }
+  box.appendChild(gBox);
+
+  const limit=document.createElement('div'); limit.className='alert warn'; limit.style.marginBottom='12px';
+  limit.innerHTML='<b>정직한 한계</b><span> — GitHub Pages에는 백엔드가 없어 Fal·Replicate·Higgsfield·OpenAI는 Google 로그인만으로 자동 연동되지 않습니다. 각 서비스 API 키가 필요합니다. Google AI(Gemini)만 AI Studio 키로 “Google 계정으로 쓰는 AI”에 가깝습니다.</span>';
+  box.appendChild(limit);
+
+  // Google AI first-class block
+  const gSec=document.createElement('div'); gSec.style.marginBottom='8px';
+  const gH=document.createElement('h2'); gH.style.fontSize='14px'; gH.textContent='① Google AI (추천 · Gemini/Imagen)'; gSec.appendChild(gH);
+  const gP=document.createElement('p'); gP.className='studio-note'; gP.style.margin='4px 0 8px';
+  gP.innerHTML='Google에 로그인한 뒤 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--acc)">aistudio.google.com/apikey</a> 에서 키를 만들고 붙여넣으세요.';
+  gSec.appendChild(gP);
+  const gRow=document.createElement('div'); gRow.style.cssText='display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap';
+  const gFieldWrap=document.createElement('div'); gFieldWrap.style.flex='1'; gFieldWrap.style.minWidth='200px';
+  const gLab=document.createElement('label'); gLab.className='fl'; gLab.textContent='Google AI Studio API Key'; gFieldWrap.appendChild(gLab);
+  const iGoogle=document.createElement('input'); iGoogle.className='inp'; iGoogle.type='password'; iGoogle.placeholder='AIza…'; iGoogle.value=cfg.googleGeminiKey||''; iGoogle.autocomplete='off'; gFieldWrap.appendChild(iGoogle);
+  gRow.appendChild(gFieldWrap);
+  const openKey=document.createElement('button'); openKey.className='btn ghost sm'; openKey.type='button'; openKey.textContent='키 발급 열기';
+  openKey.onclick=()=>window.open('https://aistudio.google.com/apikey','_blank','noopener');
+  gRow.appendChild(openKey);
+  gSec.appendChild(gRow);
+  box.appendChild(gSec);
 
   function field(label,key,ph){ const l=document.createElement('label'); l.className='fl'; l.textContent=label; box.appendChild(l); const i=document.createElement('input'); i.className='inp'; i.type='password'; i.placeholder=ph; i.value=cfg[key]||''; i.autocomplete='off'; i.dataset.k=key; box.appendChild(i); return i; }
+  const otherH=document.createElement('h2'); otherH.style.cssText='font-size:14px;margin-top:16px'; otherH.textContent='② 다른 제공자 키 (선택)'; box.appendChild(otherH);
+  const otherP=document.createElement('p'); otherP.className='studio-note'; otherP.textContent='얼굴 유지 생성에 Fal I2I/I2V·OpenAI edits 등을 쓰려면 아래에 각 키를 넣으세요.'; box.appendChild(otherP);
   const iFal=field('Fal API Key','falKey','fal_… 또는 key_id:key_secret');
   const iRep=field('Replicate API Token','replicateKey','r8_…');
   const iHg=field('Higgsfield Credentials','higgsCredentials','key-id:key-secret');
@@ -2095,7 +2390,7 @@ function openStudioSettings(){
   const draft={connections:(cfg.connections||[]).map(c=>({...c}))};
 
   const listWrap=document.createElement('div'); listWrap.style.marginTop='16px';
-  const lh=document.createElement('h2'); lh.style.fontSize='14px'; lh.textContent='연결 목록 (내 모델)'; listWrap.appendChild(lh);
+  const lh=document.createElement('h2'); lh.style.fontSize='14px'; lh.textContent='③ 연결 목록 (내 모델)'; listWrap.appendChild(lh);
   const listEl=document.createElement('div'); listWrap.appendChild(listEl);
 
   function redrawList(){
@@ -2119,15 +2414,15 @@ function openStudioSettings(){
 
   const add=document.createElement('div'); add.className='conn-add';
   add.innerHTML='<h2 style="font-size:14px;margin-bottom:8px">연결 추가</h2>';
-  const aName=document.createElement('input'); aName.className='inp'; aName.placeholder='이름 (예: 내 Flux)'; add.appendChild(aName);
+  const aName=document.createElement('input'); aName.className='inp'; aName.placeholder='이름 (예: 내 Gemini)'; add.appendChild(aName);
   const aRow=document.createElement('div'); aRow.className='two'; aRow.style.marginTop='8px';
   const aProv=document.createElement('select'); aProv.className='inp';
-  [['pollinations','Pollinations'],['fal','Fal'],['replicate','Replicate'],['higgsfield','Higgsfield'],['openai','OpenAI'],['demo','데모']].forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; aProv.appendChild(o); });
+  [['google','Google AI'],['pollinations','Pollinations'],['fal','Fal'],['replicate','Replicate'],['higgsfield','Higgsfield'],['openai','OpenAI'],['demo','데모']].forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; aProv.appendChild(o); });
   const aKind=document.createElement('select'); aKind.className='inp';
   [['image','이미지'],['video','영상']].forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; aKind.appendChild(o); });
   aRow.appendChild(aProv); aRow.appendChild(aKind); add.appendChild(aRow);
-  const aModel=document.createElement('input'); aModel.className='inp'; aModel.style.marginTop='8px'; aModel.placeholder='모델/엔드포인트 (예: fal-ai/flux/dev, owner/name)'; add.appendChild(aModel);
-  const aHint=document.createElement('p'); aHint.className='studio-note'; aHint.textContent='Fal 영상 예: fal-ai/minimax/video-01 · Replicate 예: black-forest-labs/flux-schnell · OpenAI 예: gpt-image-1 / dall-e-3'; add.appendChild(aHint);
+  const aModel=document.createElement('input'); aModel.className='inp'; aModel.style.marginTop='8px'; aModel.placeholder='모델/엔드포인트 (예: gemini-2.5-flash-image, fal-ai/flux/dev)'; add.appendChild(aModel);
+  const aHint=document.createElement('p'); aHint.className='studio-note'; aHint.textContent='Google 예: gemini-2.5-flash-image · Fal 영상 예: fal-ai/kling-video/v1/standard/image-to-video · OpenAI 예: gpt-image-1'; add.appendChild(aHint);
   const aBtn=document.createElement('button'); aBtn.className='btn sm'; aBtn.style.marginTop='8px'; aBtn.textContent='연결 추가';
   aBtn.onclick=()=>{
     const n=normalizeConnection({id:'c'+Date.now(), name:aName.value.trim()||(aProv.value+' 연결'), provider:aProv.value, kind:aKind.value, model:aModel.value.trim(), enabled:true});
@@ -2148,27 +2443,39 @@ function openStudioSettings(){
   }
   rebuildDefaultSel();
 
-  const note=document.createElement('div'); note.className='alert info'; note.style.marginTop='12px'; note.innerHTML='<b>안내</b><span> · Pollinations/데모는 키 없이 동작합니다. 영상은 Fal·Replicate·Higgsfield 연결을 사용하세요.</span>'; box.appendChild(note);
+  const note=document.createElement('div'); note.className='alert info'; note.style.marginTop='12px';
+  note.innerHTML='<b>안내</b><span> · Google 로그인 시 키가 계정별로 분리 저장됩니다. Pollinations/데모는 키 없이 동작. 영상은 Fal·Replicate·Higgsfield.</span>';
+  box.appendChild(note);
   const row=document.createElement('div'); row.style.cssText='display:flex;gap:9px;margin-top:18px';
   const c=document.createElement('button'); c.className='btn ghost'; c.textContent='닫기'; c.onclick=_closeModal;
   const s=document.createElement('button'); s.className='btn'; s.style.flex='1'; s.textContent='저장';
   s.onclick=()=>{
     const picked=findConnection(sel.value,{connections:draft.connections})||draft.connections.find(x=>x.enabled!==false);
+    // If Google key present and no default, prefer google image connection
+    let defId=(picked&&picked.id)||'';
+    if(iGoogle.value.trim() && (!defId || (picked&&picked.provider==='pollinations'))){
+      const gConn=draft.connections.find(x=>x.provider==='google'&&x.kind==='image'&&x.enabled!==false);
+      if(gConn) defId=gConn.id;
+    }
+    const picked2=findConnection(defId,{connections:draft.connections})||picked;
     const next=saveStudioCfg({
       falKey:iFal.value.trim(),
       replicateKey:iRep.value.trim(),
       higgsCredentials:iHg.value.trim(),
       openaiKey:iOai.value.trim(),
-      defaultProvider:(picked&&picked.provider)||'pollinations',
-      defaultConnectionId:(picked&&picked.id)||'',
+      googleGeminiKey:iGoogle.value.trim(),
+      defaultProvider:(picked2&&picked2.provider)||'pollinations',
+      defaultConnectionId:(picked2&&picked2.id)||'',
       connections:draft.connections
     });
     const kind=studioState.mediaKind==='video'?'video':'image';
     const def=pickDefaultConnection(kind, next);
     if(def){ studioState.connectionId=def.id; studioState.provider=def.provider; }
-    toast('설정 저장됨','ok'); _closeModal(); if(view==='studio') render();
+    toast(googleOn?'Google 계정에 AI 연결 저장됨':'설정 저장됨 (Google 로그인 시 계정별로 분리됩니다)','ok');
+    _closeModal(); if(view==='studio') render();
   };
-  row.appendChild(c); row.appendChild(s); box.appendChild(row); ov.appendChild(box); m.appendChild(ov); iFal.focus();
+  row.appendChild(c); row.appendChild(s); box.appendChild(row); ov.appendChild(box); m.appendChild(ov);
+  (googleOn?iGoogle:iFal).focus();
 }
 
 async function persistCoverAndAsset(modelId, assetId, url){
@@ -2201,17 +2508,26 @@ async function saveStudioAsModel(){
   toast('내 모델로 저장했습니다','ok'); go('detail', id);
 }
 
-async function addAssetToOwnedModel(modelId, item){
+async function addAssetToOwnedModel(modelId, item, opts){
+  opts=opts||{};
   if(!needLogin('작품을 추가하려면 로그인이 필요합니다.')) return;
   const m=DB.models.find(x=>x.id===modelId); if(!m){ toast('모델을 찾을 수 없습니다','err'); return; }
-  ensureModelFields(m); if(!isModelOwner(m)){ toast('소유자만 작품을 추가할 수 있습니다','err'); return; }
+  ensureFaceIdentity(m); if(!isModelOwner(m)){ toast('소유자만 작품을 추가할 수 있습니다','err'); return; }
   if(!item||!item.url){ toast('생성 결과가 없습니다','err'); return; }
   const assetId='a'+Date.now(); const assetKey='asset-'+m.id+'-'+assetId; let dataUrl=item.url;
   try{ if(String(item.url).startsWith('data:')){ dataUrl=item.url; await idbAssetPut(assetKey, await (await fetch(dataUrl)).blob()); }
     else { try{ const blob=await fetchAsBlob(item.url); await idbAssetPut(assetKey, blob); dataUrl=await blobToDataUrl(blob); }catch(e){ const du=await urlToDataUrl(item.url); if(du){ dataUrl=du; try{ await idbAssetPut(assetKey, await (await fetch(du)).blob()); }catch(e2){} } } }
   }catch(e){}
-  m.assets.push({ id:assetId, type:item.isVideo?'video':'image', blobKey:assetKey, dataUrl, thumb:dataUrl, prompt:item.prompt, by:DB.user.nick, byKey:_userKey(), at:Date.now(), provider:item.provider||'pollinations' });
-  save(); toast('작품을 추가했습니다','ok'); studioState.attachToModelId=m.id; go('detail', m.id);
+  m.assets.push({ id:assetId, type:item.isVideo?'video':'image', blobKey:assetKey, dataUrl, thumb:dataUrl, prompt:item.prompt, by:DB.user.nick, byKey:_userKey(), at:Date.now(), provider:item.provider||'pollinations', faceLock:item.faceLock||null });
+  // keep faceRef as the identity anchor (first face photo), do not overwrite with every asset
+  if(!m.faceRef && dataUrl) m.faceRef=dataUrl;
+  if(!m.photos||!m.photos.length) m.photos=[dataUrl];
+  m.aiStudio=true;
+  save();
+  studioState.attachToModelId=m.id;
+  if(!opts.quiet) toast('작품을 추가했습니다','ok');
+  if(opts.stayStudio){ if(view==='studio') render(); }
+  else go('detail', m.id);
 }
 
 async function publishShareCode(m){
@@ -2271,17 +2587,32 @@ async function downloadAllModelAssets(m){
 
 function openStudioForModel(m, mode){
   if(!needLogin('추가 생성에는 로그인이 필요합니다.')) return;
-  ensureModelFields(m); studioState.attachToModelId=m.id; studioState.mode=mode||'add-image';
+  ensureFaceIdentity(m); save();
+  studioState.attachToModelId=m.id; studioState.mode=mode||'add-image';
   studioState.prompt=m.facePrompt||DEFAULT_PROMPT;
+  studioState.gender=m.gender||studioState.gender;
+  studioState.age=m.age||studioState.age;
+  studioState.style=m.style||'real';
+  studioState.base=m.base||studioState.base;
+  studioState._faceLockMode='image-ref';
   const cfg=loadStudioCfg();
   if(mode==='add-image'){
     studioState.mediaKind='image';
-    studioState.prompt=photorealPrompt(m.facePrompt||DEFAULT_PROMPT, 'same identity as previous portrait, consistent face, same person, new pose or expression, adult only');
-    const conn=pickDefaultConnection('image', cfg); if(conn){ studioState.connectionId=conn.id; studioState.provider=conn.provider; }
+    studioState.prompt=photorealPrompt(m.facePrompt||DEFAULT_PROMPT, 'same identity as reference face photo, consistent face, same person, new pose or expression, adult only');
+    // Prefer Google AI (if key) → Fal I2I (face-ref) → any ready image connection
+    let conn=null;
+    const gImg=findConnection('c_google_img', cfg);
+    if(gImg && gImg.enabled!==false && !connectionKeyMissing(gImg,cfg)) conn=gImg;
+    if(!conn){ const i2i=findConnection('c_fal_flux_i2i', cfg); if(i2i && i2i.enabled!==false && !connectionKeyMissing(i2i,cfg)) conn=i2i; }
+    if(!conn) conn=pickDefaultConnection('image', cfg);
+    if(conn){ studioState.connectionId=conn.id; studioState.provider=conn.provider; }
   } else if(mode==='add-video'){
     studioState.mediaKind='video';
-    studioState.prompt=photorealPrompt(m.facePrompt||DEFAULT_PROMPT, 'short portrait clip, same identity, subtle natural motion, adult only');
-    const conn=firstReadyVideoConnection(cfg);
+    studioState.prompt=photorealPrompt(m.facePrompt||DEFAULT_PROMPT, 'short portrait clip, same identity as reference face, subtle natural motion, adult only');
+    let conn=null;
+    const i2v=findConnection('c_fal_kling_i2v', cfg);
+    if(i2v && i2v.enabled!==false && !connectionKeyMissing(i2v,cfg) && String(i2v.model||'').trim()) conn=i2v;
+    if(!conn) conn=firstReadyVideoConnection(cfg);
     if(conn){ studioState.connectionId=conn.id; studioState.provider=conn.provider; }
     else { toast('사용 가능한 영상 연결이 없습니다. 설정에서 Fal/Replicate/Higgsfield 키와 모델을 연결하세요','err'); }
   }
@@ -2314,7 +2645,26 @@ function renderStudio(app){
   const head=document.createElement('div'); head.className='studio-head';
   head.innerHTML='<h1>AI 스튜디오</h1><p>내 AI 연결(자체 토큰)로 이미지·영상을 프롬프트로 생성하세요. Pollinations / Fal / Replicate / Higgsfield / OpenAI / 데모를 등록할 수 있습니다. 키는 브라우저에만 저장됩니다.</p>';
   root.appendChild(head);
-  if(studioState.attachToModelId!=null){ const am=DB.models.find(x=>x.id===studioState.attachToModelId); const banner=document.createElement('div'); banner.className='alert info'; banner.style.marginBottom='14px'; banner.innerHTML=am?('<b>같은 얼굴로 추가 생성</b><span> — 「'+am.name+'」(faceSeed '+(am.faceSeed||'?')+') · '+(kind==='video'?'짧은 영상':'이미지')+'</span>'):'<b>연결 모델 없음</b>'; root.appendChild(banner); if(!am){ studioState.attachToModelId=null; studioState.mode='face'; } }
+  if(studioState.attachToModelId!=null){
+    const am=DB.models.find(x=>x.id===studioState.attachToModelId);
+    const banner=document.createElement('div'); banner.className='alert info'; banner.style.marginBottom='14px';
+    if(am){
+      ensureFaceIdentity(am);
+      const lock=studioState._faceLockMode==='image-ref'?'얼굴 이미지 참조 잠금':'프롬프트·시드 잠금';
+      banner.innerHTML='<b>얼굴 유지 생성</b><span> — 「'+am.name+'」 · faceId '+(am.faceId||'?')+' · '+(kind==='video'?'영상':'이미지')+' · '+lock+' · 내 연결 AI 사용 · 결과는 이 얼굴 아래 작품으로 자동 저장</span>';
+      // face thumb
+      const thumbs=document.createElement('div'); thumbs.style.cssText='display:flex;gap:10px;align-items:center;margin-top:10px';
+      const faceThumb=document.createElement('div'); faceThumb.style.cssText='width:56px;height:56px;border-radius:10px;background-size:cover;background-position:center;border:1px solid var(--line);flex-shrink:0';
+      faceThumb.style.backgroundImage='url("'+String(am.faceRef||faceSrc(am,0,120,120)).replace(/"/g,'%22')+'")';
+      const tip=document.createElement('div'); tip.style.cssText='font-size:12.5px;color:var(--dim);line-height:1.5';
+      tip.textContent='업로드·저장된 얼굴을 참조로 씁니다. Fal I2I/I2V·OpenAI edits·Pollinations(image URL)는 실제 이미지 참조, 그 외는 강한 동일인 프롬프트입니다.';
+      thumbs.appendChild(faceThumb); thumbs.appendChild(tip); banner.appendChild(thumbs);
+    } else {
+      banner.innerHTML='<b>연결 모델 없음</b>';
+      studioState.attachToModelId=null; studioState.mode='face';
+    }
+    root.appendChild(banner);
+  }
 
   const grid=document.createElement('div'); grid.className='studio-grid';
   const left=document.createElement('div'); left.className='studio-panel';
@@ -2392,12 +2742,12 @@ function renderModelAssetsSection(left, m){
   ensureModelFields(m);
   const s=document.createElement('div'); s.className='sec';
   s.innerHTML='<h2>이 인물로 만든 작품</h2>';
-  const note=document.createElement('div'); note.className='sharebox'; note.textContent='같은 faceId/faceSeed로 통일된 캐릭터 작품입니다. 공유는 서버가 아니라 공유 코드(로컬 팩)로 동작합니다.'; s.appendChild(note);
+  const note=document.createElement('div'); note.className='sharebox'; note.textContent='같은 얼굴을 유지한 채 내 AI 연결(Fal·Replicate·Higgsfield·OpenAI·Pollinations)로 이미지·영상을 만들고, 이 모델 아래에 작품으로 쌓습니다. 공유는 서버가 아니라 공유 코드(로컬 팩)입니다.'; s.appendChild(note);
   const row=document.createElement('div'); row.className='studio-actions'; row.style.marginTop='12px';
   const isOwner=isModelOwner(m);
-  if(m.aiStudio||m.faceId){
-    const b1=document.createElement('button'); b1.className='btn'; b1.textContent='같은 얼굴로 이미지 추가'; b1.onclick=()=>openStudioForModel(m,'add-image'); row.appendChild(b1);
-    const b2=document.createElement('button'); b2.className='btn ghost'; b2.textContent='같은 얼굴로 짧은 영상';
+  if(canFaceLockGenerate(m)){
+    const b1=document.createElement('button'); b1.className='btn'; b1.textContent='내 AI로 이미지 생성 (얼굴 유지)'; b1.onclick=()=>openStudioForModel(m,'add-image'); row.appendChild(b1);
+    const b2=document.createElement('button'); b2.className='btn ghost'; b2.textContent='내 AI로 영상 생성 (얼굴 유지)';
     b2.onclick=()=>{
       const cfg=loadStudioCfg();
       const ready=firstReadyVideoConnection(cfg);
@@ -2405,7 +2755,7 @@ function renderModelAssetsSection(left, m){
       openStudioForModel(m,'add-video');
     }; row.appendChild(b2);
   }
-  if(isOwner&&(m.aiStudio||(m.assets&&m.assets.length))){
+  if(isOwner&&(m.aiStudio||m.faceId||(m.assets&&m.assets.length)||canFaceLockGenerate(m))){
     const b3=document.createElement('button'); b3.className='btn ghost'; b3.textContent='공유 코드 만들기'; b3.onclick=()=>publishShareCode(m); row.appendChild(b3);
     const b4=document.createElement('button'); b4.className='btn ghost'; b4.textContent='이 모델 전체 다운로드'; b4.onclick=()=>downloadAllModelAssets(m); row.appendChild(b4);
   } else if(DB.user&&m.share&&m.share.code){ const b5=document.createElement('button'); b5.className='btn ghost'; b5.textContent='공유 요청'; b5.onclick=()=>requestShareAccess(m); row.appendChild(b5); }
