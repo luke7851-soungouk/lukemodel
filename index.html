@@ -505,7 +505,6 @@ const POOL = [
 
 /* ── 저장소 ──────────────────────────────────────────────────────────── */
 const KEY='facenaru.v1';
-let DB = load();
 const PHOTO_MODELS = [
   { photoKey:'vface-f20', name:'가상 20대 여성 실사 얼굴', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
@@ -540,6 +539,7 @@ function load(){
   const models = SEED.map((s,i)=>mkModel(s, i+1, Date.now()-(9-i)*DAY));
   return injectPhotoModels({ models, nextId:100, poolIdx:0, lastAuto:null, user:null, saved:[], library:{} });
 }
+let DB = load();
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
 function userKey(){ if(!DB.user) return null; return (DB.user.email&&DB.user.email.trim()) || DB.user.nick; }
 function lib(){
