@@ -447,12 +447,16 @@ function mountOrbit(host, imgUrl){
   const gl=canvas.getContext('webgl',{antialias:true, alpha:false});
   if(!gl){ const sp=document.createElement('div'); sp.className='herospin'; sp.style.backgroundImage='url("'+imgUrl+'")'; applyFacePose(sp, curAngle, true); host.appendChild(sp); return; }
   const vs=gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(vs, 'attribute vec3 aP,aN; uniform mat4 uM; varying vec3 vN; void main(){ vN=aN; gl_Position=uM*vec4(aP,1.0);}');
+  gl.shaderSource(vs, 'attribute vec3 aP; attribute vec3 aN; uniform mat4 uM; varying vec3 vN; void main(){ vN=aN; gl_Position=uM*vec4(aP,1.0);}');
   gl.compileShader(vs);
   const fs=gl.createShader(gl.FRAGMENT_SHADER);
   gl.shaderSource(fs, 'precision mediump float; varying vec3 vN; uniform sampler2D uT; uniform vec3 uH; void main(){ vec3 n=normalize(vN); vec2 uv=vec2(n.x*0.56+0.5, -n.y*0.50+0.42); float fr=smoothstep(-0.02,0.22,n.z); vec3 pho=texture2D(uT, clamp(uv,0.0,1.0)).rgb; vec3 back=uH*(0.45+0.40*(n.y*0.5+0.5)); float lit=0.62+0.38*max(dot(n,vec3(0.15,0.25,0.95)),0.0); gl_FragColor=vec4(mix(back,pho,fr)*lit,1.0);}');
   gl.compileShader(fs);
-  const prog=gl.createProgram(); gl.attachShader(prog,vs); gl.attachShader(prog,fs); gl.linkProgram(prog); gl.useProgram(prog);
+  const prog=gl.createProgram(); gl.attachShader(prog,vs); gl.attachShader(prog,fs); gl.linkProgram(prog);
+  if(!gl.getShaderParameter(vs, gl.COMPILE_STATUS) || !gl.getShaderParameter(fs, gl.COMPILE_STATUS) || !gl.getProgramParameter(prog, gl.LINK_STATUS)){
+    const sp=document.createElement('div'); sp.className='herospin'; sp.style.backgroundImage='url("'+imgUrl+'")'; applyFacePose(sp, curAngle, true); host.textContent=''; host.appendChild(sp); return;
+  }
+  gl.useProgram(prog);
   const lat=28, lon=36, pos=[], nrm=[], idx=[];
   for(let y=0;y<=lat;y++){ const v=y/lat, phi=v*Math.PI;
     for(let x=0;x<=lon;x++){ const th=(x/lon)*Math.PI*2;
