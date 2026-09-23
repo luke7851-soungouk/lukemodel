@@ -78,6 +78,9 @@ nav.top button.on{background:var(--panel);color:#fff}
 .detail{padding:20px 0 60px;display:grid;grid-template-columns:1fr 346px;gap:26px;align-items:start}
 .hero{height:390px;border-radius:12px;background:#14171f;margin-bottom:10px;overflow:hidden;perspective:1100px;position:relative}
 .herospin{width:100%;height:100%;background:#14171f center 16%/cover no-repeat;transform-origin:center;transition:transform .28s ease;backface-visibility:hidden}
+.orbitcv{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+.orbitcv:active{cursor:grabbing}
+.orbithint{font-size:12.3px;color:var(--dim);font-weight:600;margin:8px 0 14px}
 .angles{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:22px}
 .angles .a{border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#14171f;height:78px;position:relative;perspective:520px}
 .angles .a.on{border-color:var(--acc)}
@@ -433,6 +436,79 @@ function applyFacePose(el, ai, photoPose){
   if(photoPose) el.style.transform='perspective(900px) rotateY('+p.y+'deg) rotateX('+p.x+'deg) scale(1.08)';
   else el.style.transform='none';
 }
+function mul4(a,b){
+  const o=new Float32Array(16);
+  for(let c=0;c<4;c++) for(let r=0;r<4;r++) o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];
+  return o;
+}
+function mountOrbit(host, imgUrl){
+  host.textContent='';
+  const canvas=document.createElement('canvas'); canvas.className='orbitcv'; host.appendChild(canvas);
+  const gl=canvas.getContext('webgl',{antialias:true, alpha:false});
+  if(!gl){ const sp=document.createElement('div'); sp.className='herospin'; sp.style.backgroundImage='url("'+imgUrl+'")'; applyFacePose(sp, curAngle, true); host.appendChild(sp); return; }
+  const vs=gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vs, 'attribute vec3 aP,aN; uniform mat4 uM; varying vec3 vN; void main(){ vN=aN; gl_Position=uM*vec4(aP,1.0);}');
+  gl.compileShader(vs);
+  const fs=gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fs, 'precision mediump float; varying vec3 vN; uniform sampler2D uT; uniform vec3 uH; void main(){ vec3 n=normalize(vN); vec2 uv=vec2(n.x*0.56+0.5, -n.y*0.50+0.42); float fr=smoothstep(-0.02,0.22,n.z); vec3 pho=texture2D(uT, clamp(uv,0.0,1.0)).rgb; vec3 back=uH*(0.45+0.40*(n.y*0.5+0.5)); float lit=0.62+0.38*max(dot(n,vec3(0.15,0.25,0.95)),0.0); gl_FragColor=vec4(mix(back,pho,fr)*lit,1.0);}');
+  gl.compileShader(fs);
+  const prog=gl.createProgram(); gl.attachShader(prog,vs); gl.attachShader(prog,fs); gl.linkProgram(prog); gl.useProgram(prog);
+  const lat=28, lon=36, pos=[], nrm=[], idx=[];
+  for(let y=0;y<=lat;y++){ const v=y/lat, phi=v*Math.PI;
+    for(let x=0;x<=lon;x++){ const th=(x/lon)*Math.PI*2;
+      const sx=Math.sin(phi)*Math.sin(th), sy=Math.cos(phi), sz=Math.sin(phi)*Math.cos(th);
+      pos.push(sx*0.80, sy*1.02, sz*0.86); nrm.push(sx,sy,sz); } }
+  const cols=lon+1;
+  for(let y=0;y<lat;y++) for(let x=0;x<lon;x++){ const a=y*cols+x,b=a+1,c=a+cols,d=c+1; idx.push(a,c,b, b,c,d); }
+  function buf(data, att, n){ const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); const loc=gl.getAttribLocation(prog, att); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,n,gl.FLOAT,false,0,0); }
+  buf(new Float32Array(pos),'aP',3); buf(new Float32Array(nrm),'aN',3);
+  const ib=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+  gl.enable(gl.DEPTH_TEST); gl.clearColor(0.078,0.082,0.094,1);
+  const uM=gl.getUniformLocation(prog,'uM'), uH=gl.getUniformLocation(prog,'uH');
+  gl.uniform1i(gl.getUniformLocation(prog,'uT'),0);
+  const tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  function hairOf(im){
+    const c=document.createElement('canvas'); c.width=32; c.height=32;
+    const x=c.getContext('2d'); x.drawImage(im,0,0,32,32);
+    const d=x.getImageData(0,0,32,8).data; let r=0,g=0,b=0,n=0;
+    for(let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; }
+    return [r/n/255, g/n/255, b/n/255];
+  }
+  const im=new Image(); im.crossOrigin='anonymous';
+  im.onload=()=>{ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,im); gl.uniform3fv(uH, hairOf(im)); draw(); };
+  im.src=imgUrl;
+  function matPersp(fov, asp, n, f){
+    const F=1/Math.tan(fov/2), nf=1/(n-f), o=new Float32Array(16);
+    o[0]=F/asp; o[5]=F; o[10]=(f+n)*nf; o[11]=-1; o[14]=2*f*n*nf; return o;
+  }
+  function matRY(a){ const c=Math.cos(a), s=Math.sin(a); return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]); }
+  function matRX(a){ const c=Math.cos(a), s=Math.sin(a); return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]); }
+  function draw(){
+    const r=host.getBoundingClientRect(); if(r.width<2) return;
+    const dpr=Math.min(2, window.devicePixelRatio||1);
+    canvas.width=r.width*dpr; canvas.height=r.height*dpr;
+    gl.viewport(0,0,canvas.width,canvas.height);
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    const P=matPersp(42*Math.PI/180, canvas.width/canvas.height, 0.1, 20);
+    const V=new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,-0.04,-2.55,1]);
+    const R=mul4(matRX(orbitPitch*Math.PI/180), matRY(orbitYaw*Math.PI/180));
+    gl.uniformMatrix4fv(uM, false, mul4(P, mul4(V,R)));
+    gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
+  }
+  canvas.addEventListener('pointerdown', e=>{
+    canvas.setPointerCapture(e.pointerId); canvas.style.cursor='grabbing';
+    let lx=e.clientX, ly=e.clientY;
+    const move=ev=>{ orbitYaw+=(ev.clientX-lx)*0.5; orbitPitch=Math.max(-32, Math.min(32, orbitPitch+(ev.clientY-ly)*0.38)); lx=ev.clientX; ly=ev.clientY; draw(); };
+    const up=()=>{ canvas.style.cursor='grab'; canvas.removeEventListener('pointermove', move); canvas.removeEventListener('pointerup', up); };
+    canvas.addEventListener('pointermove', move); canvas.addEventListener('pointerup', up);
+  });
+  host._orbitDraw=draw;
+  new ResizeObserver(draw).observe(host);
+}
 function avatar(name){
   const n=hashCode(name);
   return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(
@@ -707,7 +783,8 @@ function requireLogin(reason){
 }
 
 /* ── 라우팅 ──────────────────────────────────────────────────────────── */
-let view='browse', curId=null, curAngle=0, mineTab='fav';
+let view='browse', curId=null, curAngle=0, mineTab='fav', orbitYaw=0, orbitPitch=0;
+const ANGLE_ORBIT=[{yaw:0,pitch:0},{yaw:42,pitch:0},{yaw:-42,pitch:0},{yaw:90,pitch:0},{yaw:-90,pitch:0},{yaw:0,pitch:28}];
 let filt={ kind:'', gender:'', age:'', style:'', sort:'dl', q:'' };
 function go(v,id){ view=v; if(id!=null){curId=id;curAngle=0;} window.scrollTo(0,0); render(); }
 function toast(msg,kind){ const t=$('toast'); t.textContent=msg; t.className='toast show '+(kind||'');
@@ -936,21 +1013,31 @@ function renderDetail(app){
   const rt=document.createElement('span'); rt.innerText='\u00b7 '+(m.reviews.length?starStr(ar)+' '+ar.toFixed(1)+' ('+m.reviews.length+'개 리뷰)':'리뷰 없음')+' \u00b7 '+dstr(m.createdAt)+' 등록';
   by.appendChild(av); by.appendChild(nm); by.appendChild(rt); left.appendChild(by);
 
-  /* 6방향 각도 사진 — 실사 1장이면 CSS 3D로 고개/카메라 각도를 돌린다 */
-  const photoPose = !!(m.photos && m.photos.length && m.photos.length<6);
+  /* 360 궤도 뷰어: 사진을 잡고 드래그하면 전 각도 */
+  const photoPose = !!(m.photos && m.photos.length);
   const hero=document.createElement('div'); hero.className='hero';
-  const spin=document.createElement('div'); spin.className='herospin';
-  spin.style.backgroundImage='url("'+faceSrc(m,curAngle,760,780)+'")';
-  applyFacePose(spin, curAngle, photoPose); hero.appendChild(spin); left.appendChild(hero);
+  if(photoPose){ mountOrbit(hero, faceSrc(m,0,760,780)); }
+  else {
+    const spin=document.createElement('div'); spin.className='herospin';
+    spin.style.backgroundImage='url("'+faceSrc(m,curAngle,760,780)+'")';
+    applyFacePose(spin, curAngle, false); hero.appendChild(spin);
+  }
+  left.appendChild(hero);
+  if(photoPose){
+    const hint=document.createElement('div'); hint.className='orbithint';
+    hint.textContent='사진을 잡고 좌우로 드래그하면 360° 모든 각도를 볼 수 있습니다. 위아래는 하이앵글입니다.';
+    left.appendChild(hint);
+  }
   const ang=document.createElement('div'); ang.className='angles';
   ANGLES.forEach((a,i)=>{
     const d=document.createElement('div'); d.className='a'+(i===curAngle?' on':'');
     const sp=document.createElement('div'); sp.className='spin';
-    sp.style.backgroundImage='url("'+faceSrc(m,i,200,210)+'")';
+    sp.style.backgroundImage='url("'+faceSrc(m, photoPose?0:i,200,210)+'")';
     applyFacePose(sp, i, photoPose);
     const s=document.createElement('span'); s.textContent=a.ko;
     d.appendChild(sp); d.appendChild(s);
-    d.onclick=()=>{curAngle=i;render();}; ang.appendChild(d);
+    d.onclick=()=>{ curAngle=i; orbitYaw=ANGLE_ORBIT[i].yaw; orbitPitch=ANGLE_ORBIT[i].pitch; render(); };
+    ang.appendChild(d);
   });
   left.appendChild(ang);
 
