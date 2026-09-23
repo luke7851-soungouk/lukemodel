@@ -408,6 +408,13 @@ function faceImg(seed, ai, w, h){
   +'</g></svg>';
   return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
 }
+function faceSrc(m, ai, w, h){
+  if(m && m.photos && m.photos.length){
+    const i = Math.min(ai||0, m.photos.length-1);
+    return m.photos[i] || m.photos[0];
+  }
+  return faceImg((m && m.name) || 'face', ai||0, w||300, h||280);
+}
 function avatar(name){
   const n=hashCode(name);
   return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(
@@ -499,10 +506,39 @@ const POOL = [
 /* ── 저장소 ──────────────────────────────────────────────────────────── */
 const KEY='facenaru.v1';
 let DB = load();
+const PHOTO_MODELS = [
+  { photoKey:'vface-f20', name:'가상 20대 여성 실사 얼굴', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
+    consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
+    photos:['faces/vface-f20.jpg'],
+    desc:'로컬 생성 파이프라인으로 만든 가상 인물입니다. 실존 인물이 아닙니다.\n\n정면 실사 초상. 한국인 20대 여성 느낌의 얼굴 LoRA 프리뷰입니다.',
+    tags:['가상인물','20대','여성','실사','오늘'], words:['vface_f20'], kb:163840, dl:0, log:[], reviews:[] },
+  { photoKey:'vface-m30', name:'가상 30대 남성 실사 얼굴', kind:'FaceLORA', gender:'male', age:'thirties', style:'real',
+    consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
+    photos:['faces/vface-m30.jpg'],
+    desc:'로컬 생성 파이프라인으로 만든 가상 인물입니다. 실존 인물이 아닙니다.\n\n정면 실사 초상. 한국인 30대 남성 느낌의 얼굴 LoRA 프리뷰입니다.',
+    tags:['가상인물','30대','남성','실사','오늘'], words:['vface_m30'], kb:155648, dl:0, log:[], reviews:[] },
+  { photoKey:'vface-f40', name:'가상 40대 여성 실사 얼굴', kind:'FaceLORA', gender:'female', age:'forties', style:'real',
+    consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
+    photos:['faces/vface-f40.jpg'],
+    desc:'로컬 생성 파이프라인으로 만든 가상 인물입니다. 실존 인물이 아닙니다.\n\n정면 실사 초상. 한국인 40대 여성 느낌의 얼굴 LoRA 프리뷰입니다.',
+    tags:['가상인물','40대','여성','실사','오늘'], words:['vface_f40'], kb:172032, dl:0, log:[], reviews:[] }
+];
+function injectPhotoModels(db){
+  if(!db || !Array.isArray(db.models)) return db;
+  PHOTO_MODELS.forEach(s=>{
+    if(!db.models.some(m=>m.photoKey===s.photoKey)){
+      if(!db.nextId) db.nextId=200;
+      const m=mkModel(s, db.nextId++, Date.now());
+      m.auto=true; m.user='auto-bot';
+      db.models.unshift(m);
+    }
+  });
+  return db;
+}
 function load(){
-  try{ const r=localStorage.getItem(KEY); if(r) return JSON.parse(r); }catch(e){}
+  try{ const r=localStorage.getItem(KEY); if(r) return injectPhotoModels(JSON.parse(r)); }catch(e){}
   const models = SEED.map((s,i)=>mkModel(s, i+1, Date.now()-(9-i)*DAY));
-  return { models, nextId:100, poolIdx:0, lastAuto:null, user:null, saved:[], library:{} };
+  return injectPhotoModels({ models, nextId:100, poolIdx:0, lastAuto:null, user:null, saved:[], library:{} });
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
 function userKey(){ if(!DB.user) return null; return (DB.user.email&&DB.user.email.trim()) || DB.user.nick; }
@@ -539,7 +575,8 @@ function mkModel(s, id, createdAt){
     file:{ name:(s.name.replace(/[^a-zA-Z0-9가-힣]/g,'_').slice(0,24))+'.safetensors',
            kb:s.kb||131072, scan:'Success',
            sha:[...Array(64)].map((_,i)=>'0123456789abcdef'[hashCode(s.name+i)%16]).join('') },
-    dl:s.dl||0, log:s.log||[], reviews:s.reviews||[] };
+    dl:s.dl||0, log:s.log||[], reviews:s.reviews||[],
+    photos:s.photos||null, photoKey:s.photoKey||null, auto:!!s.auto };
 }
 
 /* 다운로드 카운팅: 총 / 오늘 / 최근 7일 */
@@ -831,7 +868,7 @@ function gridOf(list){
   list.forEach(m=>{
     const c=document.createElement('div'); c.className='card'; c.onclick=()=>go('detail',m.id);
     const cv=document.createElement('div'); cv.className='cover';
-    cv.style.backgroundImage='url("'+faceImg(m.name,0,300,280)+'")';
+    cv.style.backgroundImage='url("'+faceSrc(m,0,300,280)+'")';
     const tg=document.createElement('div'); tg.className='tags';
     const t1=document.createElement('span'); t1.className='tag'; t1.textContent=KINDS[m.kind]; tg.appendChild(t1);
     const cs=CONSENT[m.consent];
@@ -883,11 +920,11 @@ function renderDetail(app){
 
   /* 6방향 각도 사진 */
   const hero=document.createElement('div'); hero.className='hero';
-  hero.style.backgroundImage='url("'+faceImg(m.name,curAngle,760,780)+'")'; left.appendChild(hero);
+  hero.style.backgroundImage='url("'+faceSrc(m,curAngle,760,780)+'")'; left.appendChild(hero);
   const ang=document.createElement('div'); ang.className='angles';
   ANGLES.forEach((a,i)=>{
     const d=document.createElement('div'); d.className='a'+(i===curAngle?' on':'');
-    d.style.backgroundImage='url("'+faceImg(m.name,i,200,210)+'")';
+    d.style.backgroundImage='url("'+faceSrc(m,i,200,210)+'")';
     const s=document.createElement('span'); s.textContent=a.ko; d.appendChild(s);
     d.onclick=()=>{curAngle=i;render();}; ang.appendChild(d);
   });
