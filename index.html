@@ -436,81 +436,61 @@ function applyFacePose(el, ai, photoPose){
   if(photoPose) el.style.transform='perspective(900px) rotateY('+p.y+'deg) rotateX('+p.x+'deg) scale(1.08)';
   else el.style.transform='none';
 }
-function mul4(a,b){
-  const o=new Float32Array(16);
-  for(let c=0;c<4;c++) for(let r=0;r<4;r++) o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];
-  return o;
-}
 function mountOrbit(host, imgUrl){
   host.textContent='';
   const canvas=document.createElement('canvas'); canvas.className='orbitcv'; host.appendChild(canvas);
-  const gl=canvas.getContext('webgl',{antialias:true, alpha:false});
-  if(!gl){ const sp=document.createElement('div'); sp.className='herospin'; sp.style.backgroundImage='url("'+imgUrl+'")'; applyFacePose(sp, curAngle, true); host.appendChild(sp); return; }
-  const vs=gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(vs, 'attribute vec3 aP; attribute vec3 aN; uniform mat4 uM; varying vec3 vN; void main(){ vN=aN; gl_Position=uM*vec4(aP,1.0);}');
-  gl.compileShader(vs);
-  const fs=gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fs, 'precision mediump float; varying vec3 vN; uniform sampler2D uT; uniform vec3 uH; void main(){ vec3 n=normalize(vN); vec2 uv=vec2(n.x*0.56+0.5, -n.y*0.50+0.42); float fr=smoothstep(-0.02,0.22,n.z); vec3 pho=texture2D(uT, clamp(uv,0.0,1.0)).rgb; vec3 back=uH*(0.45+0.40*(n.y*0.5+0.5)); float lit=0.62+0.38*max(dot(n,vec3(0.15,0.25,0.95)),0.0); gl_FragColor=vec4(mix(back,pho,fr)*lit,1.0);}');
-  gl.compileShader(fs);
-  const prog=gl.createProgram(); gl.attachShader(prog,vs); gl.attachShader(prog,fs); gl.linkProgram(prog);
-  if(!gl.getShaderParameter(vs, gl.COMPILE_STATUS) || !gl.getShaderParameter(fs, gl.COMPILE_STATUS) || !gl.getProgramParameter(prog, gl.LINK_STATUS)){
-    const sp=document.createElement('div'); sp.className='herospin'; sp.style.backgroundImage='url("'+imgUrl+'")'; applyFacePose(sp, curAngle, true); host.textContent=''; host.appendChild(sp); return;
-  }
-  gl.useProgram(prog);
-  const lat=28, lon=36, pos=[], nrm=[], idx=[];
-  for(let y=0;y<=lat;y++){ const v=y/lat, phi=v*Math.PI;
-    for(let x=0;x<=lon;x++){ const th=(x/lon)*Math.PI*2;
-      const sx=Math.sin(phi)*Math.sin(th), sy=Math.cos(phi), sz=Math.sin(phi)*Math.cos(th);
-      pos.push(sx*0.80, sy*1.02, sz*0.86); nrm.push(sx,sy,sz); } }
-  const cols=lon+1;
-  for(let y=0;y<lat;y++) for(let x=0;x<lon;x++){ const a=y*cols+x,b=a+1,c=a+cols,d=c+1; idx.push(a,c,b, b,c,d); }
-  function buf(data, att, n){ const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); const loc=gl.getAttribLocation(prog, att); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,n,gl.FLOAT,false,0,0); }
-  buf(new Float32Array(pos),'aP',3); buf(new Float32Array(nrm),'aN',3);
-  const ib=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
-  gl.enable(gl.DEPTH_TEST); gl.clearColor(0.078,0.082,0.094,1);
-  const uM=gl.getUniformLocation(prog,'uM'), uH=gl.getUniformLocation(prog,'uH');
-  gl.uniform1i(gl.getUniformLocation(prog,'uT'),0);
-  const tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  function hairOf(im){
-    const c=document.createElement('canvas'); c.width=32; c.height=32;
-    const x=c.getContext('2d'); x.drawImage(im,0,0,32,32);
-    const d=x.getImageData(0,0,32,8).data; let r=0,g=0,b=0,n=0;
-    for(let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; }
-    return [r/n/255, g/n/255, b/n/255];
-  }
+  const ctx=canvas.getContext('2d');
   const im=new Image(); im.crossOrigin='anonymous';
-  im.onload=()=>{ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,im); gl.uniform3fv(uH, hairOf(im)); draw(); };
-  im.src=imgUrl;
-  function matPersp(fov, asp, n, f){
-    const F=1/Math.tan(fov/2), nf=1/(n-f), o=new Float32Array(16);
-    o[0]=F/asp; o[5]=F; o[10]=(f+n)*nf; o[11]=-1; o[14]=2*f*n*nf; return o;
+  let hair='#2a221c';
+  function size(){
+    const r=host.getBoundingClientRect(); const dpr=Math.min(2, window.devicePixelRatio||1);
+    canvas.width=Math.max(2, r.width*dpr); canvas.height=Math.max(2, r.height*dpr);
+    canvas.style.width=r.width+'px'; canvas.style.height=r.height+'px';
   }
-  function matRY(a){ const c=Math.cos(a), s=Math.sin(a); return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]); }
-  function matRX(a){ const c=Math.cos(a), s=Math.sin(a); return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]); }
   function draw(){
-    const r=host.getBoundingClientRect(); if(r.width<2) return;
-    const dpr=Math.min(2, window.devicePixelRatio||1);
-    canvas.width=r.width*dpr; canvas.height=r.height*dpr;
-    gl.viewport(0,0,canvas.width,canvas.height);
-    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-    const P=matPersp(42*Math.PI/180, canvas.width/canvas.height, 0.1, 20);
-    const V=new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,-0.04,-2.55,1]);
-    const R=mul4(matRX(orbitPitch*Math.PI/180), matRY(orbitYaw*Math.PI/180));
-    gl.uniformMatrix4fv(uM, false, mul4(P, mul4(V,R)));
-    gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
+    size();
+    const W=canvas.width, H=canvas.height;
+    ctx.fillStyle='#14171f'; ctx.fillRect(0,0,W,H);
+    if(!im.naturalWidth) return;
+    const cx=W/2, cy=H/2 + orbitPitch*H*0.0045;
+    const Rx=Math.min(W,H)*0.36, Ry=Math.min(W,H)*0.48;
+    const yaw=orbitYaw*Math.PI/180, N=80;
+    for(let pass=0; pass<2; pass++){
+      for(let i=0;i<N;i++){
+        const t0=i/N, t1=(i+1)/N;
+        const a0=t0*Math.PI*2 + yaw, a1=t1*Math.PI*2 + yaw;
+        const z=(Math.cos(a0)+Math.cos(a1))/2, isF=z>0;
+        if(pass===0 && isF) continue; if(pass===1 && !isF) continue;
+        const x0=cx+Math.sin(a0)*Rx, x1=cx+Math.sin(a1)*Rx;
+        const w=x1-x0; if(w<=0.6) continue;
+        const y=cy-Ry, hh=Ry*2;
+        if(isF){
+          const u0=(0.5+Math.sin(a0)*0.5)*im.width;
+          const u1=(0.5+Math.sin(a1)*0.5)*im.width;
+          const uw=u1-u0; if(uw<=0.6) continue;
+          ctx.drawImage(im, u0, 0, uw, im.height, x0, y, w, hh);
+        } else {
+          ctx.fillStyle=hair; ctx.fillRect(x0, y, w, hh);
+        }
+      }
+    }
   }
+  im.onload=()=>{
+    const c=document.createElement('canvas'); c.width=16; c.height=16;
+    const x=c.getContext('2d'); x.drawImage(im,0,0,16,16);
+    const d=x.getImageData(0,0,16,5).data; let r=0,g=0,b=0,n=0;
+    for(let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; }
+    hair='rgb('+(r/n|0)+','+(g/n|0)+','+(b/n|0)+')';
+    draw();
+  };
+  im.src=imgUrl;
   canvas.addEventListener('pointerdown', e=>{
-    canvas.setPointerCapture(e.pointerId); canvas.style.cursor='grabbing';
+    canvas.setPointerCapture(e.pointerId);
     let lx=e.clientX, ly=e.clientY;
-    const move=ev=>{ orbitYaw+=(ev.clientX-lx)*0.5; orbitPitch=Math.max(-32, Math.min(32, orbitPitch+(ev.clientY-ly)*0.38)); lx=ev.clientX; ly=ev.clientY; draw(); };
-    const up=()=>{ canvas.style.cursor='grab'; canvas.removeEventListener('pointermove', move); canvas.removeEventListener('pointerup', up); };
+    const move=ev=>{ orbitYaw+=(ev.clientX-lx)*0.55; orbitPitch=Math.max(-30, Math.min(30, orbitPitch+(ev.clientY-ly)*0.35)); lx=ev.clientX; ly=ev.clientY; draw(); };
+    const up=()=>{ canvas.removeEventListener('pointermove', move); canvas.removeEventListener('pointerup', up); };
     canvas.addEventListener('pointermove', move); canvas.addEventListener('pointerup', up);
   });
-  host._orbitDraw=draw;
   new ResizeObserver(draw).observe(host);
 }
 function avatar(name){
