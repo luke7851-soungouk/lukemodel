@@ -1780,7 +1780,7 @@ async function saveStudioAsModel(){
   const faceSeed=item.seed!=null?item.seed:((Date.now()%1000000)^_hash(item.prompt));
   const faceId='face_'+Date.now().toString(36)+'_'+(_hash(name+faceSeed)%100000);
   const s={ name, kind:'FaceLORA', gender:item.gender||'female', age:item.age||'twenties', style:'real', consent:'synthetic', user:DB.user.nick, base:item.base||studioState.base||'FLUX.1 D',
-    desc:'AI 스튜디오에서 생성한 합성 얼굴입니다. 실존 인물이 아닙니다.\n\n엔진: '+(item.provider||'')+'\\n프롬프트: '+item.prompt+'\\n\\n이 얼굴 아래에 작품을 계속 추가할 수 있습니다. 공유는 공유 코드로 이뤄집니다(서버 동기화 없음).',
+    desc:'AI 스튜디오에서 생성한 합성 얼굴입니다. 실존 인물이 아닙니다.\n\n엔진: '+(item.provider||'')+'\n프롬프트: '+item.prompt+'\n\n이 얼굴 아래에 작품을 계속 추가할 수 있습니다. 공유는 공유 코드로 이뤄집니다(서버 동기화 없음).',
     tags:['ai-studio', item.provider||'ai', GENDERS[item.gender]||'', AGES[item.age]||'', '실사'].map(x=>String(x).trim()).filter(Boolean),
     words:['ai_studio', String(item.provider||'ai')], photos:[item.url], kb:163840, dl:0, log:[], reviews:[] };
   const id=DB.nextId++; const m=_mkModel(s, id, Date.now()); ensureModelFields(m);
