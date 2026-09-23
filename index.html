@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
+      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
 <title>페이스루크 — 얼굴 모델 전문 공유 플랫폼</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -410,9 +410,9 @@ function faceImg(seed, ai, w, h){
 }
 
 function facePollinationsUrl(seed, w, h){
-  const prompt = 'photorealistic studio portrait photo of an East Asian adult face, natural skin texture, soft studio lighting, face close-up, real photography, 85mm, not illustration, not anime, not 3d render, seed context '+String(seed||'face');
-  const WW=w||768, HH=h||1024;
-  return 'https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt)+'?width='+WW+'&height='+HH+'&model=flux&nologo=true&seed='+(Math.abs(hashCode(String(seed||'face')))%1000000);
+  const prompt = 'authentic photograph of a real Korean East Asian adult fashion model, head and shoulders casting photo, natural skin pores and texture, subtle freckles or moles OK, slight facial asymmetry, real human, shot on Canon EOS R5 85mm f/1.8, soft natural window light, shallow depth of field, subtle film grain, unretouched, not airbrushed, not CGI, not 3d render, not illustration, not anime, not beauty filter, not plastic skin, no watermark, no text, no logo, seed context '+String(seed||'face');
+  const WW=w||768, HH=h||768;
+  return 'https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt)+'?width='+WW+'&height='+HH+'&model=flux&nologo=true&nofeed=true&enhance=false&seed='+(Math.abs(hashCode(String(seed||'face')))%1000000);
 }
 function faceSrc(m, ai, w, h){
   if(m && m.photos && m.photos.length){
@@ -490,10 +490,10 @@ const SEED = [
      { u:'adshop', r:5, t:'광고 시안용으로 딱입니다. 모델 섭외 전에 콘셉트 잡을 때 매우 유용해요.', at:Date.now()-2*DAY },
      { u:'kimdev', r:4, t:'좋은데 안경 쓴 결과가 잘 안 나옵니다. 다음 버전에 반영되면 좋겠네요.', at:Date.now()-9*DAY }
    ] },
- { name:'반실사 소녀 얼굴 임베딩', photos:['faces/photo-01.jpg'], kind:'FaceEmbed', gender:'female', age:'teen', style:'semi',
+ { name:'모델 01 · 20대 여성 캐스팅', photos:['faces/photo-01.jpg'], kind:'FaceEmbed', gender:'female', age:'twenties', style:'real',
    consent:'synthetic', user:'softline', base:'Pony',
-   desc:'반실사 스타일의 얼굴 임베딩입니다. 파일이 가벼워 여러 개를 동시에 얹기 좋습니다.',
-   tags:['반실사','임베딩','여성'], words:['semi_real_girl'], sMin:0.4, sMax:0.7, clip:2,
+   desc:'20대 여성 캐스팅용 실사 얼굴 임베딩입니다. 파일이 가벼워 여러 개를 동시에 얹기 좋습니다.',
+   tags:['실사','임베딩','여성','20대','캐스팅'], words:['casting_f20','natural skin'], sMin:0.4, sMax:0.7, clip:2,
    kb:2048, dl:5180, log:mkLog(120,10),
    reviews:[{ u:'mochi', r:4, t:'용량 대비 성능이 좋습니다. 다른 LoRA랑 충돌도 적어요.', at:Date.now()-5*DAY }] },
  { name:'40대 배우 느낌 인물 체크포인트', photos:['faces/vface-f40.jpg'], kind:'PortraitCkpt', gender:'neutral', age:'forties', style:'real',
@@ -506,10 +506,10 @@ const SEED = [
      { u:'neowave', r:5, t:'40대 표현이 자연스럽습니다. 주름을 과하게 넣지 않은 게 좋네요.', at:Date.now()-4*DAY },
      { u:'hyeon', r:3, t:'용량이 6GB라 로컬에서 돌리기 부담스럽습니다. fp16 버전도 올려주세요.', at:Date.now()-8*DAY }
    ] },
- { name:'애니 스타일 얼굴 LoRA', photos:['faces/photo-02.jpg'], kind:'FaceLORA', gender:'female', age:'twenties', style:'anime',
+ { name:'모델 02 · 20대 여성 실사', photos:['faces/photo-02.jpg'], kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
    consent:'synthetic', user:'linedraw', base:'Illustrious',
-   desc:'애니메이션 화풍의 얼굴 전용 LoRA입니다. 눈동자 하이라이트가 뭉개지지 않도록 반복 학습했습니다.',
-   tags:['애니','여성','일러스트'], words:['anime_face','detailed eyes'], sMin:0.6, sMax:1.0, clip:2,
+   desc:'20대 여성 실사 얼굴 LoRA입니다. 자연 피부 텍스처와 캐스팅 포즈에 맞춰 학습했습니다.',
+   tags:['실사','여성','20대','캐스팅'], words:['korean_model_f20','natural skin'], sMin:0.6, sMax:0.85, clip:2,
    kb:82944, dl:12800, log:mkLog(260,7),
    reviews:[{ u:'toonup', r:5, t:'눈 디테일이 확실히 살아납니다.', at:Date.now()-7*DAY }] },
  { name:'50대 시니어 자연스러운 얼굴', photos:['faces/photo-03.jpg'], kind:'FaceLORA', gender:'neutral', age:'senior', style:'real',
@@ -524,104 +524,104 @@ const SEED = [
 const POOL = [
  { name:'20대 남성 캐주얼 얼굴', photos:[pickFacePhoto(6)], kind:'FaceLORA', gender:'male', age:'twenties', style:'real', consent:'synthetic', base:'SDXL 1.0', tags:['남성','20대','실사'], words:['casual_male_20'] },
  { name:'30대 여성 커리어 인상', photos:[pickFacePhoto(7)], kind:'FaceLORA', gender:'female', age:'thirties', style:'real', consent:'synthetic', base:'Illustrious', tags:['여성','30대','실사','프로필'], words:['career_woman_30'] },
- { name:'10대 애니 소년 얼굴', photos:[pickFacePhoto(8)], kind:'FaceLORA', gender:'male', age:'teen', style:'anime', consent:'synthetic', base:'Pony', tags:['애니','남성','10대'], words:['anime_boy_face'] },
- { name:'중성적 얼굴 임베딩', photos:[pickFacePhoto(9)], kind:'FaceEmbed', gender:'neutral', age:'twenties', style:'semi', consent:'synthetic', base:'SDXL 1.0', tags:['중성','임베딩'], words:['androgynous_face'] },
+ { name:'20대 남성 캐주얼 캐스팅', photos:[pickFacePhoto(8)], kind:'FaceLORA', gender:'male', age:'twenties', style:'real', consent:'synthetic', base:'Pony', tags:['실사','남성','20대','캐스팅'], words:['casual_male_20'] },
+ { name:'중성 20대 실사 임베딩', photos:[pickFacePhoto(9)], kind:'FaceEmbed', gender:'neutral', age:'twenties', style:'real', consent:'synthetic', base:'SDXL 1.0', tags:['중성','임베딩','실사','20대'], words:['androgynous_face_real'] },
  { name:'40대 여성 온화한 인상', photos:[pickFacePhoto(10)], kind:'FaceLORA', gender:'female', age:'forties', style:'real', consent:'synthetic', base:'SDXL 1.0', tags:['여성','40대','실사'], words:['gentle_woman_40'] },
- { name:'일러스트 남성 얼굴', photos:[pickFacePhoto(11)], kind:'FaceLORA', gender:'male', age:'thirties', style:'illust', consent:'synthetic', base:'FLUX.1 D', tags:['일러스트','남성'], words:['illust_male_face'] },
+ { name:'커리어 30대 남성 실사', photos:[pickFacePhoto(11)], kind:'FaceLORA', gender:'male', age:'thirties', style:'real', consent:'synthetic', base:'FLUX.1 D', tags:['실사','남성','30대','프로필'], words:['career_male_30'] },
  { name:'시니어 남성 인물 체크포인트', photos:[pickFacePhoto(12)], kind:'PortraitCkpt', gender:'male', age:'senior', style:'real', consent:'consented', base:'SDXL 1.0', tags:['시니어','남성','체크포인트'], words:[] },
- { name:'반실사 20대 여성 얼굴', photos:[pickFacePhoto(13)], kind:'FaceLORA', gender:'female', age:'twenties', style:'semi', consent:'synthetic', base:'Illustrious', tags:['반실사','여성','20대'], words:['semi_real_f20'] },
- { name:'10대 실사 얼굴 (교복 콘셉트 제외)', photos:[pickFacePhoto(14)], kind:'FaceLORA', gender:'neutral', age:'teen', style:'real', consent:'synthetic', base:'SD 1.5', tags:['10대','실사'], words:['teen_face_neutral'] }
+ { name:'모델 20대 여성 캐스팅', photos:[pickFacePhoto(13)], kind:'FaceLORA', gender:'female', age:'twenties', style:'real', consent:'synthetic', base:'Illustrious', tags:['실사','여성','20대','캐스팅'], words:['casting_f20'] },
+ { name:'20대 중성 캐스팅 얼굴', photos:[pickFacePhoto(14)], kind:'FaceLORA', gender:'neutral', age:'twenties', style:'real', consent:'synthetic', base:'SD 1.5', tags:['20대','실사','중성','캐스팅'], words:['adult_neutral_20'] }
 ];
 
 /* ── 저장소 ──────────────────────────────────────────────────────────── */
-const KEY='facenaru.v1';
+const KEY='facenaru.v2';
 const PHOTO_MODELS = [
-  { photoKey:'vface-f20', name:'가상 20대 여성 실사 얼굴', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
+  { photoKey:'vface-f20', name:'시드 · 20대 여성 캐스팅', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/vface-f20.jpg'],
     desc:'로컬 생성 파이프라인으로 만든 가상 인물입니다. 실존 인물이 아닙니다.\n\n정면 실사 초상. 한국인 20대 여성 느낌의 얼굴 LoRA 프리뷰입니다.',
     tags:['가상인물','20대','여성','실사','오늘'], words:['vface_f20'], kb:163840, dl:0, log:[], reviews:[] },
-  { photoKey:'vface-m30', name:'가상 30대 남성 실사 얼굴', kind:'FaceLORA', gender:'male', age:'thirties', style:'real',
+  { photoKey:'vface-m30', name:'시드 · 커리어 30대 남성', kind:'FaceLORA', gender:'male', age:'thirties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/vface-m30.jpg'],
     desc:'로컬 생성 파이프라인으로 만든 가상 인물입니다. 실존 인물이 아닙니다.\n\n정면 실사 초상. 한국인 30대 남성 느낌의 얼굴 LoRA 프리뷰입니다.',
     tags:['가상인물','30대','남성','실사','오늘'], words:['vface_m30'], kb:155648, dl:0, log:[], reviews:[] },
-  { photoKey:'vface-f40', name:'가상 40대 여성 실사 얼굴', kind:'FaceLORA', gender:'female', age:'forties', style:'real',
+  { photoKey:'vface-f40', name:'시드 · 40대 여성 캐스팅', kind:'FaceLORA', gender:'female', age:'forties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/vface-f40.jpg'],
     desc:'로컬 생성 파이프라인으로 만든 가상 인물입니다. 실존 인물이 아닙니다.\n\n정면 실사 초상. 한국인 40대 여성 느낌의 얼굴 LoRA 프리뷰입니다.',
     tags:['가상인물','40대','여성','실사','오늘'], words:['vface_f40'], kb:172032, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-01', name:'포토 01 · 20대 여성', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
+  { photoKey:'photo-01', name:'모델 01 · 20대 여성 캐스팅', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-01.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n20대 여성 실사 커버 사진.',
     tags:['가상인물','20대','여성','실사','오늘'], words:['photo_01'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-02', name:'포토 02 · 애니 커버 여성', kind:'FaceLORA', gender:'female', age:'twenties', style:'anime',
+  { photoKey:'photo-02', name:'포토 02 · 20대 여성 캐스팅', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-02.jpg'],
-    desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n20대 여성 애니 커버 사진.',
-    tags:['가상인물','20대','여성','애니','오늘'], words:['photo_02'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-03', name:'포토 03 · 시니어 중성', kind:'FaceLORA', gender:'neutral', age:'senior', style:'real',
+    desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n20대 여성 실사 캐스팅 커버 사진.',
+    tags:['가상인물','20대','여성','실사','캐스팅','오늘'], words:['photo_02'], kb:147456, dl:0, log:[], reviews:[] },
+  { photoKey:'photo-03', name:'모델 03 · 시니어 중성 캐스팅', kind:'FaceLORA', gender:'neutral', age:'senior', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-03.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n50대+ 중성 실사 커버 사진.',
     tags:['가상인물','50대+','중성','실사','오늘'], words:['photo_03'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-04', name:'포토 04 · 20대 남성', kind:'FaceLORA', gender:'male', age:'twenties', style:'real',
+  { photoKey:'photo-04', name:'모델 04 · 20대 남성 캐스팅', kind:'FaceLORA', gender:'male', age:'twenties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-04.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n20대 남성 실사 커버 사진.',
     tags:['가상인물','20대','남성','실사','오늘'], words:['photo_04'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-05', name:'포토 05 · 30대 여성', kind:'FaceLORA', gender:'female', age:'thirties', style:'real',
+  { photoKey:'photo-05', name:'커리어 30대 여성', kind:'FaceLORA', gender:'female', age:'thirties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-05.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n30대 여성 실사 커버 사진.',
     tags:['가상인물','30대','여성','실사','오늘'], words:['photo_05'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-06', name:'포토 06 · 10대 중성', kind:'FaceLORA', gender:'neutral', age:'teen', style:'semi',
+  { photoKey:'photo-06', name:'포토 06 · 20대 중성 캐스팅', kind:'FaceLORA', gender:'neutral', age:'twenties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-06.jpg'],
-    desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n10대 중성 반실사 커버 사진.',
-    tags:['가상인물','10대','중성','반실사','오늘'], words:['photo_06'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-07', name:'포토 07 · 40대 남성', kind:'FaceLORA', gender:'male', age:'forties', style:'real',
+    desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n20대 중성 실사 캐스팅 커버 사진.',
+    tags:['가상인물','20대','중성','실사','캐스팅','오늘'], words:['photo_06'], kb:147456, dl:0, log:[], reviews:[] },
+  { photoKey:'photo-07', name:'모델 07 · 40대 남성 캐스팅', kind:'FaceLORA', gender:'male', age:'forties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-07.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n40대 남성 실사 커버 사진.',
     tags:['가상인물','40대','남성','실사','오늘'], words:['photo_07'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-08', name:'포토 08 · 20대 반실사', kind:'FaceLORA', gender:'female', age:'twenties', style:'semi',
+  { photoKey:'photo-08', name:'포토 08 · 20대 여성 실사', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-08.jpg'],
-    desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n20대 여성 반실사 커버 사진.',
-    tags:['가상인물','20대','여성','반실사','오늘'], words:['photo_08'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-09', name:'포토 09 · 30대 남성', kind:'FaceLORA', gender:'male', age:'thirties', style:'real',
+    desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n20대 여성 실사 캐스팅 커버 사진.',
+    tags:['가상인물','20대','여성','실사','캐스팅','오늘'], words:['photo_08'], kb:147456, dl:0, log:[], reviews:[] },
+  { photoKey:'photo-09', name:'커리어 30대 남성', kind:'FaceLORA', gender:'male', age:'thirties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-09.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n30대 남성 실사 커버 사진.',
     tags:['가상인물','30대','남성','실사','오늘'], words:['photo_09'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-10', name:'포토 10 · 40대 여성', kind:'FaceLORA', gender:'female', age:'forties', style:'real',
+  { photoKey:'photo-10', name:'모델 10 · 40대 여성 캐스팅', kind:'FaceLORA', gender:'female', age:'forties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-10.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n40대 여성 실사 커버 사진.',
     tags:['가상인물','40대','여성','실사','오늘'], words:['photo_10'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-11', name:'포토 11 · 시니어 남성', kind:'FaceLORA', gender:'male', age:'senior', style:'real',
+  { photoKey:'photo-11', name:'모델 11 · 시니어 남성 캐스팅', kind:'FaceLORA', gender:'male', age:'senior', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-11.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n50대+ 남성 실사 커버 사진.',
     tags:['가상인물','50대+','남성','실사','오늘'], words:['photo_11'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-12', name:'포토 12 · 일러스트 여성', kind:'FaceLORA', gender:'female', age:'twenties', style:'illust',
+  { photoKey:'photo-12', name:'포토 12 · 커리어 20대 여성', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-12.jpg'],
-    desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n20대 여성 일러스트 커버 사진.',
-    tags:['가상인물','20대','여성','일러스트','오늘'], words:['photo_12'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-13', name:'포토 13 · 중성 20대', kind:'FaceLORA', gender:'neutral', age:'twenties', style:'real',
+    desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n20대 여성 실사 캐스팅 커버 사진.',
+    tags:['가상인물','20대','여성','실사','캐스팅','오늘'], words:['photo_12'], kb:147456, dl:0, log:[], reviews:[] },
+  { photoKey:'photo-13', name:'모델 13 · 20대 중성 캐스팅', kind:'FaceLORA', gender:'neutral', age:'twenties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-13.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n20대 중성 실사 커버 사진.',
     tags:['가상인물','20대','중성','실사','오늘'], words:['photo_13'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-14', name:'포토 14 · 30대 커리어', kind:'FaceLORA', gender:'female', age:'thirties', style:'real',
+  { photoKey:'photo-14', name:'커리어 30대 여성 캐스팅', kind:'FaceLORA', gender:'female', age:'thirties', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-14.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n30대 여성 실사 커버 사진.',
     tags:['가상인물','30대','여성','실사','오늘'], words:['photo_14'], kb:147456, dl:0, log:[], reviews:[] },
-  { photoKey:'photo-15', name:'포토 15 · 시니어 여성', kind:'FaceLORA', gender:'female', age:'senior', style:'real',
+  { photoKey:'photo-15', name:'모델 15 · 시니어 여성 캐스팅', kind:'FaceLORA', gender:'female', age:'senior', style:'real',
     consent:'synthetic', user:'auto-bot', base:'SDXL 1.0', auto:true,
     photos:['faces/photo-15.jpg'],
     desc:'로컬 포토 카탈로그에서 가져온 가상 인물 프리뷰입니다. 실존 인물이 아닙니다.\n\n50대+ 여성 실사 커버 사진.',
@@ -646,6 +646,114 @@ function load(){
 }
 let DB = load();
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
+
+/* IndexedDB — uploaded weight blobs */
+const IDB_NAME='facenaru.files.v1', IDB_STORE='files';
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(IDB_NAME,1);
+    r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE); };
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function idbPut(id, blob){
+  const db=await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).put(blob, id);
+    tx.oncomplete=()=>res();
+    tx.onerror=()=>rej(tx.error);
+  });
+}
+async function idbGet(id){
+  const db=await idbOpen();
+  return new Promise((res,rej)=>{
+    const rq=db.transaction(IDB_STORE,'readonly').objectStore(IDB_STORE).get(id);
+    rq.onsuccess=()=>res(rq.result||null);
+    rq.onerror=()=>rej(rq.error);
+  });
+}
+function triggerDownload(filename, blob){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+
+/* Minimal ZIP (STORE only) + CRC32 */
+const CRC_TABLE=(()=>{ const t=new Uint32Array(256);
+  for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; }
+  return t; })();
+function crc32(u8){ let c=0xFFFFFFFF; for(let i=0;i<u8.length;i++) c=CRC_TABLE[(c^u8[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function u16le(n){ return new Uint8Array([n&255,(n>>>8)&255]); }
+function u32le(n){ return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]); }
+function zipStore(files){
+  const enc=new TextEncoder(), parts=[], central=[]; let offset=0;
+  const now=new Date();
+  const dosTime=((now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1))&0xFFFF;
+  const dosDate=(((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate())&0xFFFF;
+  for(const f of files){
+    const name=enc.encode(f.name);
+    const data=f.data instanceof Uint8Array?f.data:new Uint8Array(f.data);
+    const crc=crc32(data);
+    const local=new Uint8Array(30+name.length);
+    local.set([0x50,0x4b,0x03,0x04],0);
+    local.set(u16le(20),4); local.set(u16le(0),6); local.set(u16le(0),8);
+    local.set(u16le(dosTime),10); local.set(u16le(dosDate),12);
+    local.set(u32le(crc),14); local.set(u32le(data.length),18); local.set(u32le(data.length),22);
+    local.set(u16le(name.length),26); local.set(u16le(0),28); local.set(name,30);
+    parts.push(local, data);
+    const cen=new Uint8Array(46+name.length);
+    cen.set([0x50,0x4b,0x01,0x02],0);
+    cen.set(u16le(20),4); cen.set(u16le(20),6); cen.set(u16le(0),8); cen.set(u16le(0),10);
+    cen.set(u16le(dosTime),12); cen.set(u16le(dosDate),14);
+    cen.set(u32le(crc),16); cen.set(u32le(data.length),20); cen.set(u32le(data.length),24);
+    cen.set(u16le(name.length),28); cen.set(u16le(0),30); cen.set(u16le(0),32);
+    cen.set(u16le(0),34); cen.set(u16le(0),36); cen.set(u32le(0),38); cen.set(u32le(offset),42);
+    cen.set(name,46); central.push(cen);
+    offset+=local.length+data.length;
+  }
+  const centralSize=central.reduce((s,c)=>s+c.length,0);
+  const end=new Uint8Array(22);
+  end.set([0x50,0x4b,0x05,0x06],0);
+  end.set(u16le(0),4); end.set(u16le(0),6);
+  end.set(u16le(files.length),8); end.set(u16le(files.length),10);
+  end.set(u32le(centralSize),12); end.set(u32le(offset),16); end.set(u16le(0),20);
+  return new Blob([...parts,...central,end],{type:'application/zip'});
+}
+async function buildFacePackBlob(m){
+  const enc=new TextEncoder(), files=[];
+  const card={ name:m.name, kind:m.kind, base:m.base, tags:m.tags, words:m.words,
+    sMin:m.sMin, sMax:m.sMax, clip:m.clip, desc:m.desc, consent:m.consent, file:m.file||null };
+  files.push({name:'model.json', data:enc.encode(JSON.stringify(card,null,2))});
+  const readme='이 팩은 표지+모델카드입니다. 실제 .safetensors 가중치는 업로더가 올린 모델만 IndexedDB에서 제공됩니다.\n\n'
+    +'모델: '+(m.name||'')+'\n종류: '+(m.kind||'')+'\n베이스: '+(m.base||'')+'\n';
+  files.push({name:'README.txt', data:enc.encode(readme)});
+  if(m.photos&&m.photos[0]){
+    try{
+      const r=await fetch(m.photos[0]);
+      if(r.ok){
+        const buf=new Uint8Array(await r.arrayBuffer());
+        const u=String(m.photos[0]).toLowerCase();
+        files.push({name:'cover.'+(u.endsWith('.png')?'png':'jpg'), data:buf});
+      }
+    }catch(e){}
+  }
+  return zipStore(files);
+}
+async function downloadModelFile(m){
+  const blob=await idbGet(m.id);
+  if(blob){
+    triggerDownload((m.file&&m.file.name)||((m.name||'model')+'.safetensors'), blob);
+    return 'weights';
+  }
+  const zip=await buildFacePackBlob(m);
+  const safeName=(m.name||'model').replace(/[\\/:*?"<>|]+/g,'_').slice(0,48);
+  triggerDownload(safeName+'-facepack.zip', zip);
+  return 'pack';
+}
+
 function userKey(){ if(!DB.user) return null; return (DB.user.email&&DB.user.email.trim()) || DB.user.nick; }
 function lib(){
   if(!DB.library) DB.library={};
@@ -1162,11 +1270,19 @@ function renderDetail(app){
   dl.textContent = !scanOk ? '스캔 완료 후 다운로드 가능'
                  : !DB.user ? '로그인하고 무료 다운로드'
                  : '무료 다운로드  ('+mb(f.kb)+')';
-  dl.onclick=()=>{
-    if(!scanOk) return;                                   // 게이트 1: 스캔
-    if(!requireLogin('로그인하면 모든 얼굴 모델을 무제한 무료로 받을 수 있습니다.')) return; // 게이트 2: 로그인
-    m.dl++; m.log.push(Date.now()); recordDownload(m.id); save();
-    toast('다운로드했습니다. 내 페이지에서 받은 얼굴을 확인할 수 있습니다.','ok'); render();
+  dl.onclick=async()=>{
+    if(!scanOk) return;
+    if(!requireLogin('로그인하면 모든 얼굴 모델을 무제한 무료로 받을 수 있습니다.')) return;
+    dl.disabled=true;
+    try{
+      const kind=await downloadModelFile(m);
+      m.dl++; m.log.push(Date.now()); recordDownload(m.id); save();
+      toast(kind==='weights' ? '모델 파일 다운로드를 시작했습니다' : '얼굴팩(표지+모델카드) 다운로드를 시작했습니다. 가중치 파일은 직접 업로드한 모델만 제공됩니다.','ok');
+      render();
+    }catch(e){
+      toast('다운로드에 실패했습니다. 다시 시도해 주세요.','err');
+      dl.disabled=false;
+    }
   };
   vb.appendChild(dl);
   const fv=document.createElement('button'); fv.type='button';
@@ -1243,7 +1359,7 @@ function renderUpload(app){
       res.appendChild(alertBox('err','차단됨  ', bad
         ? f.name+' 은 pickle 계열 형식입니다. 로드 시 임의 코드 실행 위험이 있어 받지 않습니다. safetensors 로 변환해서 올려주세요.'
         : f.name+' 은 지원하지 않는 형식입니다. .safetensors 파일만 업로드할 수 있습니다.'));
-      draft.file=null; fi.value=''; return;
+      draft.file=null; draft.fileBlob=null; fi.value=''; return;
     }
     pbar.style.width='30%';
     let headOk=false, headErr='';
@@ -1256,12 +1372,13 @@ function renderUpload(app){
     }catch(e){ headErr='파일을 읽지 못했습니다'; }
     if(!headOk){ prog.style.display='none';
       res.appendChild(alertBox('err','형식 위조 의심  ','확장자는 .safetensors 이지만 내부 구조가 규격과 맞지 않습니다. ('+headErr+')'));
-      draft.file=null; fi.value=''; return; }
+      draft.file=null; draft.fileBlob=null; fi.value=''; return; }
     pbar.style.width='58%';
     const LIMIT=64; let sha=null, why='size';
     try{ const r=await hashFile(f,LIMIT); sha=r.hash; why=r.why; }catch(e){ why='error'; }
     pbar.style.width='100%'; setTimeout(()=>{prog.style.display='none';},400);
     draft.file={ name:f.name, kb:f.size/1024, sha:sha, scan:'Pending' };
+    draft.fileBlob=f;
     res.appendChild(alertBox('ok','검증 통과  ', f.name+' \u00b7 '+mb(f.size/1024)+' \u00b7 safetensors 구조 확인됨'));
     if(sha){ const hh=document.createElement('div'); hh.className='hash'; hh.textContent='SHA256 '+sha+(why==='js'?'   (순수 JS 계산)':''); res.appendChild(hh); }
     else res.appendChild(alertBox('info','안내  ', LIMIT+'MB 를 넘는 파일은 브라우저에서 해시를 계산하지 않습니다. 실제 서비스에서는 서버가 계산합니다.'));
@@ -1343,7 +1460,7 @@ function alertBox(kind,bold,text){
   const s=document.createElement('span'); s.textContent=text; a.appendChild(s); return a;
 }
 
-function doSubmit(){
+async function doSubmit(){
   if(!DB.user) return openLogin();
   if(!draft.consent) return toast('초상권 확인 항목을 먼저 선택해주세요','err');
   if(!draft.name.trim()) return toast('모델 이름을 입력해주세요','err');
@@ -1360,6 +1477,11 @@ function doSubmit(){
     file:{ name:draft.file.name, kb:draft.file.kb, scan:'Pending', sha:draft.file.sha },
     dl:0, log:[], reviews:[] };
   DB.models.unshift(m); save();
+  if(draft.fileBlob){
+    try{ await idbPut(id, draft.fileBlob); }
+    catch(e){ toast('파일 저장 용량이 부족합니다. 모델은 등록됐지만 가중치 다운로드는 불가할 수 있습니다.','err'); }
+  }
+  draft.fileBlob=null;
   const file=m.file; draft=null; go('detail', id);
   toast('등록 완료 · 6방향 프리뷰 생성 및 보안 스캔을 시작합니다','ok');
   setTimeout(()=>{

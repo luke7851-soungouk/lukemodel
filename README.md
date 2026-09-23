@@ -4,7 +4,7 @@ GitHub Pages용 정적 SPA입니다. 메인 파일은 `index.html` 하나입니�
 
 ## AI 스튜디오
 
-내비 **AI 스튜디오**에서 합성 얼굴을 생성하고, 로그인 후 **카탈로그에 올리기**로 `localStorage` DB(`facenaru.v1`)에 등록할 수 있습니다.
+내비 **AI 스튜디오**에서 합성 얼굴을 생성하고, 로그인 후 **카탈로그에 올리기**로 `localStorage` DB(`facenaru.v2`)에 등록할 수 있습니다.
 
 ### 엔진
 
