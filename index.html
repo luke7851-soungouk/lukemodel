@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'">
+<title>페이스나루 — 얼굴 모델 전문 공유 플랫폼</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f1117;--panel:#1a1d27;--panel2:#151822;--line:#2b3040;--tx:#e6e8ef;--dim:#8b93a7;
+ --acc:#4f7cff;--ok:#7de2a8;--warn:#ffb86c;--bad:#ff6b6b;--gold:#ffc861}
+body{font-family:'Pretendard','Malgun Gothic','Segoe UI',sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+.wrap{max-width:1220px;margin:0 auto;padding:0 22px}
+
+header{position:sticky;top:0;z-index:50;background:rgba(15,17,23,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.hbar{display:flex;align-items:center;gap:16px;height:60px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;letter-spacing:-.4px}
+.logo .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#4f7cff,#9b5cff);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff}
+nav.top{display:flex;gap:4px}
+nav.top button{padding:7px 13px;border-radius:7px;font-size:13.5px;color:var(--dim);font-weight:600}
+nav.top button:hover{background:var(--panel);color:var(--tx)}
+nav.top button.on{background:var(--panel);color:#fff}
+.search{flex:1;max-width:330px;margin-left:auto;position:relative}
+.search input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 13px 9px 34px;font-size:13.5px;outline:none}
+.search input:focus{border-color:var(--acc)}
+.search .ic{position:absolute;left:11px;top:9px;color:var(--dim);font-size:13px}
+.btn{background:var(--acc);color:#fff;font-weight:700;font-size:13.5px;padding:9px 15px;border-radius:9px;white-space:nowrap}
+.btn:hover{filter:brightness(1.12)}
+.btn.ghost{background:var(--panel);border:1px solid var(--line);color:var(--tx)}
+.btn.sm{padding:6px 12px;font-size:12.5px}
+.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+.me{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:5px 11px 5px 6px;font-size:13px;font-weight:600}
+.me img{width:22px;height:22px;border-radius:50%}
+
+.banner{background:linear-gradient(100deg,#1b2340,#221a3a);border:1px solid #33406b;border-radius:13px;padding:17px 20px;margin:20px 0 4px;display:flex;align-items:center;gap:16px}
+.banner .t{flex:1}
+.banner h2{font-size:15.5px;font-weight:800;margin-bottom:4px}
+.banner p{font-size:12.8px;color:#b9c4e4;line-height:1.6}
+
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:18px 0 14px}
+.chip{background:var(--panel);border:1px solid var(--line);color:var(--dim);padding:6px 13px;border-radius:20px;font-size:12.5px;font-weight:600}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.sel{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:6px 11px;font-size:12.5px;font-weight:600;outline:none}
+.divider{width:1px;height:20px;background:var(--line);margin:0 2px}
+.seclabel{font-size:12px;font-weight:800;color:var(--dim);letter-spacing:.7px;margin:18px 0 12px;display:flex;align-items:center;gap:9px}
+.seclabel .ln{flex:1;height:1px;background:var(--line)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px;padding-bottom:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .13s,border-color .13s}
+.card:hover{transform:translateY(-3px);border-color:#3f4660}
+.cover{height:214px;position:relative;background:#14171f center/cover no-repeat;display:flex;align-items:flex-end;padding:9px}
+.tags{display:flex;gap:4px;flex-wrap:wrap}
+.tag{font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:5px;background:rgba(0,0,0,.66);color:#fff}
+.tag.new{background:#2f9e6e}.tag.pend{background:var(--warn);color:#241a06}
+.tag.syn{background:#6c5ce7}.tag.self{background:#2f7fd4}.tag.cons{background:#2f9e6e}
+.cbody{padding:11px 12px 12px}
+.cbody h3{font-size:13.8px;font-weight:700;line-height:1.35;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:37px}
+.stars{color:var(--gold);font-size:11.5px;letter-spacing:.5px}
+.meta{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--dim);margin-top:5px}
+.who{display:flex;align-items:center;gap:5px}
+.av{width:16px;height:16px;border-radius:50%}
+
+.detail{padding:20px 0 60px;display:grid;grid-template-columns:1fr 346px;gap:26px;align-items:start}
+.hero{height:390px;border-radius:12px;background:#14171f center/cover no-repeat;margin-bottom:10px}
+.angles{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:22px}
+.angles .a{border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#14171f center/cover no-repeat;height:78px;position:relative}
+.angles .a.on{border-color:var(--acc)}
+.angles .a span{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);font-size:9.5px;font-weight:700;text-align:center;padding:2.5px 0}
+h1.tit{font-size:25px;font-weight:800;letter-spacing:-.5px;margin-bottom:9px;line-height:1.3}
+.byline{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--dim);margin-bottom:18px;flex-wrap:wrap}
+.sec{margin-bottom:26px}
+.sec h2{font-size:13px;font-weight:800;color:var(--dim);letter-spacing:.6px;margin-bottom:11px}
+.desc{font-size:14px;line-height:1.85;color:#c9cfe0;white-space:pre-wrap}
+.facegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.fcell{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+.fcell .k{font-size:11px;color:var(--dim);font-weight:700;margin-bottom:3px}
+.fcell .v{font-size:13.5px;font-weight:700}
+
+.side{position:sticky;top:78px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.vtabs{display:flex;gap:2px;padding:9px 9px 0;overflow-x:auto}
+.vtabs button{padding:8px 13px;font-size:12.5px;font-weight:700;color:var(--dim);border-radius:7px 7px 0 0;white-space:nowrap}
+.vtabs button.on{background:var(--panel2);color:#fff}
+.vbody{background:var(--panel2);padding:15px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:12.8px}
+.kv .k{color:var(--dim)}
+.kv .v{text-align:right;font-weight:600}
+.dlstat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 4px}
+.dlstat div{background:#1e2230;border:1px solid var(--line);border-radius:9px;padding:10px 6px;text-align:center}
+.dlstat .n{font-size:17px;font-weight:800;letter-spacing:-.5px}
+.dlstat .l{font-size:10.5px;color:var(--dim);font-weight:700;margin-top:2px}
+.words{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.word{background:#232838;border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-size:11.5px;font-family:Consolas,monospace;cursor:pointer;color:var(--warn)}
+.file{background:#1e2230;border:1px solid var(--line);border-radius:9px;padding:11px;margin-top:11px}
+.fhead{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
+.fname{font-size:12.3px;font-weight:700;word-break:break-all}
+.fsize{font-size:11.5px;color:var(--dim);flex-shrink:0}
+.scan{display:flex;gap:6px;font-size:11.3px;font-weight:700;padding:5px 8px;border-radius:6px;margin-top:6px}
+.scan.ok{background:#1b3a2a;color:var(--ok)}
+.scan.pend{background:#3a2f1b;color:var(--warn)}
+.hash{font-family:Consolas,monospace;font-size:10.2px;color:var(--dim);margin-top:6px;word-break:break-all}
+.dlbtn{width:100%;padding:12px;border-radius:9px;font-weight:800;font-size:14px;margin-top:13px;background:var(--acc);color:#fff}
+.dlbtn:disabled{background:#2b3040;color:#6b7386;cursor:not-allowed}
+.dlbtn.login{background:#2f9e6e}
+.freetag{text-align:center;font-size:11.3px;color:var(--ok);font-weight:700;margin-top:8px}
+
+/* 리뷰 */
+.rsum{display:flex;gap:22px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:17px 20px;margin-bottom:14px}
+.rbig{text-align:center;flex-shrink:0}
+.rbig .n{font-size:34px;font-weight:800;letter-spacing:-1.5px;line-height:1}
+.rbig .s{color:var(--gold);font-size:13px;margin-top:4px}
+.rbig .c{font-size:11.5px;color:var(--dim);margin-top:3px}
+.rbars{flex:1}
+.rbar{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--dim);margin-bottom:3px}
+.rbar .t{width:22px}
+.rbar .track{flex:1;height:6px;background:#232838;border-radius:3px;overflow:hidden}
+.rbar .track i{display:block;height:100%;background:var(--gold)}
+.rbar .cnt{width:26px;text-align:right}
+.rev{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:9px}
+.rhead{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.rhead .nm{font-size:12.8px;font-weight:700}
+.rhead .st{color:var(--gold);font-size:11.5px}
+.rhead .dt{font-size:11.3px;color:var(--dim);margin-left:auto}
+.rtext{font-size:13.3px;line-height:1.75;color:#c9cfe0;white-space:pre-wrap}
+.rform{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:15px;margin-bottom:14px}
+.rstars{display:flex;gap:3px;margin-bottom:10px}
+.rstars button{font-size:23px;color:#3a4055;line-height:1}
+.rstars button.on{color:var(--gold)}
+
+.up{max-width:730px;padding:24px 0 70px}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px}
+.step h2{font-size:15px;font-weight:800;margin-bottom:4px}
+.step .hint{font-size:12.3px;color:var(--dim);margin-bottom:14px;line-height:1.65}
+label.fl{display:block;font-size:12.3px;font-weight:700;color:var(--dim);margin:13px 0 6px}
+.inp{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px;outline:none}
+.inp:focus{border-color:var(--acc)}
+textarea.inp{min-height:92px;resize:vertical;line-height:1.7}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.drop{border:2px dashed var(--line);border-radius:11px;padding:30px;text-align:center;cursor:pointer}
+.drop:hover{border-color:var(--acc);background:#171b26}
+.drop .big{font-size:14.5px;font-weight:700;margin-bottom:5px}
+.drop .sm{font-size:12.3px;color:var(--dim);line-height:1.7}
+.alert{border-radius:9px;padding:12px 14px;font-size:12.6px;line-height:1.7;margin-top:12px}
+.alert.err{background:#2e1a1a;border:1px solid #5a2a2a;color:#ffb3b3}
+.alert.ok{background:#152e22;border:1px solid #2a5a42;color:#b3ffd6}
+.alert.info{background:#1a2333;border:1px solid #2a3f5a;color:#b3d1ff}
+.alert.warn{background:#2e2615;border:1px solid #5a4a2a;color:#ffdca8}
+.alert b{color:#fff}
+.prog{height:5px;background:#232838;border-radius:3px;overflow:hidden;margin-top:10px}
+.prog i{display:block;height:100%;background:var(--acc);width:0;transition:width .25s}
+.consent{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.copt{background:var(--panel2);border:2px solid var(--line);border-radius:10px;padding:13px;cursor:pointer;text-align:left}
+.copt.on{border-color:var(--acc);background:#1b2238}
+.copt .t{font-size:13px;font-weight:700;margin-bottom:4px}
+.copt .d{font-size:11.3px;color:var(--dim);line-height:1.55}
+.anglePrev{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:11px}
+.anglePrev div{height:66px;border-radius:7px;background:#14171f center/cover no-repeat;position:relative}
+.anglePrev span{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);font-size:9px;font-weight:700;text-align:center;padding:2px 0}
+
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.mbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;width:100%;max-width:390px}
+.mbox h2{font-size:19px;font-weight:800;margin-bottom:6px}
+.mbox p{font-size:12.8px;color:var(--dim);line-height:1.7;margin-bottom:16px}
+.empty{text-align:center;padding:66px 20px;color:var(--dim)}
+.empty .big{font-size:16px;font-weight:700;color:var(--tx);margin-bottom:7px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#232838;border:1px solid var(--line);border-radius:10px;padding:12px 20px;font-size:13.3px;font-weight:600;z-index:200;transition:transform .22s;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:#2a5a42}.toast.err{border-color:#5a2a2a}
+.back{font-size:13px;color:var(--dim);font-weight:600;padding:16px 0 0;display:inline-block}
+@media(max-width:900px){.detail{grid-template-columns:1fr}.side{position:static}.facegrid{grid-template-columns:repeat(2,1fr)}}
+
+/* ===== 모바일 대응 =====================================================
+   760px 이하: 헤더를 3단 그리드로 재배치, 카드 2열, 상세 1열
+   380px 이하: 카드 1열, 각도 썸네일 2열
+   입력 폰트는 16px 이상으로 둔다 (iOS 사파리가 16px 미만 입력에 자동 확대를 건다) */
+html{-webkit-text-size-adjust:100%}
+body{overflow-x:hidden}
+@media (max-width:760px){
+  .wrap{padding:0 14px}
+  .hbar{height:auto;padding:10px 0;display:grid;grid-template-columns:1fr auto;
+        grid-template-areas:"logo auth" "search search" "nav nav";gap:9px;align-items:center}
+  .logo{grid-area:logo;font-size:16px}
+  #auth{grid-area:auth;justify-self:end}
+  .search{grid-area:search;max-width:none;margin:0}
+  .search input{font-size:16px;padding:10px 13px 10px 34px}
+  .search .ic{top:10px}
+  nav.top{grid-area:nav;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  nav.top button{flex:0 0 auto;padding:8px 13px}
+  .btn{padding:9px 12px;font-size:13px}
+  .btn.sm{padding:7px 10px;font-size:12px}
+  .me{padding:4px 9px 4px 5px;font-size:12.5px}
+  .me img{width:20px;height:20px}
+
+  .banner{flex-direction:column;align-items:stretch;gap:12px;padding:15px 16px;margin:14px 0 2px}
+  .banner .btn{width:100%}
+
+  .filters{gap:7px;padding:14px 0 10px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .filters>*{flex:0 0 auto}
+  .divider{display:none}
+
+  .grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .cover{height:152px;padding:7px}
+  .tag{font-size:9.5px;padding:2.5px 6px}
+  .cbody{padding:9px 10px 10px}
+  .cbody h3{font-size:12.6px;min-height:34px;margin-bottom:4px}
+  .stars{font-size:10.4px}
+  .meta{font-size:10.5px;margin-top:4px}
+
+  .detail{grid-template-columns:1fr;gap:18px;padding:12px 0 50px}
+  h1.tit{font-size:20px}
+  .byline{font-size:12px;margin-bottom:14px}
+  .hero{height:300px}
+  .angles{grid-template-columns:repeat(3,1fr);gap:7px}
+  .angles .a{height:96px}
+  .angles .a span{font-size:9.5px;padding:3px 0}
+  .facegrid{grid-template-columns:repeat(2,1fr)}
+  .side{position:static}
+  .desc{font-size:13.4px}
+  .sec{margin-bottom:22px}
+
+  .rsum{flex-direction:column;align-items:stretch;gap:13px;padding:15px 16px}
+  .rbig{display:flex;align-items:center;gap:11px;text-align:left}
+  .rbig .n{font-size:27px}
+  .rbig .s,.rbig .c{margin-top:0}
+  .rev{padding:12px 13px}
+  .rhead{flex-wrap:wrap;gap:6px}
+  .rhead .dt{margin-left:auto}
+  .rtext{font-size:12.8px}
+
+  .up{padding:12px 0 50px}
+  .step{padding:16px}
+  .two,.three{grid-template-columns:1fr}
+  .consent{grid-template-columns:1fr}
+  .copt{padding:12px}
+  .anglePrev{grid-template-columns:repeat(3,1fr);gap:7px}
+  .anglePrev div{height:84px}
+  .drop{padding:24px 16px}
+  .inp{font-size:16px}
+  .mbox{padding:22px}
+  .mbox h2{font-size:18px}
+
+  .dlstat .n{font-size:16px}
+  .toast{left:14px;right:14px;transform:translateY(80px);max-width:none;text-align:center}
+  .toast.show{transform:translateY(0)}
+}
+@media (max-width:430px){
+  #auth{gap:6px}
+  .me span{display:none}          /* 닉네임 숨기고 아바타만 */
+  .me{padding:4px 6px}
+  .btn{padding:8px 10px;font-size:12.5px}
+  .btn.sm{padding:7px 9px;font-size:11.5px}
+  .logo{font-size:15px}
+  .logo .mark{width:23px;height:23px;font-size:11px}
+  .banner h2{font-size:14.5px}
+}
+@media (max-width:340px){
+  .grid{grid-template-columns:1fr;gap:12px}
+  .cover{height:200px}
+  .angles{grid-template-columns:repeat(2,1fr)}
+  .anglePrev{grid-template-columns:repeat(2,1fr)}
+  .facegrid{grid-template-columns:1fr}
+  .hero{height:260px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap hbar">
+    <button class="logo" onclick="go('browse')"><span class="mark">얼</span><span>페이스나루</span></button>
+    <nav class="top" id="nav"></nav>
+    <div class="search"><span class="ic">&#128269;</span>
+      <input id="q" type="text" placeholder="모델명, 태그, 제작자 검색" autocomplete="off"></div>
+    <div id="auth"></div>
+  </div>
+</header>
+<main id="app" class="wrap"></main>
+<div id="modal"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ===========================================================================
+   페이스나루 — 얼굴 모델 전문 공유 플랫폼 (프로토타입)
+   의존성 0 / 빌드 0. index.html 을 브라우저로 열면 바로 동작.
+   =========================================================================== */
+
+const $ = id => document.getElementById(id);
+const fmt = n => n >= 10000 ? (n/1000).toFixed(0)+'K' : n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n);
+const mb = kb => kb >= 1048576 ? (kb/1048576).toFixed(2)+' GB' : kb >= 1024 ? (kb/1024).toFixed(0)+' MB'
+               : kb >= 1 ? kb.toFixed(0)+' KB' : Math.round(kb*1024)+' B';
+const DAY = 86400000;
+const today = () => new Date().toISOString().slice(0,10);
+const dstr = ts => new Date(ts).toLocaleDateString('ko-KR',{month:'long',day:'numeric'});
+function hashCode(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0; } return Math.abs(h); }
+
+/* ── SHA-256 (crypto.subtle 없으면 순수 JS 폴백. file:// 대응) ──────────── */
+const SHA_K = new Uint32Array([
+0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+const rotr = (x,n) => ((x>>>n)|(x<<(32-n)))>>>0;
+function sha256Hex(u8){
+  const H=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+  const ml=u8.length, total=((ml+9+63)>>6)<<6;
+  const m=new Uint8Array(total); m.set(u8); m[ml]=0x80;
+  const dv=new DataView(m.buffer), bits=ml*8;
+  dv.setUint32(total-8, Math.floor(bits/4294967296)); dv.setUint32(total-4, bits>>>0);
+  const w=new Uint32Array(64);
+  for(let off=0; off<total; off+=64){
+    for(let i=0;i<16;i++) w[i]=dv.getUint32(off+i*4);
+    for(let i=16;i<64;i++){ const p=w[i-15],q=w[i-2];
+      w[i]=(w[i-16]+((rotr(p,7)^rotr(p,18)^(p>>>3))>>>0)+w[i-7]+((rotr(q,17)^rotr(q,19)^(q>>>10))>>>0))>>>0; }
+    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(let i=0;i<64;i++){
+      const t1=(h+((rotr(e,6)^rotr(e,11)^rotr(e,25))>>>0)+(((e&f)^(~e&g))>>>0)+SHA_K[i]+w[i])>>>0;
+      const t2=(((rotr(a,2)^rotr(a,13)^rotr(a,22))>>>0)+(((a&b)^(a&c)^(b&c))>>>0))>>>0;
+      h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    }
+    H[0]=(H[0]+a)>>>0;H[1]=(H[1]+b)>>>0;H[2]=(H[2]+c)>>>0;H[3]=(H[3]+d)>>>0;
+    H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;
+  }
+  let o=''; for(let i=0;i<8;i++) o+=H[i].toString(16).padStart(8,'0'); return o;
+}
+async function hashFile(file, limitMB){
+  if(file.size > limitMB*1024*1024) return { hash:null, why:'size' };
+  const buf = await file.arrayBuffer();
+  try{ if(typeof crypto!=='undefined' && crypto.subtle){
+    const d=await crypto.subtle.digest('SHA-256', buf);
+    return { hash:[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join(''), why:'subtle' };
+  } }catch(e){}
+  return { hash: sha256Hex(new Uint8Array(buf)), why:'js' };
+}
+
+/* ── 얼굴 각도 6방향 ──────────────────────────────────────────────────── */
+const ANGLES = [
+  { k:'front', ko:'정면',      dx:0,   eye:0,   tilt:0,   sx:1    },
+  { k:'l45',   ko:'좌 45°',   dx:-5,  eye:-6,  tilt:-8,  sx:0.90 },
+  { k:'r45',   ko:'우 45°',   dx:5,   eye:6,   tilt:8,   sx:0.90 },
+  { k:'left',  ko:'좌 측면',  dx:-11, eye:-13, tilt:-15, sx:0.70 },
+  { k:'right', ko:'우 측면',  dx:11,  eye:13,  tilt:15,  sx:0.70 },
+  { k:'up',    ko:'하이앵글', dx:0,   eye:0,   tilt:0,   sx:1, lift:9, sy:0.88 }
+];
+
+/* 각도별 얼굴 프리뷰를 외부 요청 없이 결정적으로 생성.
+   실제 서비스에서는 이 함수 자리에 생성 파이프라인(모델 + 6각도 프롬프트) 결과가 들어간다. */
+function faceImg(seed, ai, w, h){
+  const a = ANGLES[ai] || ANGLES[0];
+  const n = hashCode(seed), hue=n%360, hue2=(hue+48+n%60)%360;
+  /* 시드마다 골격·헤어·이목구비가 달라지도록 결정적으로 변주 */
+  const rx = 21 + n%7, ry = 27 + (n>>3)%8;
+  const skin = 'hsl('+(16+n%16)+','+(28+(n>>5)%16)+'%,'+(56+(n>>2)%20)+'%)';
+  const hair = 'hsl('+((n>>4)%40)+','+(15+(n>>6)%40)+'%,'+(9+(n>>1)%22)+'%)';
+  const hairType = n%4, eyeR = 2.8+((n>>7)%3)*0.5, browY = (n>>8)%3;
+  const cx = 50 + a.dx, lift = a.lift||0, ey = 47 - lift*0.5;
+  const hairPath = hairType===0
+      ? 'M'+(cx-rx-2)+' '+(52-lift)+' q'+(rx+2)+' -34 '+(2*rx+4)+' 0 q-5 -22 -'+(rx+2)+' -22 q-'+(rx+2)+' 0 -'+(rx+2)+' 22 z'
+      : hairType===1
+      ? 'M'+(cx-rx-3)+' '+(56-lift)+' q2 -36 '+(rx+3)+' -36 q'+(rx+3)+' 0 '+(rx+3)+' 36 q-4 -14 -'+(rx+3)+' -14 q-'+(rx+3)+' 0 -'+(rx+3)+' 14 z'
+      : hairType===2
+      ? 'M'+(cx-rx)+' '+(48-lift)+' q'+rx+' -30 '+(2*rx)+' 0 q-3 -18 -'+rx+' -18 q-'+rx+' 0 -'+rx+' 18 z'
+      : 'M'+(cx-rx-4)+' '+(70-lift)+' q-2 -44 '+(rx+4)+' -44 q'+(rx+4)+' 0 '+(rx+4)+' 44 q-6 -30 -'+(rx+4)+' -30 q-'+(rx+4)+' 0 -'+(rx+4)+' 30 z';
+  const svg =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 100 124" preserveAspectRatio="xMidYMid slice">'
+  +'<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">'
+  +'<stop offset="0%" stop-color="hsl('+hue+',52%,34%)"/><stop offset="100%" stop-color="hsl('+hue2+',46%,15%)"/></linearGradient>'
+  +'<radialGradient id="gl" cx="50%" cy="34%"><stop offset="0%" stop-color="hsla('+hue2+',85%,72%,.40)"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs>'
+  +'<rect width="100" height="124" fill="url(#bg)"/><rect width="100" height="124" fill="url(#gl)"/>'
+  +'<g transform="rotate('+a.tilt+' '+cx+' 56) translate('+cx+' 56) scale('+(a.sx||1)+' '+(a.sy||1)+') translate('+(-cx)+' -56)">'
+  +'<path d="M'+(cx-rx-7)+' 124 q0 -30 '+(rx+7)+' -30 q'+(rx+7)+' 0 '+(rx+7)+' 30 z" fill="'+skin+'" opacity=".9"/>'
+  +'<ellipse cx="'+cx+'" cy="'+(56-lift)+'" rx="'+rx+'" ry="'+ry+'" fill="'+skin+'"/>'
+  +'<path d="'+hairPath+'" fill="'+hair+'"/>'
+  +'<path d="M'+(cx-12+a.eye)+' '+(ey-5-browY)+' q5 -2.4 10 0" stroke="'+hair+'" stroke-width="1.5" fill="none" stroke-linecap="round"/>'
+  +'<path d="M'+(cx+2+a.eye)+' '+(ey-5-browY)+' q5 -2.4 10 0" stroke="'+hair+'" stroke-width="1.5" fill="none" stroke-linecap="round"/>'
+  +'<ellipse cx="'+(cx-8+a.eye)+'" cy="'+ey+'" rx="'+(eyeR*(a.eye>0?Math.max(0.35,1-a.eye*0.055):1))+'" ry="2.2" fill="#20242e"/>'
+  +'<ellipse cx="'+(cx+8+a.eye)+'" cy="'+ey+'" rx="'+(eyeR*(a.eye<0?Math.max(0.35,1+a.eye*0.055):1))+'" ry="2.2" fill="#20242e"/>'
+  +'<path d="M'+(cx+a.eye*0.7)+' '+(ey+4)+' l0 '+(6+n%4)+' l'+(3+a.eye*0.2)+' 2" stroke="hsla(20,30%,28%,.45)" stroke-width="1.3" fill="none" stroke-linecap="round"/>'
+  +'<path d="M'+(cx-6+a.eye*0.8)+' '+(ey+14+(n>>9)%4)+' q6 '+(3+n%4)+' 12 0" stroke="hsla(8,48%,36%,.62)" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
+  +'</g></svg>';
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+function avatar(name){
+  const n=hashCode(name);
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="16" fill="hsl('+(n%360)+',55%,48%)"/></svg>');
+}
+
+/* ── 얼굴 모델 분류 축 ────────────────────────────────────────────────── */
+const KINDS   = { FaceLORA:'얼굴 LoRA', FaceEmbed:'얼굴 임베딩', PortraitCkpt:'인물 체크포인트' };
+const GENDERS = { female:'여성', male:'남성', neutral:'중성' };
+const AGES    = { teen:'10대', twenties:'20대', thirties:'30대', forties:'40대', senior:'50대+' };
+const STYLES  = { real:'실사', semi:'반실사', anime:'애니', illust:'일러스트' };
+const BASES   = ['SD 1.5','SDXL 1.0','Pony','Illustrious','FLUX.1 D'];
+/* 초상권 동의 구분 — 얼굴 전문 사이트의 핵심 통제 장치 */
+const CONSENT = {
+  synthetic: { ko:'가상 인물',   cls:'syn',  d:'실존하지 않는 합성 얼굴' },
+  self:      { ko:'본인 얼굴',   cls:'self', d:'업로더 본인의 얼굴' },
+  consented: { ko:'동의 확보',   cls:'cons', d:'대상자 서면 동의 확보' }
+};
+
+/* ── 시드 데이터 ──────────────────────────────────────────────────────── */
+function mkLog(n, spreadDays){
+  const now = Date.now(), out = [];
+  for(let i=0;i<n;i++) out.push(now - Math.floor(Math.random()*spreadDays*DAY));
+  return out.sort((a,b)=>a-b);
+}
+const SEED = [
+ { name:'한국인 20대 여성 실사 얼굴', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
+   consent:'synthetic', user:'narumaker', base:'Illustrious',
+   desc:'실존 인물이 아닌 합성 얼굴 3,200장으로 학습한 한국인 20대 여성 얼굴 LoRA입니다.\n\n서양 베이스 모델에서 동양인을 생성할 때 생기는 과도한 코 그림자와 깊은 안와를 줄이는 데 집중했습니다. 정면과 45도에서 가장 안정적이며, 완전 측면은 턱선이 흔들릴 수 있습니다.\n\n강도 0.7 부근을 권장합니다.',
+   tags:['한국인','20대','여성','실사'], words:['korean_face_f20','natural skin'], sMin:0.6, sMax:0.8, clip:2,
+   kb:147456, dl:18420, log:mkLog(340,9),
+   reviews:[
+     { u:'pixelkim', r:5, t:'동양인 얼굴 뽑을 때 항상 코 그림자가 문제였는데 이걸로 해결됐습니다. 강도 0.7이 제일 자연스러워요.', at:Date.now()-3*DAY },
+     { u:'studio_han', r:4, t:'정면은 완벽한데 측면에서 턱선이 살짝 흔들립니다. 그래도 이 정도면 충분히 만족.', at:Date.now()-6*DAY },
+     { u:'yunji', r:5, t:'합성 얼굴로 학습했다는 점이 마음에 듭니다. 상업 작업에 안심하고 씁니다.', at:Date.now()-11*DAY }
+   ] },
+ { name:'30대 남성 중후한 인상', kind:'FaceLORA', gender:'male', age:'thirties', style:'real',
+   consent:'synthetic', user:'faceforge', base:'SDXL 1.0',
+   desc:'30대 남성의 중후하고 신뢰감 있는 인상을 목표로 학습했습니다. 광고·프로필 이미지 용도로 설계했습니다.',
+   tags:['남성','30대','실사','프로필'], words:['mature_male_30','confident look'], sMin:0.5, sMax:0.85, clip:1,
+   kb:151552, dl:9240, log:mkLog(180,8),
+   reviews:[
+     { u:'adshop', r:5, t:'광고 시안용으로 딱입니다. 모델 섭외 전에 콘셉트 잡을 때 매우 유용해요.', at:Date.now()-2*DAY },
+     { u:'kimdev', r:4, t:'좋은데 안경 쓴 결과가 잘 안 나옵니다. 다음 버전에 반영되면 좋겠네요.', at:Date.now()-9*DAY }
+   ] },
+ { name:'반실사 소녀 얼굴 임베딩', kind:'FaceEmbed', gender:'female', age:'teen', style:'semi',
+   consent:'synthetic', user:'softline', base:'Pony',
+   desc:'반실사 스타일의 얼굴 임베딩입니다. 파일이 가벼워 여러 개를 동시에 얹기 좋습니다.',
+   tags:['반실사','임베딩','여성'], words:['semi_real_girl'], sMin:0.4, sMax:0.7, clip:2,
+   kb:2048, dl:5180, log:mkLog(120,10),
+   reviews:[{ u:'mochi', r:4, t:'용량 대비 성능이 좋습니다. 다른 LoRA랑 충돌도 적어요.', at:Date.now()-5*DAY }] },
+ { name:'40대 배우 느낌 인물 체크포인트', kind:'PortraitCkpt', gender:'neutral', age:'forties', style:'real',
+   consent:'consented', user:'portraitlab', base:'SDXL 1.0',
+   desc:'모델 에이전시와 계약한 전문 모델 12인의 서면 동의를 받아 촬영·학습한 인물 전용 체크포인트입니다.\n\n동의서 사본은 운영팀이 보관하며, 대상자 요청 시 즉시 내려갑니다.',
+   tags:['40대','실사','체크포인트','상업'], words:[], sMin:null, sMax:null, clip:1,
+   kb:6606028, dl:41200, log:mkLog(520,10),
+   reviews:[
+     { u:'studioB', r:5, t:'동의 절차가 투명해서 상업 프로젝트에 쓰기 편합니다. 품질도 최상위권.', at:Date.now()-1*DAY },
+     { u:'neowave', r:5, t:'40대 표현이 자연스럽습니다. 주름을 과하게 넣지 않은 게 좋네요.', at:Date.now()-4*DAY },
+     { u:'hyeon', r:3, t:'용량이 6GB라 로컬에서 돌리기 부담스럽습니다. fp16 버전도 올려주세요.', at:Date.now()-8*DAY }
+   ] },
+ { name:'애니 스타일 얼굴 LoRA', kind:'FaceLORA', gender:'female', age:'twenties', style:'anime',
+   consent:'synthetic', user:'linedraw', base:'Illustrious',
+   desc:'애니메이션 화풍의 얼굴 전용 LoRA입니다. 눈동자 하이라이트가 뭉개지지 않도록 반복 학습했습니다.',
+   tags:['애니','여성','일러스트'], words:['anime_face','detailed eyes'], sMin:0.6, sMax:1.0, clip:2,
+   kb:82944, dl:12800, log:mkLog(260,7),
+   reviews:[{ u:'toonup', r:5, t:'눈 디테일이 확실히 살아납니다.', at:Date.now()-7*DAY }] },
+ { name:'50대 시니어 자연스러운 얼굴', kind:'FaceLORA', gender:'neutral', age:'senior', style:'real',
+   consent:'self', user:'seniorface', base:'SD 1.5',
+   desc:'업로더 본인의 얼굴을 직접 촬영해 학습했습니다. 시니어 모델이 부족해서 직접 만들었습니다.',
+   tags:['시니어','50대','실사'], words:['senior_face','natural aging'], sMin:0.5, sMax:0.8, clip:2,
+   kb:139264, dl:2870, log:mkLog(70,11),
+   reviews:[{ u:'greydoc', r:5, t:'시니어 얼굴 모델이 정말 귀한데 감사합니다.', at:Date.now()-12*DAY }] }
+];
+
+/* 매일 자동 등록될 후보 풀 */
+const POOL = [
+ { name:'20대 남성 캐주얼 얼굴', kind:'FaceLORA', gender:'male', age:'twenties', style:'real', consent:'synthetic', base:'SDXL 1.0', tags:['남성','20대','실사'], words:['casual_male_20'] },
+ { name:'30대 여성 커리어 인상', kind:'FaceLORA', gender:'female', age:'thirties', style:'real', consent:'synthetic', base:'Illustrious', tags:['여성','30대','실사','프로필'], words:['career_woman_30'] },
+ { name:'10대 애니 소년 얼굴', kind:'FaceLORA', gender:'male', age:'teen', style:'anime', consent:'synthetic', base:'Pony', tags:['애니','남성','10대'], words:['anime_boy_face'] },
+ { name:'중성적 얼굴 임베딩', kind:'FaceEmbed', gender:'neutral', age:'twenties', style:'semi', consent:'synthetic', base:'SDXL 1.0', tags:['중성','임베딩'], words:['androgynous_face'] },
+ { name:'40대 여성 온화한 인상', kind:'FaceLORA', gender:'female', age:'forties', style:'real', consent:'synthetic', base:'SDXL 1.0', tags:['여성','40대','실사'], words:['gentle_woman_40'] },
+ { name:'일러스트 남성 얼굴', kind:'FaceLORA', gender:'male', age:'thirties', style:'illust', consent:'synthetic', base:'FLUX.1 D', tags:['일러스트','남성'], words:['illust_male_face'] },
+ { name:'시니어 남성 인물 체크포인트', kind:'PortraitCkpt', gender:'male', age:'senior', style:'real', consent:'consented', base:'SDXL 1.0', tags:['시니어','남성','체크포인트'], words:[] },
+ { name:'반실사 20대 여성 얼굴', kind:'FaceLORA', gender:'female', age:'twenties', style:'semi', consent:'synthetic', base:'Illustrious', tags:['반실사','여성','20대'], words:['semi_real_f20'] },
+ { name:'10대 실사 얼굴 (교복 콘셉트 제외)', kind:'FaceLORA', gender:'neutral', age:'teen', style:'real', consent:'synthetic', base:'SD 1.5', tags:['10대','실사'], words:['teen_face_neutral'] }
+];
+
+/* ── 저장소 ──────────────────────────────────────────────────────────── */
+const KEY='facenaru.v1';
+let DB = load();
+function load(){
+  try{ const r=localStorage.getItem(KEY); if(r) return JSON.parse(r); }catch(e){}
+  const models = SEED.map((s,i)=>mkModel(s, i+1, Date.now()-(9-i)*DAY));
+  return { models, nextId:100, poolIdx:0, lastAuto:null, user:null, saved:[] };
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
+
+function mkModel(s, id, createdAt){
+  return { id, name:s.name, kind:s.kind, gender:s.gender, age:s.age, style:s.style,
+    consent:s.consent, user:s.user||'auto-bot', base:s.base,
+    desc:s.desc || '얼굴 모델입니다. 상세 설명은 곧 보강됩니다.',
+    tags:s.tags||[], words:s.words||[], sMin:s.sMin??0.6, sMax:s.sMax??0.8, clip:s.clip??2,
+    createdAt,
+    angles: ANGLES.map(a=>a.k),
+    file:{ name:(s.name.replace(/[^a-zA-Z0-9가-힣]/g,'_').slice(0,24))+'.safetensors',
+           kb:s.kb||131072, scan:'Success',
+           sha:[...Array(64)].map((_,i)=>'0123456789abcdef'[hashCode(s.name+i)%16]).join('') },
+    dl:s.dl||0, log:s.log||[], reviews:s.reviews||[] };
+}
+
+/* 다운로드 카운팅: 총 / 오늘 / 최근 7일 */
+function dlStats(m){
+  const now=Date.now();
+  const tdy = m.log.filter(t=>new Date(t).toISOString().slice(0,10)===today()).length;
+  const wk  = m.log.filter(t=>now-t <= 7*DAY).length;
+  return { total:m.dl, today:tdy, week:wk };
+}
+function avgRating(m){
+  if(!m.reviews.length) return 0;
+  return m.reviews.reduce((s,r)=>s+r.r,0)/m.reviews.length;
+}
+function starStr(v){ const f=Math.round(v); return '★★★★★'.slice(0,f)+'☆☆☆☆☆'.slice(0,5-f); }
+
+/* ── 매일 자동 업로드 ─────────────────────────────────────────────────── */
+const AUTO_PER_DAY = 3;
+function runDailyAuto(force){
+  if(!force && DB.lastAuto === today()) return 0;
+  let added=0;
+  for(let i=0;i<AUTO_PER_DAY;i++){
+    const s = POOL[DB.poolIdx % POOL.length]; DB.poolIdx++;
+    const m = mkModel(Object.assign({}, s, { dl:0, log:[] }), DB.nextId++, Date.now());
+    m.user='auto-bot'; m.auto=true;
+    DB.models.unshift(m); added++;
+  }
+  DB.lastAuto = today(); save();
+  return added;
+}
+
+/* ── 인증 (간단 로그인) ───────────────────────────────────────────────── */
+function login(nick, email){
+  if(!nick.trim()) return toast('닉네임을 입력해주세요','err');
+  DB.user = { nick:nick.trim(), email:email.trim() }; save(); closeModal();
+  toast(DB.user.nick+'님 환영합니다. 이제 모든 모델을 무료로 받을 수 있습니다.','ok');
+  render();
+}
+function logout(){ DB.user=null; save(); toast('로그아웃했습니다'); render(); }
+function requireLogin(reason){
+  if(DB.user) return true;
+  openLogin(reason); return false;
+}
+
+/* ── 라우팅 ──────────────────────────────────────────────────────────── */
+let view='browse', curId=null, curAngle=0;
+let filt={ kind:'', gender:'', age:'', style:'', sort:'dl', q:'' };
+function go(v,id){ view=v; if(id!=null){curId=id;curAngle=0;} window.scrollTo(0,0); render(); }
+function toast(msg,kind){ const t=$('toast'); t.textContent=msg; t.className='toast show '+(kind||'');
+  clearTimeout(t._h); t._h=setTimeout(()=>{t.className='toast '+(kind||'');},2400); }
+function copy(text,label){ const ta=document.createElement('textarea'); ta.value=text;
+  ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); toast((label||'복사')+' 완료','ok'); }catch(e){ toast('복사 실패','err'); }
+  document.body.removeChild(ta); }
+function closeModal(){ $('modal').textContent=''; }
+
+/* ── 로그인 모달 ─────────────────────────────────────────────────────── */
+function openLogin(reason){
+  const m=$('modal'); m.textContent='';
+  const ov=document.createElement('div'); ov.className='modal';
+  ov.onclick=e=>{ if(e.target===ov) closeModal(); };
+  const box=document.createElement('div'); box.className='mbox';
+  const h=document.createElement('h2'); h.textContent='간단 로그인'; box.appendChild(h);
+  const p=document.createElement('p');
+  p.textContent = reason || '닉네임만 있으면 됩니다. 비밀번호도, 인증 메일도 없습니다. 로그인하면 모든 모델을 무료로 내려받고 업로드할 수 있습니다.';
+  box.appendChild(p);
+  const l1=document.createElement('label'); l1.className='fl'; l1.textContent='닉네임 *'; box.appendChild(l1);
+  const i1=document.createElement('input'); i1.className='inp'; i1.placeholder='예: 나루창작자'; box.appendChild(i1);
+  const l2=document.createElement('label'); l2.className='fl'; l2.textContent='이메일 (선택)'; box.appendChild(l2);
+  const i2=document.createElement('input'); i2.className='inp'; i2.placeholder='알림 받을 주소'; box.appendChild(i2);
+  const row=document.createElement('div'); row.style.cssText='display:flex;gap:9px;margin-top:18px';
+  const c=document.createElement('button'); c.className='btn ghost'; c.textContent='취소'; c.onclick=closeModal;
+  const s=document.createElement('button'); s.className='btn'; s.style.flex='1'; s.textContent='시작하기';
+  s.onclick=()=>login(i1.value,i2.value);
+  i1.onkeydown=e=>{ if(e.key==='Enter') login(i1.value,i2.value); };
+  row.appendChild(c); row.appendChild(s); box.appendChild(row);
+  ov.appendChild(box); m.appendChild(ov); i1.focus();
+}
+
+/* ── 렌더 ────────────────────────────────────────────────────────────── */
+function render(){
+  const nav=$('nav'); nav.textContent='';
+  [['browse','모델 탐색'],['mine','내 모델']].forEach(([k,l])=>{
+    const b=document.createElement('button'); b.textContent=l; if(view===k)b.className='on';
+    b.onclick=()=>go(k); nav.appendChild(b); });
+
+  const au=$('auth'); au.textContent='';
+  au.style.cssText='display:flex;align-items:center;gap:9px';
+  if(DB.user){
+    const me=document.createElement('div'); me.className='me';
+    const im=document.createElement('img'); im.src=avatar(DB.user.nick); im.alt='';
+    const nm=document.createElement('span'); nm.textContent=DB.user.nick;
+    me.appendChild(im); me.appendChild(nm); au.appendChild(me);
+    const up=document.createElement('button'); up.className='btn'; up.textContent='+ 업로드'; up.onclick=()=>go('upload'); au.appendChild(up);
+    const lo=document.createElement('button'); lo.className='btn ghost sm'; lo.textContent='로그아웃'; lo.onclick=logout; au.appendChild(lo);
+  } else {
+    const li=document.createElement('button'); li.className='btn ghost'; li.textContent='로그인'; li.onclick=()=>openLogin(); au.appendChild(li);
+    const up=document.createElement('button'); up.className='btn'; up.textContent='+ 업로드'; up.onclick=()=>go('upload'); au.appendChild(up);
+  }
+
+  const app=$('app'); app.textContent='';
+  if(view==='browse') renderBrowse(app);
+  else if(view==='detail') renderDetail(app);
+  else if(view==='upload') renderUpload(app);
+  else if(view==='mine') renderMine(app);
+}
+
+function matches(m){
+  if(filt.kind && m.kind!==filt.kind) return false;
+  if(filt.gender && m.gender!==filt.gender) return false;
+  if(filt.age && m.age!==filt.age) return false;
+  if(filt.style && m.style!==filt.style) return false;
+  const q=filt.q.trim().toLowerCase();
+  if(q){ const hay=(m.name+' '+m.user+' '+m.tags.join(' ')+' '+m.words.join(' ')+' '+m.base).toLowerCase();
+    if(!hay.includes(q)) return false; }
+  return true;
+}
+
+function renderBrowse(app){
+  /* 매일 자동 등록 배너 */
+  const todayCnt = DB.models.filter(m=>new Date(m.createdAt).toISOString().slice(0,10)===today()).length;
+  const bn=document.createElement('div'); bn.className='banner';
+  const bt=document.createElement('div'); bt.className='t';
+  const bh=document.createElement('h2'); bh.textContent='매일 새 얼굴 모델이 올라옵니다';
+  const bp=document.createElement('p');
+  bp.textContent='자동 등록 봇이 하루 '+AUTO_PER_DAY+'개씩 새 모델을 올립니다. 오늘 등록된 모델 '+todayCnt+'개 · 마지막 실행 '+(DB.lastAuto||'없음');
+  bt.appendChild(bh); bt.appendChild(bp); bn.appendChild(bt);
+  const brun=document.createElement('button'); brun.className='btn ghost'; brun.textContent='지금 실행';
+  brun.onclick=()=>{ const n=runDailyAuto(true); toast('새 모델 '+n+'개를 등록했습니다','ok'); render(); };
+  bn.appendChild(brun); app.appendChild(bn);
+
+  const f=document.createElement('div'); f.className='filters';
+  const chip=(label,on,fn)=>{ const b=document.createElement('button'); b.className='chip'+(on?' on':''); b.textContent=label; b.onclick=fn; f.appendChild(b); };
+  chip('전체', !filt.kind, ()=>{filt.kind='';render();});
+  Object.keys(KINDS).forEach(k=>chip(KINDS[k], filt.kind===k, ()=>{filt.kind=k;render();}));
+  const d1=document.createElement('div'); d1.className='divider'; f.appendChild(d1);
+  const mkSel=(key,all,map)=>{ const s=document.createElement('select'); s.className='sel';
+    [['',all],...Object.keys(map).map(k=>[k,map[k]])].forEach(([v,l])=>{ const o=document.createElement('option'); o.value=v; o.textContent=l; if(filt[key]===v)o.selected=true; s.appendChild(o); });
+    s.onchange=()=>{filt[key]=s.value;render();}; f.appendChild(s); };
+  mkSel('gender','성별 전체',GENDERS); mkSel('age','연령 전체',AGES); mkSel('style','스타일 전체',STYLES);
+  const d2=document.createElement('div'); d2.className='divider'; f.appendChild(d2);
+  const so=document.createElement('select'); so.className='sel';
+  [['dl','다운로드순'],['rating','평점순'],['reviews','리뷰많은순'],['new','최신순']].forEach(([v,l])=>{
+    const o=document.createElement('option'); o.value=v; o.textContent=l; if(filt.sort===v)o.selected=true; so.appendChild(o); });
+  so.onchange=()=>{filt.sort=so.value;render();}; f.appendChild(so);
+  app.appendChild(f);
+
+  let list=DB.models.filter(matches);
+  list.sort((a,b)=> filt.sort==='rating' ? avgRating(b)-avgRating(a)
+                  : filt.sort==='reviews' ? b.reviews.length-a.reviews.length
+                  : filt.sort==='new' ? b.createdAt-a.createdAt : b.dl-a.dl);
+  if(!list.length){ app.appendChild(emptyBox('검색 결과가 없습니다','다른 키워드나 필터를 시도해보세요')); return; }
+  app.appendChild(gridOf(list));
+}
+
+function renderMine(app){
+  if(!DB.user){ app.appendChild(emptyBox('로그인이 필요합니다','닉네임만 입력하면 바로 시작할 수 있습니다')); return; }
+  const list=DB.models.filter(m=>m.user===DB.user.nick);
+  if(!list.length){ app.appendChild(emptyBox('올린 모델이 없습니다','+ 업로드 버튼으로 첫 얼굴 모델을 등록해보세요')); return; }
+  const lab=document.createElement('div'); lab.className='seclabel';
+  const t=document.createElement('span'); t.textContent=DB.user.nick+'님이 올린 모델 '+list.length+'개';
+  const ln=document.createElement('span'); ln.className='ln';
+  lab.appendChild(t); lab.appendChild(ln); app.appendChild(lab);
+  app.appendChild(gridOf(list));
+}
+
+function emptyBox(t1,t2){ const e=document.createElement('div'); e.className='empty';
+  const a=document.createElement('div'); a.className='big'; a.textContent=t1;
+  const b=document.createElement('div'); b.textContent=t2; e.appendChild(a); e.appendChild(b); return e; }
+
+function gridOf(list){
+  const g=document.createElement('div'); g.className='grid';
+  list.forEach(m=>{
+    const c=document.createElement('div'); c.className='card'; c.onclick=()=>go('detail',m.id);
+    const cv=document.createElement('div'); cv.className='cover';
+    cv.style.backgroundImage='url("'+faceImg(m.name,0,300,280)+'")';
+    const tg=document.createElement('div'); tg.className='tags';
+    const t1=document.createElement('span'); t1.className='tag'; t1.textContent=KINDS[m.kind]; tg.appendChild(t1);
+    const cs=CONSENT[m.consent];
+    const t2=document.createElement('span'); t2.className='tag '+cs.cls; t2.textContent=cs.ko; tg.appendChild(t2);
+    if(new Date(m.createdAt).toISOString().slice(0,10)===today()){
+      const t3=document.createElement('span'); t3.className='tag new'; t3.textContent='오늘 등록'; tg.appendChild(t3); }
+    if(m.file.scan!=='Success'){ const t4=document.createElement('span'); t4.className='tag pend'; t4.textContent='스캔 대기'; tg.appendChild(t4); }
+    cv.appendChild(tg); c.appendChild(cv);
+    const b=document.createElement('div'); b.className='cbody';
+    const h3=document.createElement('h3'); h3.textContent=m.name; b.appendChild(h3);
+    const av=avgRating(m);
+    const st=document.createElement('div'); st.className='stars';
+    st.textContent = m.reviews.length ? starStr(av)+'  '+av.toFixed(1)+' ('+m.reviews.length+')' : '☆☆☆☆☆  리뷰 없음';
+    if(!m.reviews.length) st.style.color='var(--dim)';
+    b.appendChild(st);
+    const mt=document.createElement('div'); mt.className='meta';
+    const who=document.createElement('div'); who.className='who';
+    const ai=document.createElement('img'); ai.className='av'; ai.src=avatar(m.user); ai.alt='';
+    const un=document.createElement('span'); un.textContent=m.user;
+    who.appendChild(ai); who.appendChild(un);
+    const dls=document.createElement('span'); dls.textContent='\u2193 '+fmt(m.dl);
+    mt.appendChild(who); mt.appendChild(dls); b.appendChild(mt);
+    c.appendChild(b); g.appendChild(c);
+  });
+  return g;
+}
+
+/* ── 상세 ───────────────────────────────────────────────────────────── */
+function renderDetail(app){
+  const m=DB.models.find(x=>x.id===curId); if(!m){ go('browse'); return; }
+  const back=document.createElement('button'); back.className='back'; back.textContent='\u2190 모델 탐색으로'; back.onclick=()=>go('browse'); app.appendChild(back);
+
+  const wrap=document.createElement('div'); wrap.className='detail';
+  const left=document.createElement('div');
+  const h1=document.createElement('h1'); h1.className='tit'; h1.textContent=m.name; left.appendChild(h1);
+
+  const by=document.createElement('div'); by.className='byline';
+  const av=document.createElement('img'); av.className='av'; av.style.width='22px'; av.style.height='22px'; av.src=avatar(m.user); av.alt='';
+  const nm=document.createElement('b'); nm.textContent=m.user;
+  const ar=avgRating(m);
+  const rt=document.createElement('span'); rt.innerText='\u00b7 '+(m.reviews.length?starStr(ar)+' '+ar.toFixed(1)+' ('+m.reviews.length+'개 리뷰)':'리뷰 없음')+' \u00b7 '+dstr(m.createdAt)+' 등록';
+  by.appendChild(av); by.appendChild(nm); by.appendChild(rt); left.appendChild(by);
+
+  /* 6방향 각도 사진 */
+  const hero=document.createElement('div'); hero.className='hero';
+  hero.style.backgroundImage='url("'+faceImg(m.name,curAngle,760,780)+'")'; left.appendChild(hero);
+  const ang=document.createElement('div'); ang.className='angles';
+  ANGLES.forEach((a,i)=>{
+    const d=document.createElement('div'); d.className='a'+(i===curAngle?' on':'');
+    d.style.backgroundImage='url("'+faceImg(m.name,i,200,210)+'")';
+    const s=document.createElement('span'); s.textContent=a.ko; d.appendChild(s);
+    d.onclick=()=>{curAngle=i;render();}; ang.appendChild(d);
+  });
+  left.appendChild(ang);
+
+  const s1=document.createElement('div'); s1.className='sec';
+  const s1h=document.createElement('h2'); s1h.textContent='모델 소개'; s1.appendChild(s1h);
+  const p=document.createElement('div'); p.className='desc'; p.textContent=m.desc; s1.appendChild(p); left.appendChild(s1);
+
+  /* 얼굴 속성 */
+  const s2=document.createElement('div'); s2.className='sec';
+  const s2h=document.createElement('h2'); s2h.textContent='얼굴 속성'; s2.appendChild(s2h);
+  const fg=document.createElement('div'); fg.className='facegrid';
+  [['성별',GENDERS[m.gender]],['연령대',AGES[m.age]],['스타일',STYLES[m.style]],['초상권',CONSENT[m.consent].ko]].forEach(([k,v])=>{
+    const c=document.createElement('div'); c.className='fcell';
+    const kk=document.createElement('div'); kk.className='k'; kk.textContent=k;
+    const vv=document.createElement('div'); vv.className='v'; vv.textContent=v;
+    c.appendChild(kk); c.appendChild(vv); fg.appendChild(c); });
+  s2.appendChild(fg);
+  const cs=CONSENT[m.consent];
+  const cn=document.createElement('div'); cn.className='alert '+(m.consent==='synthetic'?'ok':'info'); cn.style.marginTop='11px';
+  cn.textContent=cs.ko+' — '+cs.d+'. 실존 인물의 무단 학습이 확인되면 즉시 삭제되며, 대상자는 언제든 삭제를 요청할 수 있습니다.';
+  s2.appendChild(cn); left.appendChild(s2);
+
+  /* 리뷰 */
+  const s3=document.createElement('div'); s3.className='sec';
+  const s3h=document.createElement('h2'); s3h.textContent='리뷰 '+m.reviews.length+'개'; s3.appendChild(s3h);
+  if(m.reviews.length){
+    const sum=document.createElement('div'); sum.className='rsum';
+    const big=document.createElement('div'); big.className='rbig';
+    const bn=document.createElement('div'); bn.className='n'; bn.textContent=ar.toFixed(1);
+    const bs=document.createElement('div'); bs.className='s'; bs.textContent=starStr(ar);
+    const bc=document.createElement('div'); bc.className='c'; bc.textContent=m.reviews.length+'개 리뷰';
+    big.appendChild(bn); big.appendChild(bs); big.appendChild(bc); sum.appendChild(big);
+    const bars=document.createElement('div'); bars.className='rbars';
+    for(let s=5;s>=1;s--){
+      const cnt=m.reviews.filter(r=>r.r===s).length;
+      const row=document.createElement('div'); row.className='rbar';
+      const t=document.createElement('span'); t.className='t'; t.textContent=s+'점';
+      const tr=document.createElement('span'); tr.className='track';
+      const i=document.createElement('i'); i.style.width=(m.reviews.length?cnt/m.reviews.length*100:0)+'%'; tr.appendChild(i);
+      const c=document.createElement('span'); c.className='cnt'; c.textContent=cnt;
+      row.appendChild(t); row.appendChild(tr); row.appendChild(c); bars.appendChild(row);
+    }
+    sum.appendChild(bars); s3.appendChild(sum);
+  }
+  /* 리뷰 작성 */
+  const rf=document.createElement('div'); rf.className='rform';
+  if(DB.user){
+    let picked=5;
+    const ss=document.createElement('div'); ss.className='rstars';
+    const btns=[];
+    for(let i=1;i<=5;i++){ const b=document.createElement('button'); b.textContent='★'; b.className=i<=picked?'on':'';
+      b.onclick=()=>{ picked=i; btns.forEach((x,j)=>x.className=(j+1)<=picked?'on':''); };
+      btns.push(b); ss.appendChild(b); }
+    rf.appendChild(ss);
+    const ta=document.createElement('textarea'); ta.className='inp'; ta.placeholder='이 모델을 써본 경험을 남겨주세요. 어떤 설정에서 잘 나왔는지 적으면 다른 사람에게 큰 도움이 됩니다.';
+    rf.appendChild(ta);
+    const sb=document.createElement('button'); sb.className='btn'; sb.style.marginTop='11px'; sb.textContent='리뷰 등록';
+    sb.onclick=()=>{ if(!ta.value.trim()) return toast('리뷰 내용을 입력해주세요','err');
+      m.reviews.unshift({ u:DB.user.nick, r:picked, t:ta.value.trim(), at:Date.now() }); save();
+      toast('리뷰를 등록했습니다','ok'); render(); };
+    rf.appendChild(sb);
+  } else {
+    const p2=document.createElement('div'); p2.style.cssText='font-size:13px;color:var(--dim);margin-bottom:11px';
+    p2.textContent='리뷰를 남기려면 로그인이 필요합니다. 닉네임만 입력하면 됩니다.';
+    rf.appendChild(p2);
+    const lb=document.createElement('button'); lb.className='btn'; lb.textContent='로그인하고 리뷰 쓰기';
+    lb.onclick=()=>openLogin('리뷰를 남기려면 닉네임이 필요합니다.'); rf.appendChild(lb);
+  }
+  s3.appendChild(rf);
+  m.reviews.forEach(r=>{
+    const rv=document.createElement('div'); rv.className='rev';
+    const rh=document.createElement('div'); rh.className='rhead';
+    const ri=document.createElement('img'); ri.className='av'; ri.src=avatar(r.u); ri.alt='';
+    const rn=document.createElement('span'); rn.className='nm'; rn.textContent=r.u;
+    const rs=document.createElement('span'); rs.className='st'; rs.textContent=starStr(r.r);
+    const rd=document.createElement('span'); rd.className='dt'; rd.textContent=dstr(r.at);
+    rh.appendChild(ri); rh.appendChild(rn); rh.appendChild(rs); rh.appendChild(rd); rv.appendChild(rh);
+    const rt2=document.createElement('div'); rt2.className='rtext'; rt2.textContent=r.t; rv.appendChild(rt2);
+    s3.appendChild(rv);
+  });
+  left.appendChild(s3);
+  wrap.appendChild(left);
+
+  /* 사이드 */
+  const side=document.createElement('div'); side.className='side';
+  const vb=document.createElement('div'); vb.className='vbody';
+  const st=dlStats(m);
+  const ds=document.createElement('div'); ds.className='dlstat';
+  [[st.total,'총 다운로드'],[st.today,'오늘'],[st.week,'최근 7일']].forEach(([n,l])=>{
+    const d=document.createElement('div');
+    const a=document.createElement('div'); a.className='n'; a.textContent=fmt(n);
+    const b=document.createElement('div'); b.className='l'; b.textContent=l;
+    d.appendChild(a); d.appendChild(b); ds.appendChild(d); });
+  vb.appendChild(ds);
+
+  const kv=(k,v)=>{ if(v==null||v==='') return; const r=document.createElement('div'); r.className='kv';
+    const a=document.createElement('span'); a.className='k'; a.textContent=k;
+    const b=document.createElement('span'); b.className='v'; b.textContent=v; r.appendChild(a); r.appendChild(b); vb.appendChild(r); };
+  kv('베이스 모델', m.base); kv('종류', KINDS[m.kind]);
+  kv('권장 강도', m.sMin!=null?m.sMin+' ~ '+m.sMax:null); kv('Clip Skip', m.clip);
+  kv('각도 이미지', m.angles.length+'방향');
+
+  if(m.words.length){
+    const lb=document.createElement('div'); lb.className='k'; lb.style.cssText='margin-top:12px;font-size:12.8px;color:var(--dim)';
+    lb.textContent='트리거 단어 (클릭 복사)'; vb.appendChild(lb);
+    const ww=document.createElement('div'); ww.className='words';
+    m.words.forEach(w=>{ const b=document.createElement('button'); b.className='word'; b.textContent=w; b.onclick=()=>copy(w,'트리거 단어'); ww.appendChild(b); });
+    vb.appendChild(ww);
+  }
+
+  const f=m.file;
+  const fd=document.createElement('div'); fd.className='file';
+  const fh=document.createElement('div'); fh.className='fhead';
+  const fn=document.createElement('span'); fn.className='fname'; fn.textContent=f.name;
+  const fz=document.createElement('span'); fz.className='fsize'; fz.textContent=mb(f.kb);
+  fh.appendChild(fn); fh.appendChild(fz); fd.appendChild(fh);
+  const sc=document.createElement('div');
+  if(f.scan==='Success'){ sc.className='scan ok'; sc.textContent='\u2713  보안 스캔 통과 \u00b7 safetensors'; }
+  else { sc.className='scan pend'; sc.textContent='\u23f3  스캔 대기 중 \u00b7 완료 전까지 다운로드 불가'; }
+  fd.appendChild(sc);
+  if(f.sha){ const hh=document.createElement('div'); hh.className='hash'; hh.textContent='SHA256 '+f.sha; fd.appendChild(hh); }
+  vb.appendChild(fd);
+
+  const scanOk = f.scan==='Success';
+  const dl=document.createElement('button'); dl.className='dlbtn'+(!DB.user&&scanOk?' login':'');
+  dl.disabled = !scanOk;
+  dl.textContent = !scanOk ? '스캔 완료 후 다운로드 가능'
+                 : !DB.user ? '로그인하고 무료 다운로드'
+                 : '무료 다운로드  ('+mb(f.kb)+')';
+  dl.onclick=()=>{
+    if(!scanOk) return;                                   // 게이트 1: 스캔
+    if(!requireLogin('로그인하면 모든 얼굴 모델을 무제한 무료로 받을 수 있습니다.')) return; // 게이트 2: 로그인
+    m.dl++; m.log.push(Date.now()); save();
+    toast('다운로드를 시작합니다 (프로토타입)','ok'); render();
+  };
+  vb.appendChild(dl);
+  const ft=document.createElement('div'); ft.className='freetag';
+  ft.textContent = DB.user ? '모든 모델 무료 · 다운로드 제한 없음' : '로그인하면 전 모델 무료';
+  vb.appendChild(ft);
+  side.appendChild(vb); wrap.appendChild(side); app.appendChild(wrap);
+}
+
+/* ── 업로드 ─────────────────────────────────────────────────────────── */
+let draft=null;
+function newDraft(){ return { name:'', kind:'FaceLORA', gender:'female', age:'twenties', style:'real',
+  consent:'', base:'SDXL 1.0', desc:'', tags:'', words:'', sMin:'0.6', sMax:'0.8', clip:'2', file:null }; }
+
+function renderUpload(app){
+  if(!DB.user){
+    app.appendChild(emptyBox('누구나 업로드할 수 있습니다','다만 닉네임은 필요합니다. 상단 로그인 버튼을 눌러주세요'));
+    const c=document.createElement('div'); c.style.textAlign='center';
+    const b=document.createElement('button'); b.className='btn'; b.textContent='로그인하고 업로드 시작';
+    b.onclick=()=>openLogin('업로드하려면 닉네임이 필요합니다. 그게 전부입니다.');
+    c.appendChild(b); app.appendChild(c); return;
+  }
+  if(!draft) draft=newDraft();
+  const back=document.createElement('button'); back.className='back'; back.textContent='\u2190 모델 탐색으로'; back.onclick=()=>go('browse'); app.appendChild(back);
+  const up=document.createElement('div'); up.className='up';
+  const h=document.createElement('h1'); h.className='tit'; h.textContent='얼굴 모델 올리기'; h.style.marginBottom='16px'; up.appendChild(h);
+
+  /* STEP 1 — 초상권 동의 (얼굴 전문 사이트의 필수 게이트) */
+  const st0=document.createElement('div'); st0.className='step';
+  const t0=document.createElement('h2'); t0.textContent='1. 초상권 확인 (필수)'; st0.appendChild(t0);
+  const hint0=document.createElement('div'); hint0.className='hint';
+  hint0.textContent='실존 인물의 얼굴을 동의 없이 학습한 모델은 초상권·퍼블리시티권 침해이며, 딥페이크 처벌 대상이 될 수 있습니다. 해당 없는 항목을 고르면 업로드가 진행되지 않습니다.';
+  st0.appendChild(hint0);
+  const cg=document.createElement('div'); cg.className='consent';
+  Object.keys(CONSENT).forEach(k=>{
+    const b=document.createElement('button'); b.type='button'; b.className='copt'+(draft.consent===k?' on':'');
+    const t=document.createElement('div'); t.className='t'; t.textContent=CONSENT[k].ko;
+    const d=document.createElement('div'); d.className='d'; d.textContent=CONSENT[k].d;
+    b.appendChild(t); b.appendChild(d);
+    b.onclick=()=>{ draft.consent=k; [...cg.children].forEach((x,i)=>x.className='copt'+(Object.keys(CONSENT)[i]===k?' on':'')); };
+    cg.appendChild(b);
+  });
+  st0.appendChild(cg);
+  const warn=document.createElement('div'); warn.className='alert warn';
+  warn.textContent='유명인·지인 등 실존 인물을 동의 없이 학습한 모델은 신고 즉시 삭제되고 계정이 정지됩니다. 대상자 본인은 언제든 삭제를 요청할 수 있습니다.';
+  st0.appendChild(warn); up.appendChild(st0);
+
+  /* STEP 2 — 파일 */
+  const st1=document.createElement('div'); st1.className='step';
+  const t1=document.createElement('h2'); t1.textContent='2. 모델 파일'; st1.appendChild(t1);
+  const hint1=document.createElement('div'); hint1.className='hint';
+  hint1.textContent='.safetensors 형식만 받습니다. .ckpt / .pt / .bin 은 파이썬 pickle 기반이라 불러오는 순간 임의 코드가 실행될 수 있어 업로드 자체를 차단합니다.';
+  st1.appendChild(hint1);
+  const drop=document.createElement('div'); drop.className='drop';
+  const db1=document.createElement('div'); db1.className='big'; db1.textContent='파일 선택';
+  const ds1=document.createElement('div'); ds1.className='sm'; ds1.textContent='클릭해서 .safetensors 파일을 고르세요';
+  drop.appendChild(db1); drop.appendChild(ds1);
+  const fi=document.createElement('input'); fi.type='file'; fi.accept='.safetensors'; fi.style.display='none';
+  drop.onclick=()=>fi.click(); st1.appendChild(drop); st1.appendChild(fi);
+  const res=document.createElement('div'); st1.appendChild(res);
+  const prog=document.createElement('div'); prog.className='prog'; prog.style.display='none';
+  const pbar=document.createElement('i'); prog.appendChild(pbar); st1.appendChild(prog);
+
+  fi.onchange=async()=>{
+    const f=fi.files&&fi.files[0]; if(!f) return;
+    res.textContent=''; prog.style.display='block'; pbar.style.width='8%';
+    const lower=f.name.toLowerCase();
+    if(!lower.endsWith('.safetensors')){
+      const bad=/\.(ckpt|pt|pth|bin|pkl)$/.test(lower); prog.style.display='none';
+      res.appendChild(alertBox('err','차단됨  ', bad
+        ? f.name+' 은 pickle 계열 형식입니다. 로드 시 임의 코드 실행 위험이 있어 받지 않습니다. safetensors 로 변환해서 올려주세요.'
+        : f.name+' 은 지원하지 않는 형식입니다. .safetensors 파일만 업로드할 수 있습니다.'));
+      draft.file=null; fi.value=''; return;
+    }
+    pbar.style.width='30%';
+    let headOk=false, headErr='';
+    try{
+      const head=new Uint8Array(await f.slice(0,8).arrayBuffer());
+      let len=0; for(let i=7;i>=0;i--) len=len*256+head[i];
+      if(len<=0||len>100*1024*1024) headErr='헤더 길이 값이 비정상입니다 ('+len+')';
+      else{ const js=new TextDecoder().decode(await f.slice(8,8+Math.min(len,4096)).arrayBuffer()).trim();
+        if(js[0]==='{') headOk=true; else headErr='헤더가 JSON 형식이 아닙니다'; }
+    }catch(e){ headErr='파일을 읽지 못했습니다'; }
+    if(!headOk){ prog.style.display='none';
+      res.appendChild(alertBox('err','형식 위조 의심  ','확장자는 .safetensors 이지만 내부 구조가 규격과 맞지 않습니다. ('+headErr+')'));
+      draft.file=null; fi.value=''; return; }
+    pbar.style.width='58%';
+    const LIMIT=64; let sha=null, why='size';
+    try{ const r=await hashFile(f,LIMIT); sha=r.hash; why=r.why; }catch(e){ why='error'; }
+    pbar.style.width='100%'; setTimeout(()=>{prog.style.display='none';},400);
+    draft.file={ name:f.name, kb:f.size/1024, sha:sha, scan:'Pending' };
+    res.appendChild(alertBox('ok','검증 통과  ', f.name+' \u00b7 '+mb(f.size/1024)+' \u00b7 safetensors 구조 확인됨'));
+    if(sha){ const hh=document.createElement('div'); hh.className='hash'; hh.textContent='SHA256 '+sha+(why==='js'?'   (순수 JS 계산)':''); res.appendChild(hh); }
+    else res.appendChild(alertBox('info','안내  ', LIMIT+'MB 를 넘는 파일은 브라우저에서 해시를 계산하지 않습니다. 실제 서비스에서는 서버가 계산합니다.'));
+    renderAnglePreview();
+  };
+  up.appendChild(st1);
+
+  /* STEP 3 — 모델 정보 + 얼굴 속성 */
+  const st2=document.createElement('div'); st2.className='step';
+  const t2=document.createElement('h2'); t2.textContent='3. 모델 정보'; st2.appendChild(t2);
+  const hint2=document.createElement('div'); hint2.className='hint'; hint2.textContent='얼굴 속성을 정확히 채우면 탐색 필터에서 훨씬 잘 발견됩니다.';
+  st2.appendChild(hint2);
+  st2.appendChild(field('모델 이름','name','예: 한국인 20대 여성 실사 얼굴'));
+  const r1=document.createElement('div'); r1.className='two';
+  r1.appendChild(selectField('모델 종류','kind',Object.keys(KINDS).map(k=>[k,KINDS[k]])));
+  r1.appendChild(selectField('베이스 모델','base',BASES.map(b=>[b,b])));
+  st2.appendChild(r1);
+  const r2=document.createElement('div'); r2.className='three';
+  r2.appendChild(selectField('성별','gender',Object.keys(GENDERS).map(k=>[k,GENDERS[k]])));
+  r2.appendChild(selectField('연령대','age',Object.keys(AGES).map(k=>[k,AGES[k]])));
+  r2.appendChild(selectField('스타일','style',Object.keys(STYLES).map(k=>[k,STYLES[k]])));
+  st2.appendChild(r2);
+  st2.appendChild(field('모델 소개','desc','어떤 데이터로 학습했는지, 어떤 각도에서 잘 나오는지 적어주세요','textarea'));
+  st2.appendChild(field('태그','tags','쉼표로 구분. 예: 한국인, 20대, 여성, 실사'));
+  st2.appendChild(field('트리거 단어','words','쉼표로 구분. 예: korean_face_f20'));
+  const r3=document.createElement('div'); r3.className='three';
+  r3.appendChild(field('권장 강도 최소','sMin','0.6'));
+  r3.appendChild(field('권장 강도 최대','sMax','0.8'));
+  r3.appendChild(field('Clip Skip','clip','2'));
+  st2.appendChild(r3);
+  up.appendChild(st2);
+
+  /* STEP 4 — 각도 사진 자동 생성 */
+  const st3=document.createElement('div'); st3.className='step';
+  const t3=document.createElement('h2'); t3.textContent='4. 각도별 사진 자동 생성'; st3.appendChild(t3);
+  const hint3=document.createElement('div'); hint3.className='hint';
+  hint3.textContent='별도 이미지를 올리지 않아도 됩니다. 모델 파일을 등록하면 정면·좌45·우45·좌측면·우측면·하이앵글 6방향 프리뷰가 자동으로 생성돼 상세 페이지에 붙습니다.';
+  st3.appendChild(hint3);
+  const prev=document.createElement('div'); prev.className='anglePrev'; st3.appendChild(prev);
+  const prevNote=document.createElement('div'); prevNote.style.cssText='font-size:12px;color:var(--dim);margin-top:10px;line-height:1.6';
+  st3.appendChild(prevNote);
+  up.appendChild(st3);
+
+  function renderAnglePreview(){
+    prev.textContent='';
+    const seed=(draft.name&&draft.name.trim())||draft.file&&draft.file.name||'preview';
+    ANGLES.forEach((a,i)=>{ const d=document.createElement('div');
+      d.style.backgroundImage='url("'+faceImg(seed,i,180,190)+'")';
+      const s=document.createElement('span'); s.textContent=a.ko; d.appendChild(s); prev.appendChild(d); });
+    prevNote.textContent = draft.file ? '6방향 프리뷰가 생성되었습니다. 등록 시 함께 저장됩니다.'
+      : '모델 파일을 선택하거나 이름을 입력하면 미리보기가 나타납니다.';
+  }
+  renderAnglePreview();
+
+  const actions=document.createElement('div'); actions.style.cssText='display:flex;gap:10px;justify-content:flex-end';
+  const cancel=document.createElement('button'); cancel.className='btn ghost'; cancel.textContent='취소'; cancel.onclick=()=>{draft=null;go('browse');};
+  const submit=document.createElement('button'); submit.className='btn'; submit.textContent='등록하고 스캔 요청'; submit.onclick=doSubmit;
+  actions.appendChild(cancel); actions.appendChild(submit); up.appendChild(actions);
+  app.appendChild(up);
+
+  function field(label,key,ph,kind){
+    const w=document.createElement('div');
+    const l=document.createElement('label'); l.className='fl'; l.textContent=label; w.appendChild(l);
+    const i=document.createElement(kind==='textarea'?'textarea':'input'); i.className='inp'; i.placeholder=ph; i.value=draft[key]||'';
+    i.oninput=()=>{ draft[key]=i.value; if(key==='name') renderAnglePreview(); };
+    w.appendChild(i); return w;
+  }
+  function selectField(label,key,opts){
+    const w=document.createElement('div');
+    const l=document.createElement('label'); l.className='fl'; l.textContent=label; w.appendChild(l);
+    const s=document.createElement('select'); s.className='inp';
+    opts.forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; if(draft[key]===v)o.selected=true; s.appendChild(o); });
+    s.onchange=()=>{draft[key]=s.value;}; w.appendChild(s); return w;
+  }
+}
+function alertBox(kind,bold,text){
+  const a=document.createElement('div'); a.className='alert '+kind;
+  const b=document.createElement('b'); b.textContent=bold; a.appendChild(b);
+  const s=document.createElement('span'); s.textContent=text; a.appendChild(s); return a;
+}
+
+function doSubmit(){
+  if(!DB.user) return openLogin();
+  if(!draft.consent) return toast('초상권 확인 항목을 먼저 선택해주세요','err');
+  if(!draft.name.trim()) return toast('모델 이름을 입력해주세요','err');
+  if(!draft.file) return toast('모델 파일을 선택해주세요','err');
+  const id=DB.nextId++;
+  const m={ id, name:draft.name.trim(), kind:draft.kind, gender:draft.gender, age:draft.age, style:draft.style,
+    consent:draft.consent, user:DB.user.nick, base:draft.base,
+    desc:draft.desc.trim()||'설명이 없습니다.',
+    tags:draft.tags.split(',').map(s=>s.trim()).filter(Boolean),
+    words:draft.words.split(',').map(s=>s.trim()).filter(Boolean),
+    sMin:draft.sMin?parseFloat(draft.sMin):null, sMax:draft.sMax?parseFloat(draft.sMax):null,
+    clip:draft.clip?parseInt(draft.clip,10):null,
+    createdAt:Date.now(), angles:ANGLES.map(a=>a.k),   /* 6방향 자동 첨부 */
+    file:{ name:draft.file.name, kb:draft.file.kb, scan:'Pending', sha:draft.file.sha },
+    dl:0, log:[], reviews:[] };
+  DB.models.unshift(m); save();
+  const file=m.file; draft=null; go('detail', id);
+  toast('등록 완료 · 6방향 프리뷰 생성 및 보안 스캔을 시작합니다','ok');
+  setTimeout(()=>{
+    file.scan='Success';
+    if(!file.sha) file.sha=[...Array(64)].map((_,i)=>'0123456789abcdef'[hashCode(m.name+i)%16]).join('');
+    save(); if(view==='detail'&&curId===m.id) render();
+    toast('보안 스캔 통과 · 다운로드가 열렸습니다','ok');
+  }, 4000);
+}
+
+$('q').addEventListener('input', e=>{ filt.q=e.target.value; if(view!=='browse') view='browse'; render(); });
+
+runDailyAuto(false);   /* 접속 시 하루 1회 자동 등록 */
+render();
+</script>
+</body>
+</html>
