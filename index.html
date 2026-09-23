@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'">
-<title>페이스나루 — 얼굴 모델 전문 공유 플랫폼</title>
+      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
+<title>페이스루크 — 얼굴 모델 전문 공유 플랫폼</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0f1117;--panel:#1a1d27;--panel2:#151822;--line:#2b3040;--tx:#e6e8ef;--dim:#8b93a7;
@@ -161,7 +161,17 @@ textarea.inp{min-height:92px;resize:vertical;line-height:1.7}
 .anglePrev span{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);font-size:9px;font-weight:700;text-align:center;padding:2px 0}
 
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
-.mbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;width:100%;max-width:390px}
+
+.sbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:9px;padding:11px 14px;font-weight:700;font-size:13.5px;margin-bottom:8px;border:1px solid transparent}
+.sbtn.google{background:#fff;color:#1f1f1f;border-color:#dadce0}
+.sbtn.google:hover{background:#f7f8fa}
+.sbtn.kakao{background:#fee500;color:#191919}
+.sbtn.kakao:hover{filter:brightness(.97)}
+.sbtn.naver{background:#03c75a;color:#fff}
+.sbtn.naver:hover{filter:brightness(1.05)}
+.or{display:flex;align-items:center;gap:10px;margin:14px 0 8px;color:var(--dim);font-size:11.5px;font-weight:700}
+.or:before,.or:after{content:'';flex:1;height:1px;background:var(--line)}
+.mbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;width:100%;max-width:420px}
 .mbox h2{font-size:19px;font-weight:800;margin-bottom:6px}
 .mbox p{font-size:12.8px;color:var(--dim);line-height:1.7;margin-bottom:16px}
 .empty{text-align:center;padding:66px 20px;color:var(--dim)}
@@ -269,7 +279,7 @@ body{overflow-x:hidden}
 <body>
 <header>
   <div class="wrap hbar">
-    <button class="logo" onclick="go('browse')"><span class="mark">얼</span><span>페이스나루</span></button>
+    <button class="logo" onclick="go('browse')"><span class="mark">루</span><span>페이스루크</span></button>
     <nav class="top" id="nav"></nav>
     <div class="search"><span class="ic">&#128269;</span>
       <input id="q" type="text" placeholder="모델명, 태그, 제작자 검색" autocomplete="off"></div>
@@ -283,7 +293,7 @@ body{overflow-x:hidden}
 <script>
 'use strict';
 /* ===========================================================================
-   페이스나루 — 얼굴 모델 전문 공유 플랫폼 (프로토타입)
+   페이스루크 — 얼굴 모델 전문 공유 플랫폼 (프로토타입)
    의존성 0 / 빌드 0. index.html 을 브라우저로 열면 바로 동작.
    =========================================================================== */
 
@@ -525,13 +535,81 @@ function runDailyAuto(force){
   return added;
 }
 
-/* ── 인증 (간단 로그인) ───────────────────────────────────────────────── */
-function login(nick, email){
-  if(!nick.trim()) return toast('닉네임을 입력해주세요','err');
-  DB.user = { nick:nick.trim(), email:email.trim() }; save(); closeModal();
+/* ── 인증 (소셜 + 닉네임 로그인) ───────────────────────────────────────── */
+const AUTH = {
+  googleClientId: '313636498999-cnngdfbof6qa2pqvk3469mrkcvo237t1.apps.googleusercontent.com',
+  kakaoJsKey: '',
+  naverClientId: ''
+};
+function loginSocial(provider, nick, email, photo){
+  const name = String(nick||'').trim() || String(email||'').split('@')[0] || '사용자';
+  DB.user = { nick:name, email:String(email||'').trim(), provider:provider||'nick', photo:photo||'' };
+  save(); closeModal();
   toast(DB.user.nick+'님 환영합니다. 이제 모든 모델을 무료로 받을 수 있습니다.','ok');
   render();
 }
+function login(nick, email){
+  if(!nick.trim()) return toast('닉네임을 입력해주세요','err');
+  loginSocial('nick', nick, email, '');
+}
+function loadScript(src){
+  return new Promise((resolve, reject)=>{
+    const hit=[...document.getElementsByTagName('script')].some(s=>s.src===src);
+    if(hit) return resolve();
+    const s=document.createElement('script'); s.src=src; s.async=true;
+    s.onload=resolve; s.onerror=()=>reject(new Error('script'));
+    document.head.appendChild(s);
+  });
+}
+async function loginGoogle(){
+  try{
+    await loadScript('https://accounts.google.com/gsi/client');
+    const client=google.accounts.oauth2.initTokenClient({
+      client_id: AUTH.googleClientId,
+      scope: 'openid email profile',
+      callback: async tok=>{
+        if(tok.error) return toast('구글 로그인이 취소되었습니다','err');
+        const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+tok.access_token}});
+        const u=await r.json();
+        loginSocial('google', u.name||u.email, u.email, u.picture);
+      }
+    });
+    client.requestAccessToken();
+  }catch(e){ toast('구글 로그인을 불러오지 못했습니다','err'); }
+}
+async function loginKakao(){
+  if(!AUTH.kakaoJsKey) return toast('카카오 앱 키를 연결하면 바로 사용할 수 있습니다','err');
+  try{
+    await loadScript('https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js');
+    if(!Kakao.isInitialized()) Kakao.init(AUTH.kakaoJsKey);
+    Kakao.Auth.login({
+      scope:'profile_nickname,account_email',
+      success:()=>{
+        Kakao.API.request({
+          url:'/v2/user/me',
+          success:res=>{
+            const acc=res.kakao_account||{};
+            const pf=acc.profile||{};
+            loginSocial('kakao', pf.nickname, acc.email||'', pf.profile_image_url||'');
+          },
+          fail:()=>toast('카카오 프로필을 가져오지 못했습니다','err')
+        });
+      },
+      fail:()=>toast('카카오 로그인이 취소되었습니다','err')
+    });
+  }catch(e){ toast('카카오 로그인을 불러오지 못했습니다','err'); }
+}
+async function loginNaver(){
+  if(!AUTH.naverClientId) return toast('네이버 앱 키를 연결하면 바로 사용할 수 있습니다','err');
+  const state=Math.random().toString(36).slice(2);
+  const redirect=location.origin+'/naver-callback.html';
+  const url='https://nid.naver.com/oauth2.0/authorize?response_type=token&client_id='+encodeURIComponent(AUTH.naverClientId)+'&redirect_uri='+encodeURIComponent(redirect)+'&state='+state;
+  window.open(url,'naverLogin','width=480,height=640');
+}
+window.addEventListener('message', ev=>{
+  if(!ev.data || ev.data.type!=='naver-login') return;
+  loginSocial('naver', ev.data.name||ev.data.email, ev.data.email||'', ev.data.photo||'');
+});
 function logout(){ DB.user=null; save(); toast('로그아웃했습니다'); render(); }
 function requireLogin(reason){
   if(DB.user) return true;
@@ -556,12 +634,19 @@ function openLogin(reason){
   const ov=document.createElement('div'); ov.className='modal';
   ov.onclick=e=>{ if(e.target===ov) closeModal(); };
   const box=document.createElement('div'); box.className='mbox';
-  const h=document.createElement('h2'); h.textContent='간단 로그인'; box.appendChild(h);
+  const h=document.createElement('h2'); h.textContent='페이스루크 로그인'; box.appendChild(h);
   const p=document.createElement('p');
-  p.textContent = reason || '닉네임만 있으면 됩니다. 비밀번호도, 인증 메일도 없습니다. 로그인하면 모든 모델을 무료로 내려받고 업로드할 수 있습니다.';
+  p.textContent = reason || '구글, 카카오, 네이버로 바로 시작하세요. 로그인하면 모든 모델을 무료로 내려받고 업로드할 수 있습니다.';
   box.appendChild(p);
+  function sbtn(cls, label, handler){
+    const b=document.createElement('button'); b.type='button'; b.className='sbtn '+cls; b.textContent=label; b.onclick=handler; box.appendChild(b);
+  }
+  sbtn('google','Google로 계속하기', loginGoogle);
+  sbtn('kakao','카카오로 계속하기', loginKakao);
+  sbtn('naver','네이버로 계속하기', loginNaver);
+  const or=document.createElement('div'); or.className='or'; or.textContent='또는 닉네임으로'; box.appendChild(or);
   const l1=document.createElement('label'); l1.className='fl'; l1.textContent='닉네임 *'; box.appendChild(l1);
-  const i1=document.createElement('input'); i1.className='inp'; i1.placeholder='예: 나루창작자'; box.appendChild(i1);
+  const i1=document.createElement('input'); i1.className='inp'; i1.placeholder='예: 루크창작자'; box.appendChild(i1);
   const l2=document.createElement('label'); l2.className='fl'; l2.textContent='이메일 (선택)'; box.appendChild(l2);
   const i2=document.createElement('input'); i2.className='inp'; i2.placeholder='알림 받을 주소'; box.appendChild(i2);
   const row=document.createElement('div'); row.style.cssText='display:flex;gap:9px;margin-top:18px';
@@ -584,7 +669,7 @@ function render(){
   au.style.cssText='display:flex;align-items:center;gap:9px';
   if(DB.user){
     const me=document.createElement('div'); me.className='me';
-    const im=document.createElement('img'); im.src=avatar(DB.user.nick); im.alt='';
+    const im=document.createElement('img'); im.src=DB.user.photo||avatar(DB.user.nick); im.alt=''; im.referrerPolicy='no-referrer';
     const nm=document.createElement('span'); nm.textContent=DB.user.nick;
     me.appendChild(im); me.appendChild(nm); au.appendChild(me);
     const up=document.createElement('button'); up.className='btn'; up.textContent='+ 업로드'; up.onclick=()=>go('upload'); au.appendChild(up);
