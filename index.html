@@ -309,6 +309,16 @@ body{overflow-x:hidden}
 .assetcell .thumb{height:160px;background:#14171f center/cover no-repeat}
 .assetcell .meta{padding:8px 9px;font-size:11.5px;color:var(--dim);line-height:1.45}
 .assetcell .badge{position:absolute;top:7px;left:7px;font-size:10px;font-weight:800;background:rgba(0,0,0,.7);color:#fff;padding:3px 7px;border-radius:5px}
+.assetcell .badge.upload{background:rgba(47,158,110,.88)}
+.assetcell video.thumbv{width:100%;height:160px;object-fit:cover;display:block;background:#14171f}
+.assetcell .dl-one{position:absolute;top:7px;right:7px;font-size:10px;font-weight:800;background:rgba(0,0,0,.65);color:#fff;padding:3px 7px;border-radius:5px;border:0;cursor:pointer;z-index:2}
+.assetcell .dl-one:hover{background:var(--acc)}
+.drop.on{border-color:var(--acc);background:#171b26}
+.mbox.wide{max-width:560px}
+.media-lightbox{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;gap:12px}
+.media-lightbox .lb-media{max-width:min(960px,96vw);max-height:78vh;border-radius:10px;background:#000;display:block}
+.media-lightbox .lb-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.media-lightbox .lb-cap{font-size:12.5px;color:#c8cede;text-align:center;max-width:90vw;line-height:1.5}
 .sharebox{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:12px;font-size:12.8px;color:var(--dim);line-height:1.65}
 .reqlist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .reqitem{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13px}
@@ -1313,6 +1323,13 @@ function renderMine(app){
   });
   app.appendChild(tabs);
 
+  const mediaRow=document.createElement('div'); mediaRow.style.cssText='display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap;align-items:center';
+  const mediaBtn=document.createElement('button'); mediaBtn.className='btn'; mediaBtn.textContent='이미지·동영상 업로드';
+  mediaBtn.onclick=()=>openUploadWorksModal(null);
+  const mediaHint=document.createElement('span'); mediaHint.style.cssText='font-size:12.5px;color:var(--dim);line-height:1.5';
+  mediaHint.textContent='내 모델에 붙이거나, 새 얼굴 모델로 등록 (이 기기만 · 서버 없음)';
+  mediaRow.appendChild(mediaBtn); mediaRow.appendChild(mediaHint); app.appendChild(mediaRow);
+
   if(mineTab==='ai' || mineTab==='share'){
     const row=document.createElement('div'); row.style.cssText='display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap';
     const ib=document.createElement('button'); ib.className='btn ghost'; ib.textContent='공유 코드로 가져오기'; ib.onclick=()=>openImportShareModal();
@@ -1435,7 +1452,18 @@ function renderDetail(app){
       if(!firstReadyVideoConnection(cfg)){ toast('영상용 API 키·연결이 필요합니다 (Fal / Replicate / Higgsfield)','err'); return; }
       openStudioForModel(m,'add-video');
     };
-    ctaRow.appendChild(c1); ctaRow.appendChild(c2); cta.appendChild(ctaRow); left.appendChild(cta);
+    const c3=document.createElement('button'); c3.className='btn ghost'; c3.textContent='이미지·동영상 업로드';
+    c3.onclick=()=>openUploadWorksModal(m.id);
+    ctaRow.appendChild(c1); ctaRow.appendChild(c2); ctaRow.appendChild(c3); cta.appendChild(ctaRow); left.appendChild(cta);
+  } else if(DB.user && isModelOwner(m)){
+    const cta=document.createElement('div'); cta.className='sec'; cta.style.cssText='padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)';
+    const ctaH=document.createElement('h2'); ctaH.style.color='var(--tx)'; ctaH.textContent='내 작품 올리기'; cta.appendChild(ctaH);
+    const ctaP=document.createElement('div'); ctaP.style.cssText='font-size:13px;color:var(--dim);margin:6px 0 12px;line-height:1.55';
+    ctaP.textContent='내가 만든 이미지·동영상을 이 얼굴 아래에 바로 올릴 수 있습니다. 파일은 이 브라우저(IndexedDB)에만 저장되며, 다른 기기와는 자동 동기화되지 않습니다.';
+    cta.appendChild(ctaP);
+    const ctaRow=document.createElement('div'); ctaRow.className='studio-actions';
+    const c3=document.createElement('button'); c3.className='btn'; c3.textContent='이미지·동영상 업로드'; c3.onclick=()=>openUploadWorksModal(m.id);
+    ctaRow.appendChild(c3); cta.appendChild(ctaRow); left.appendChild(cta);
   }
 
   const s1=document.createElement('div'); s1.className='sec';
@@ -3039,15 +3067,372 @@ function renderStudio(app){
   grid.appendChild(left); grid.appendChild(right); root.appendChild(grid); app.appendChild(root);
 }
 
+
+/* ===== Device media upload (image/video → IndexedDB + model.assets) ===== */
+const MEDIA_IMG_MAX=15*1024*1024;
+const MEDIA_VID_MAX=80*1024*1024;
+const MEDIA_DATAURL_MAX=1800*1024;
+
+function detectMediaKind(file){
+  const t=String(file&&file.type||'').toLowerCase();
+  const n=String(file&&file.name||'').toLowerCase();
+  if(t.indexOf('video/')===0) return 'video';
+  if(t.indexOf('image/')===0) return 'image';
+  if(/\.(mp4|webm|mov|m4v|ogg|ogv|mkv)$/.test(n)) return 'video';
+  if(/\.(jpe?g|png|webp|gif|bmp|heic|heif|avif)$/.test(n)) return 'image';
+  return null;
+}
+function mediaSizeLimitMsg(kind, file){
+  const lim=kind==='video'?MEDIA_VID_MAX:MEDIA_IMG_MAX;
+  const limLabel=kind==='video'?'80MB':'15MB';
+  return (file&&file.name?file.name+' — ':'')+(kind==='video'?'영상':'이미지')+'은 파일당 '+limLabel+'까지 올릴 수 있습니다. (현재 '+mb((file&&file.size||0)/1024)+')';
+}
+function friendlyIdbError(e, fileName){
+  const name=(e&&e.name)||'';
+  const msg=String((e&&e.message)||e||'');
+  if(name==='QuotaExceededError' || /quota|storage|공간|용량/i.test(msg))
+    return (fileName?fileName+' — ':'')+'브라우저 저장 공간이 부족합니다. 더 작은 파일로 올리거나, 이 모델의 작품을 일부 삭제한 뒤 다시 시도하세요. (lukemodel.com은 서버가 없어 이 기기 IndexedDB에만 저장됩니다)';
+  return (fileName?fileName+' — ':'')+'저장 실패: '+(msg||name||'알 수 없는 오류');
+}
+async function makeImageThumbDataUrl(blob, maxSide){
+  maxSide=maxSide||512;
+  try{
+    const bmp=await createImageBitmap(blob);
+    const scale=Math.min(1, maxSide/Math.max(bmp.width,bmp.height));
+    const w=Math.max(1, Math.round(bmp.width*scale)), h=Math.max(1, Math.round(bmp.height*scale));
+    const c=document.createElement('canvas'); c.width=w; c.height=h;
+    c.getContext('2d').drawImage(bmp,0,0,w,h);
+    try{ bmp.close&&bmp.close(); }catch(e){}
+    return c.toDataURL('image/jpeg',0.82);
+  }catch(e){
+    try{ return await blobToDataUrl(blob); }catch(e2){ return null; }
+  }
+}
+async function makeVideoThumbDataUrl(blob){
+  return new Promise(res=>{
+    const url=URL.createObjectURL(blob);
+    const v=document.createElement('video');
+    v.muted=true; v.playsInline=true; v.preload='auto'; v.src=url;
+    const done=(r)=>{ try{URL.revokeObjectURL(url);}catch(e){} res(r); };
+    const snap=()=>{
+      try{
+        const w=v.videoWidth||320, h=v.videoHeight||240;
+        if(!w||!h){ done(null); return; }
+        const scale=Math.min(1, 512/Math.max(w,h));
+        const c=document.createElement('canvas'); c.width=Math.round(w*scale); c.height=Math.round(h*scale);
+        c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+        done(c.toDataURL('image/jpeg',0.8));
+      }catch(e){ done(null); }
+    };
+    v.onloadeddata=()=>{ try{ v.currentTime=Math.min(0.2, (v.duration||1)*0.05); }catch(e){ snap(); } };
+    v.onseeked=snap;
+    v.onerror=()=>done(null);
+    setTimeout(()=>done(null), 4000);
+  });
+}
+async function resolveAssetDisplayUrl(a){
+  if(!a) return null;
+  if(a._objectUrl) return a._objectUrl;
+  if(a.blobKey){
+    try{
+      const b=await idbAssetGet(a.blobKey);
+      if(b){ a._objectUrl=URL.createObjectURL(b); return a._objectUrl; }
+    }catch(e){}
+  }
+  if(a.dataUrl) return a.dataUrl;
+  if(a.thumb && String(a.thumb).indexOf('data:')===0) return a.thumb;
+  return a.thumb||null;
+}
+async function downloadOneAsset(m, a){
+  if(!needLogin('다운로드하려면 로그인이 필요합니다.')) return;
+  try{
+    let blob=null;
+    if(a.blobKey){ try{ blob=await idbAssetGet(a.blobKey); }catch(e){} }
+    if(!blob && a.dataUrl){
+      if(String(a.dataUrl).startsWith('data:')) blob=await (await fetch(a.dataUrl)).blob();
+      else { try{ blob=await fetchAsBlob(a.dataUrl);}catch(e){} }
+    }
+    if(!blob){ toast('파일을 찾을 수 없습니다','err'); return; }
+    const base=(a.title||a.fileName||a.id||'work').replace(/[\\/:*?"<>|]+/g,'_').slice(0,48);
+    let ext='bin';
+    const mime=blob.type||a.mime||'';
+    if(a.type==='video') ext=(mime.includes('webm')?'webm':(mime.includes('quicktime')?'mov':'mp4'));
+    else if(mime.includes('png')) ext='png';
+    else if(mime.includes('webp')) ext='webp';
+    else if(mime.includes('gif')) ext='gif';
+    else ext='jpg';
+    const name=base+(base.endsWith('.'+ext)?'':('.'+ext));
+    if(_saveBlob) await _saveBlob(name, blob, mime||blob.type);
+    else { const u=URL.createObjectURL(blob); const link=document.createElement('a'); link.href=u; link.download=name; link.click(); setTimeout(()=>URL.revokeObjectURL(u),2000); }
+    toast('저장됨','ok');
+  }catch(e){
+    if(e&&e.name==='AbortError') toast('저장 취소');
+    else toast(friendlyIdbError(e, a&&a.fileName),'err');
+  }
+}
+function openAssetLightbox(m, a){
+  const host=$('modal'); if(!host) return;
+  host.textContent='';
+  const ov=document.createElement('div'); ov.className='media-lightbox';
+  ov.onclick=e=>{ if(e.target===ov){ host.textContent=''; } };
+  const cap=document.createElement('div'); cap.className='lb-cap';
+  cap.textContent=(a.title||a.fileName||a.prompt||'작품')+' · '+(a.source==='upload'?'업로드':'AI')+' · '+_dstr(a.at);
+  const acts=document.createElement('div'); acts.className='lb-acts';
+  const dl=document.createElement('button'); dl.className='btn'; dl.textContent='다운로드'; dl.onclick=()=>downloadOneAsset(m,a);
+  const cl=document.createElement('button'); cl.className='btn ghost'; cl.textContent='닫기'; cl.onclick=()=>{ host.textContent=''; };
+  acts.appendChild(dl); acts.appendChild(cl);
+  ov.appendChild(cap);
+  const ph=document.createElement('div'); ph.className='lb-cap'; ph.textContent='불러오는 중…'; ov.appendChild(ph);
+  ov.appendChild(acts);
+  host.appendChild(ov);
+  resolveAssetDisplayUrl(a).then(url=>{
+    if(!url){ ph.textContent='표시할 파일을 찾지 못했습니다.'; return; }
+    ph.remove();
+    let el;
+    if(a.type==='video'){ el=document.createElement('video'); el.controls=true; el.autoplay=true; el.playsInline=true; }
+    else { el=document.createElement('img'); el.alt=a.title||''; }
+    el.className='lb-media'; el.src=url;
+    ov.insertBefore(el, acts);
+  }).catch(()=>{ ph.textContent='불러오기 실패'; });
+}
+
+async function persistUploadedFileToModel(m, file, opts){
+  opts=opts||{};
+  const kind=detectMediaKind(file);
+  if(!kind) throw new Error((file.name||'파일')+'은 지원하지 않는 형식입니다. 이미지(jpg/png/webp/gif 등) 또는 영상(mp4/webm 등)만 올릴 수 있습니다.');
+  const lim=kind==='video'?MEDIA_VID_MAX:MEDIA_IMG_MAX;
+  if(file.size>lim) throw new Error(mediaSizeLimitMsg(kind, file));
+  const assetId='u'+Date.now()+'_'+Math.floor(Math.random()*1e6);
+  const assetKey='asset-'+m.id+'-'+assetId;
+  try{ await idbAssetPut(assetKey, file); }
+  catch(e){ throw new Error(friendlyIdbError(e, file.name)); }
+  let thumb=null, dataUrl=null;
+  if(kind==='image'){
+    try{ thumb=await makeImageThumbDataUrl(file, 512); }catch(e){}
+    if(file.size<=MEDIA_DATAURL_MAX){
+      try{ dataUrl=await blobToDataUrl(file); }catch(e){}
+    } else {
+      dataUrl=thumb;
+    }
+  } else {
+    try{ thumb=await makeVideoThumbDataUrl(file); }catch(e){}
+  }
+  const title=(opts.title||file.name||'').replace(/\.[^.]+$/,'').slice(0,80);
+  const asset={
+    id:assetId, type:kind, blobKey:assetKey, dataUrl:dataUrl, thumb:thumb||dataUrl||null,
+    title:title, fileName:file.name||'', mime:file.type||'', size:file.size||0,
+    prompt:opts.prompt||('업로드: '+(file.name||title)),
+    by:DB.user.nick, byKey:_userKey(), at:Date.now(),
+    provider:'upload', source:'upload', createdAt:Date.now()
+  };
+  m.assets.push(asset);
+  if(kind==='image' && (!m.faceRef || opts.setAsFace)){
+    if(dataUrl||thumb){
+      m.faceRef=dataUrl||thumb;
+      if(!m.photos||!m.photos.length) m.photos=[m.faceRef];
+      try{ await idbAssetPut('face-'+m.id, file); }catch(e){}
+    }
+  }
+  ensureFaceIdentity(m);
+  m.aiStudio=true;
+  return asset;
+}
+
+async function uploadMediaFilesToModel(modelId, files, opts){
+  opts=opts||{};
+  if(!needLogin('작품 업로드에는 로그인이 필요합니다.')) return null;
+  const m=DB.models.find(x=>x.id===modelId); if(!m){ toast('모델을 찾을 수 없습니다','err'); return null; }
+  ensureFaceIdentity(m);
+  if(!isModelOwner(m)){ toast('소유자만 작품을 업로드할 수 있습니다','err'); return null; }
+  const list=[].slice.call(files||[]).filter(Boolean);
+  if(!list.length){ toast('파일을 선택해주세요','err'); return null; }
+  let ok=0, fail=0; const errs=[];
+  for(let i=0;i<list.length;i++){
+    const f=list[i];
+    try{
+      await persistUploadedFileToModel(m, f, { title:opts.title, setAsFace:opts.setAsFace && i===0 && detectMediaKind(f)==='image' });
+      ok++;
+    }catch(e){ fail++; errs.push(String(e.message||e)); }
+  }
+  save();
+  if(ok && !fail) toast(ok+'개 작품을 올렸습니다 (이 기기에만 저장)','ok');
+  else if(ok && fail) toast(ok+'개 성공 · '+fail+'개 실패. '+(errs[0]||''),'err');
+  else toast(errs[0]||'업로드에 실패했습니다','err');
+  return {ok, fail, errs};
+}
+
+async function createModelFromMediaFiles(files, meta){
+  meta=meta||{};
+  if(!needLogin('새 모델로 등록하려면 로그인이 필요합니다.')) return null;
+  const list=[].slice.call(files||[]).filter(Boolean);
+  if(!list.length){ toast('파일을 선택해주세요','err'); return null; }
+  const firstImg=list.find(f=>detectMediaKind(f)==='image')||list[0];
+  const kind0=detectMediaKind(firstImg);
+  if(!kind0){ toast('이미지 또는 영상 파일만 올릴 수 있습니다','err'); return null; }
+  const name=(meta.name||'').trim()||((firstImg.name||'내 작품').replace(/\.[^.]+$/,'').slice(0,40));
+  const s={
+    name, kind:'FaceLORA', gender:meta.gender||'female', age:meta.age||'twenties', style:'real', consent:meta.consent||'synthetic',
+    user:DB.user.nick, base:'Upload', desc:(meta.desc||'내가 올린 이미지·동영상으로 만든 얼굴/작품 모음입니다.\n\n서버 업로드가 아니라 이 브라우저 IndexedDB에만 저장됩니다. 다른 기기와는 자동으로 동기화되지 않습니다.'),
+    tags:['upload','내작품', GENDERS[meta.gender||'female']||''].filter(Boolean),
+    words:['upload','local'], photos:[], kb:Math.round(list.reduce((a,f)=>a+(f.size||0),0)/1024)||1024, dl:0, log:[], reviews:[]
+  };
+  const id=DB.nextId++; const m=_mkModel(s, id, Date.now()); ensureModelFields(m);
+  m.user=DB.user.nick; m.ownerKey=_userKey(); m.aiStudio=true; m.aiProvider='upload'; m.file.scan='Success';
+  m.file={ name:(firstImg.name||name)+'', kb:(firstImg.size||0)/1024, sha:null, scan:'Success' };
+  ensureFaceIdentity(m);
+  let ok=0, fail=0; const errs=[];
+  for(let i=0;i<list.length;i++){
+    try{
+      await persistUploadedFileToModel(m, list[i], { setAsFace:i===0 && detectMediaKind(list[i])==='image' });
+      ok++;
+    }catch(e){ fail++; errs.push(String(e.message||e)); }
+  }
+  if(!ok){ toast(errs[0]||'업로드 실패','err'); return null; }
+  DB.models.unshift(m); save();
+  toast(ok+'개 파일로 「'+m.name+'」 모델을 만들었습니다'+(fail?(' · 실패 '+fail):'')+' (이 기기만)','ok');
+  return m;
+}
+
+function ownedModelsForUpload(){
+  if(!DB.user) return [];
+  const me=_userKey();
+  return DB.models.filter(m=>{ ensureModelFields(m); return isModelOwner(m) || m.user===DB.user.nick || (m.ownerKey&&me&&m.ownerKey===me); });
+}
+
+function openUploadWorksModal(modelId){
+  if(!needLogin('이미지·동영상 업로드에는 로그인이 필요합니다.')) return;
+  const owned=ownedModelsForUpload();
+  const host=$('modal'); host.textContent='';
+  const ov=document.createElement('div'); ov.className='modal';
+  ov.onclick=e=>{ if(e.target===ov) _closeModal(); };
+  const box=document.createElement('div'); box.className='mbox wide';
+  const h=document.createElement('h2'); h.textContent='이미지·동영상 업로드'; box.appendChild(h);
+  const p=document.createElement('p');
+  p.textContent='내가 만든 사진·영상을 사이트 UI에 올립니다. 파일은 이 브라우저 IndexedDB에만 저장되며, 다른 폰/PC와는 자동 동기화되지 않습니다(서버 없음).';
+  box.appendChild(p);
+
+  let targetId=modelId!=null?modelId:null;
+  let mode=targetId!=null?'attach':'attach';
+  const modeRow=document.createElement('div'); modeRow.className='studio-kind';
+  function setMode(next){
+    mode=next;
+    [...modeRow.querySelectorAll('.chip')].forEach(c=>c.classList.toggle('on', c.dataset.m===mode));
+    selWrap.style.display=mode==='attach'?'block':'none';
+    nameWrap.style.display=mode==='create'?'block':'none';
+  }
+  [['attach','기존 모델에 붙이기'],['create','새 얼굴 모델로 만들기']].forEach(([k,l],idx)=>{
+    const b=document.createElement('button'); b.type='button'; b.className='chip'+(idx===0?' on':''); b.dataset.m=k; b.textContent=l;
+    b.onclick=()=>setMode(k); modeRow.appendChild(b);
+  });
+  box.appendChild(modeRow);
+
+  const selWrap=document.createElement('div');
+  const l1=document.createElement('label'); l1.className='fl'; l1.textContent='붙일 모델'; selWrap.appendChild(l1);
+  const sel=document.createElement('select'); sel.className='inp';
+  if(!owned.length){
+    const o=document.createElement('option'); o.value=''; o.textContent='(내 모델 없음 — 새 모델로 만들기)'; sel.appendChild(o);
+  } else {
+    owned.forEach(m=>{
+      const o=document.createElement('option'); o.value=String(m.id); o.textContent=m.name+(m.assets&&m.assets.length?(' · 작품 '+(m.assets.length)+'개'):'');
+      if(targetId!=null && m.id===targetId) o.selected=true;
+      sel.appendChild(o);
+    });
+    if(targetId==null) targetId=owned[0].id;
+  }
+  sel.onchange=()=>{ targetId=sel.value?Number(sel.value):null; };
+  selWrap.appendChild(sel); box.appendChild(selWrap);
+
+  const nameWrap=document.createElement('div'); nameWrap.style.display='none';
+  const l2=document.createElement('label'); l2.className='fl'; l2.textContent='새 모델 이름'; nameWrap.appendChild(l2);
+  const nameInp=document.createElement('input'); nameInp.className='inp'; nameInp.placeholder='예: 내가 만든 루크 포트레이트'; nameWrap.appendChild(nameInp);
+  box.appendChild(nameWrap);
+
+  if(modelId!=null){ mode='attach'; setMode('attach'); }
+  else if(!owned.length){ setMode('create'); }
+  else setMode('attach');
+
+  const drop=document.createElement('div'); drop.className='drop'; drop.style.marginTop='12px';
+  drop.innerHTML='<div class="big">파일 선택 또는 끌어다 놓기</div><div class="sm">여러 장·영상 가능 · jpg/png/webp/gif · mp4/webm 등<br>이미지 최대 15MB · 영상 최대 80MB / 파일</div>';
+  const fi=document.createElement('input'); fi.type='file'; fi.accept='image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.mp4,.webm,.mov,.m4v'; fi.multiple=true; fi.style.display='none';
+  drop.onclick=()=>fi.click();
+  drop.ondragover=e=>{ e.preventDefault(); drop.classList.add('on'); };
+  drop.ondragleave=()=>drop.classList.remove('on');
+  drop.ondrop=e=>{ e.preventDefault(); drop.classList.remove('on'); if(e.dataTransfer&&e.dataTransfer.files) handleFiles(e.dataTransfer.files); };
+  box.appendChild(drop); box.appendChild(fi);
+
+  const status=document.createElement('div'); status.style.cssText='margin-top:10px;font-size:12.5px;color:var(--dim);line-height:1.6'; box.appendChild(status);
+  const listEl=document.createElement('div'); listEl.style.cssText='margin-top:8px;font-size:12.5px;color:var(--dim)'; box.appendChild(listEl);
+
+  let picked=[];
+  function refreshList(){
+    listEl.textContent='';
+    if(!picked.length){ listEl.textContent='선택된 파일 없음'; return; }
+    listEl.textContent=picked.map(f=>{
+      const k=detectMediaKind(f)||'?';
+      return '· '+f.name+' ('+k+' · '+mb(f.size/1024)+')';
+    }).join('\n');
+    listEl.style.whiteSpace='pre-line';
+  }
+  function handleFiles(fileList){
+    const arr=[].slice.call(fileList||[]);
+    const next=[];
+    arr.forEach(f=>{
+      const k=detectMediaKind(f);
+      if(!k){ toast((f.name||'파일')+'은 지원하지 않는 형식입니다','err'); return; }
+      const lim=k==='video'?MEDIA_VID_MAX:MEDIA_IMG_MAX;
+      if(f.size>lim){ toast(mediaSizeLimitMsg(k,f),'err'); return; }
+      next.push(f);
+    });
+    picked=picked.concat(next);
+    refreshList();
+    status.textContent=picked.length? (picked.length+'개 선택됨') : '';
+  }
+  fi.onchange=()=>{ if(fi.files) handleFiles(fi.files); fi.value=''; };
+  refreshList();
+
+  const row=document.createElement('div'); row.style.cssText='display:flex;gap:9px;margin-top:18px';
+  const c=document.createElement('button'); c.className='btn ghost'; c.textContent='취소'; c.onclick=_closeModal;
+  const sbtn=document.createElement('button'); sbtn.className='btn'; sbtn.style.flex='1'; sbtn.textContent='업로드';
+  sbtn.onclick=async()=>{
+    if(!picked.length){ toast('파일을 선택해주세요','err'); return; }
+    sbtn.disabled=true; status.textContent='저장 중… (용량이 크면 시간이 걸릴 수 있어요)';
+    try{
+      if(mode==='create'){
+        const m=await createModelFromMediaFiles(picked, { name:nameInp.value });
+        _closeModal();
+        if(m) go('detail', m.id);
+      } else {
+        let id=targetId!=null?targetId:(sel.value?Number(sel.value):null);
+        if(id==null || !DB.models.some(x=>x.id===id)){
+          // no owned model — create instead
+          const m=await createModelFromMediaFiles(picked, { name:nameInp.value });
+          _closeModal();
+          if(m) go('detail', m.id);
+          return;
+        }
+        const r=await uploadMediaFilesToModel(id, picked, {});
+        _closeModal();
+        if(r&&r.ok) go('detail', id); else render();
+      }
+    }catch(e){ toast(friendlyIdbError(e),'err'); }
+    finally{ sbtn.disabled=false; }
+  };
+  row.appendChild(c); row.appendChild(sbtn); box.appendChild(row);
+  ov.appendChild(box); host.appendChild(ov);
+}
+
 function renderModelAssetsSection(left, m){
   ensureModelFields(m);
   const s=document.createElement('div'); s.className='sec';
   s.innerHTML='<h2>이 인물로 만든 작품</h2>';
-  const note=document.createElement('div'); note.className='sharebox'; note.textContent='같은 얼굴을 유지한 채 내 AI 연결(Fal·Replicate·Higgsfield·OpenAI·Pollinations)로 이미지·영상을 만들고, 이 모델 아래에 작품으로 쌓습니다. 공유는 서버가 아니라 공유 코드(로컬 팩)입니다.'; s.appendChild(note);
+  const note=document.createElement('div'); note.className='sharebox'; note.textContent='AI로 만들거나, 내가 만든 이미지·동영상을 이 얼굴 아래에 올릴 수 있습니다. 파일은 이 브라우저 IndexedDB에만 저장됩니다(서버·기기 간 자동 동기화 없음). 공유는 공유 코드(로컬 팩)입니다.'; s.appendChild(note);
   const row=document.createElement('div'); row.className='studio-actions'; row.style.marginTop='12px';
   const isOwner=isModelOwner(m);
+  if(isOwner){
+    const bu=document.createElement('button'); bu.className='btn'; bu.textContent='이미지·동영상 업로드'; bu.onclick=()=>openUploadWorksModal(m.id); row.appendChild(bu);
+  }
   if(canFaceLockGenerate(m)){
-    const b1=document.createElement('button'); b1.className='btn'; b1.textContent='내 AI로 이미지 생성 (얼굴 유지)'; b1.onclick=()=>openStudioForModel(m,'add-image'); row.appendChild(b1);
+    const b1=document.createElement('button'); b1.className='btn ghost'; b1.textContent='내 AI로 이미지 생성 (얼굴 유지)'; b1.onclick=()=>openStudioForModel(m,'add-image'); row.appendChild(b1);
     const b2=document.createElement('button'); b2.className='btn ghost'; b2.textContent='내 AI로 영상 생성 (얼굴 유지)';
     b2.onclick=()=>{
       const cfg=loadStudioCfg();
@@ -3063,8 +3448,50 @@ function renderModelAssetsSection(left, m){
   s.appendChild(row);
   if(isOwner&&(m.share.requests||[]).some(r=>r.status==='pending')){ const rl=document.createElement('div'); rl.className='reqlist'; m.share.requests.filter(r=>r.status==='pending').forEach(r=>{ const it=document.createElement('div'); it.className='reqitem'; const t=document.createElement('span'); t.textContent=r.from+' 님 요청 · '+_dstr(r.at); const ok=document.createElement('button'); ok.className='btn sm'; ok.textContent='수락'; ok.onclick=()=>respondShareRequest(m,r.fromKey,true); const no=document.createElement('button'); no.className='btn ghost sm'; no.textContent='거절'; no.onclick=()=>respondShareRequest(m,r.fromKey,false); it.appendChild(t); it.appendChild(ok); it.appendChild(no); rl.appendChild(it); }); s.appendChild(rl); }
   if(m.share&&m.share.code){ const sc=document.createElement('div'); sc.className='sharebox'; sc.innerHTML='공유 코드 <b style="color:var(--tx)">'+m.share.code+'</b> — 상대가 코드를 입력하면 얼굴을 재생성하지 않고 가져옵니다.'; s.appendChild(sc); }
-  if(m.assets&&m.assets.length){ const g=document.createElement('div'); g.className='assetgrid'; m.assets.slice().reverse().forEach(a=>{ const cell=document.createElement('div'); cell.className='assetcell'; const badge=document.createElement('span'); badge.className='badge'; badge.textContent=a.type==='video'?'영상':'이미지'; cell.appendChild(badge); const th=document.createElement('div'); th.className='thumb'; const src=a.thumb||a.dataUrl||''; if(a.type==='video'&&a.dataUrl&&!String(a.dataUrl).startsWith('data:image')){ th.style.cssText='display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:12px;font-weight:700'; th.textContent='▶ 영상'; cell.onclick=()=>{ if(a.dataUrl) window.open(a.dataUrl,'_blank'); }; } else { th.style.backgroundImage='url("'+String(src).replace(/"/g,'%22')+'")'; cell.onclick=()=>{ if(a.dataUrl) window.open(a.dataUrl,'_blank'); }; } cell.appendChild(th); const meta=document.createElement('div'); meta.className='meta'; meta.textContent=(a.provider||'')+' · '+(a.by||'')+' · '+_dstr(a.at); cell.appendChild(meta); g.appendChild(cell); }); s.appendChild(g); }
-  else { const e=document.createElement('div'); e.style.cssText='margin-top:12px;font-size:13px;color:var(--dim)'; e.textContent='아직 작품이 없습니다. AI 스튜디오에서 얼굴을 저장하면 여기에 쌓입니다.'; s.appendChild(e); }
+  if(m.assets&&m.assets.length){
+    const g=document.createElement('div'); g.className='assetgrid';
+    m.assets.slice().reverse().forEach(a=>{
+      const cell=document.createElement('div'); cell.className='assetcell';
+      const badge=document.createElement('span'); badge.className='badge'+(a.source==='upload'?' upload':'');
+      badge.textContent=(a.source==='upload'?'업로드 · ':'')+(a.type==='video'?'영상':'이미지');
+      cell.appendChild(badge);
+      const dl=document.createElement('button'); dl.type='button'; dl.className='dl-one'; dl.textContent='↓'; dl.title='다운로드';
+      dl.onclick=e=>{ e.stopPropagation(); downloadOneAsset(m,a); };
+      cell.appendChild(dl);
+      const th=document.createElement('div'); th.className='thumb';
+      const title=(a.title||a.fileName||a.prompt||'').slice(0,40);
+      const open=()=>openAssetLightbox(m,a);
+      if(a.type==='video'){
+        th.style.cssText='display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:12px;font-weight:700;height:160px;background:#14171f';
+        th.textContent='▶ 불러오는 중…';
+        cell.onclick=open;
+        resolveAssetDisplayUrl(a).then(url=>{
+          if(!url){ th.textContent='▶ 영상'; return; }
+          th.textContent='';
+          const v=document.createElement('video'); v.className='thumbv'; v.src=url; v.muted=true; v.playsInline=true; v.preload='metadata'; v.setAttribute('playsinline','');
+          v.onmouseenter=()=>{ try{v.play();}catch(e){} }; v.onmouseleave=()=>{ try{v.pause();v.currentTime=0;}catch(e){} };
+          th.appendChild(v);
+        }).catch(()=>{ th.textContent='▶ 영상'; });
+      } else {
+        const src=a.thumb||a.dataUrl||'';
+        if(src) th.style.backgroundImage='url("'+String(src).replace(/"/g,'%22')+'")';
+        else {
+          th.style.cssText='display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:12px;font-weight:700;height:160px';
+          th.textContent='이미지';
+          resolveAssetDisplayUrl(a).then(url=>{ if(url){ th.style.cssText=''; th.className='thumb'; th.style.backgroundImage='url("'+String(url).replace(/"/g,'%22')+'")'; th.textContent=''; } });
+        }
+        cell.onclick=open;
+      }
+      cell.appendChild(th);
+      const meta=document.createElement('div'); meta.className='meta';
+      meta.textContent=(title?(title+' · '):'')+(a.provider||(a.source==='upload'?'upload':''))+' · '+(a.by||'')+' · '+_dstr(a.at);
+      cell.appendChild(meta); g.appendChild(cell);
+    });
+    s.appendChild(g);
+  } else {
+    const e=document.createElement('div'); e.style.cssText='margin-top:12px;font-size:13px;color:var(--dim)';
+    e.textContent='아직 작품이 없습니다. 「이미지·동영상 업로드」또는 AI 스튜디오로 추가하세요.'; s.appendChild(e);
+  }
   left.appendChild(s);
 }
 
