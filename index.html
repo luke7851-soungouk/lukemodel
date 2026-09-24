@@ -455,11 +455,13 @@ body.has-ai-aside{padding-right:0}
       <a href="/en/">English</a>
       <a href="/privacy.html" onclick="go('privacy');return false;">Privacy</a>
       <a href="/terms.html" onclick="go('terms');return false;">Terms</a>
+      <a href="/stats.html" style="opacity:.55;font-weight:500">트래픽 통계</a>
       <a href="https://github.com/luke7851-soungouk/lukemodel" target="_blank" rel="noopener">GitHub</a>
     </nav>
   </div>
 </footer>
 
+<script src="/traffic.js"></script>
 <script>
 'use strict';
 /* ===========================================================================
@@ -1707,7 +1709,7 @@ function renderDetail(app){
       const result=await downloadModelFile(m);
       const kind=result && result.kind;
       const method=result && result.method;
-      m.dl++; m.log.push(Date.now()); recordDownload(m.id); save();
+      m.dl++; m.log.push(Date.now()); recordDownload(m.id); save(); try{ if(window.FaceLookTraffic) FaceLookTraffic.trackEvent('download'); }catch(e){}
       let msg;
       if(kind==='weights'){
         msg = method==='share'
@@ -1934,6 +1936,7 @@ async function doSubmit(){
   }
   draft.fileBlob=null;
   const file=m.file; draft=null; go('detail', id);
+  try{ if(window.FaceLookTraffic) FaceLookTraffic.trackEvent('upload'); }catch(e){}
   toast('등록 완료 · 6방향 프리뷰 생성 및 보안 스캔을 시작합니다','ok');
   setTimeout(()=>{
     file.scan='Success';
@@ -2740,6 +2743,7 @@ async function runStudioGenerate(){
     }
     const item={ id:'g'+Date.now(), url:result.url, meta:result.meta||{}, prompt, provider:conn.provider, connectionId:conn.id, connectionName:conn.name, gender:studioState.gender, age:studioState.age, style:studioState.style, base:studioState.base, seed:(result.meta&&result.meta.seed!=null)?result.meta.seed:seed, at:Date.now(), isVideo:!!(kind==='video'||(result.meta&&result.meta.video)), faceLock:faceLockMode, attachToModelId:studioState.attachToModelId };
     studioState.last=item; studioState.provider=conn.provider; studioHistory.unshift(item); if(studioHistory.length>12) studioHistory.length=12;
+    try{ if(window.FaceLookTraffic) FaceLookTraffic.trackEvent('generate'); }catch(e){}
     // Auto-attach under the face model when generating in face-lock mode
     if(attached && studioState.attachToModelId!=null){
       try{
@@ -2964,7 +2968,7 @@ async function publishShareCode(m){
   let faceData=m.faceRef||(m.photos&&m.photos[0])||null; if(faceData&&!String(faceData).startsWith('data:')){ try{ faceData=await urlToDataUrl(faceData)||faceData; }catch(e){} }
   const thumbs=(m.assets||[]).slice(0,8).map(a=>({id:a.id,type:a.type,thumb:(a.thumb&&String(a.thumb).startsWith('data:')?a.thumb:(a.dataUrl&&String(a.dataUrl).startsWith('data:')?a.dataUrl:null)),prompt:a.prompt,provider:a.provider}));
   const pack={v:1,code,at:Date.now(),model:{name:m.name,kind:m.kind,gender:m.gender,age:m.age,style:m.style,consent:'synthetic',base:m.base,desc:m.desc,tags:m.tags,words:m.words,aiStudio:true,faceId:m.faceId,faceSeed:m.faceSeed,facePrompt:m.facePrompt,ownerNick:m.user,ownerKey:m.ownerKey},faceDataUrl:(faceData&&String(faceData).startsWith('data:'))?faceData:null,assets:thumbs,note:'정적 사이트 공유 코드 팩(로컬 전용)'};
-  const map=loadShares(); map[code]=pack; saveShares(map); save(); copy(code,'공유 코드'); toast('공유 코드 '+code+' 복사됨','ok'); render();
+  const map=loadShares(); map[code]=pack; saveShares(map); save(); try{ if(window.FaceLookTraffic) FaceLookTraffic.trackEvent('share'); }catch(e){} copy(code,'공유 코드'); toast('공유 코드 '+code+' 복사됨','ok'); render();
 }
 
 function openImportShareModal(){
@@ -3553,7 +3557,7 @@ function openUploadWorksModal(modelId){
         }
       }
       _closeModal();
-      if(m) goSiteTopAfterUpload(m);
+      if(m){ try{ if(window.FaceLookTraffic) FaceLookTraffic.trackEvent('upload'); }catch(e){} goSiteTopAfterUpload(m); }
       else render();
     }catch(e){ toast(friendlyIdbError(e),'err'); }
     finally{ sbtn.disabled=false; }
@@ -3673,6 +3677,7 @@ let pendingShareCode=null;
 $('q').addEventListener('input', e=>{ filt.q=e.target.value; if(view!=='browse') view='browse'; render(); });
 
 runDailyAuto(false);   /* 접속 시 하루 1회 자동 등록 */
+try{ if(window.FaceLookTraffic) FaceLookTraffic.trackPageview(); }catch(e){}
 render();
 </script>
 </body>
