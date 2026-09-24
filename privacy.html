@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy — FaceLook / 페이스루크</title>
+<meta name="description" content="FaceLook privacy: browser-local storage, BYOK API keys never sent to lukemodel servers.">
+<link rel="canonical" href="https://lukemodel.com/privacy.html">
+<style>
+body{font-family:system-ui,sans-serif;background:#0f1117;color:#e6e8ef;max-width:720px;margin:40px auto;padding:0 20px;line-height:1.7}
+a{color:#4f7cff} h1{font-size:1.6rem;margin-bottom:8px} h2{font-size:1.1rem;margin:28px 0 8px;color:#b9c4e4}
+.dim{color:#8b93a7;font-size:.95rem}
+</style>
+</head>
+<body>
+<p><a href="/">← FaceLook / 페이스루크</a></p>
+<h1>Privacy / 개인정보</h1>
+<p class="dim">Last updated: 2026-09-24 · Honest short notice for a static GitHub Pages app.</p>
+
+<h2>What we store</h2>
+<p>FaceLook runs in your browser. Model catalogs, preferences, and share packs use <strong>localStorage</strong>. Larger image/video blobs use <strong>IndexedDB</strong>. There is no lukemodel application server that syncs your library across devices yet.</p>
+<p>페이스루크는 브라우저에서 동작합니다. 카탈로그·설정·공유 팩은 <strong>localStorage</strong>, 큰 이미지·영상은 <strong>IndexedDB</strong>에 저장됩니다. lukemodel 클라우드 동기화 서버는 아직 없습니다.</p>
+
+<h2>API keys (BYOK)</h2>
+<p>Provider keys you enter (Fal, Replicate, OpenAI, Google AI, Higgsfield, etc.) stay in your browser storage. They are <strong>not</strong> sent to lukemodel.com. Generation requests go from your browser to the provider you chose.</p>
+<p>입력한 API 키는 브라우저에만 남으며 lukemodel 서버로 전송되지 않습니다(앱 백엔드 없음).</p>
+
+<h2>Login</h2>
+<p>Optional Google / Kakao / Naver sign-in is used for local identity scoping (e.g. per-account AI slots). We do not operate a FaceLook account database on our own servers.</p>
+
+<h2>Contact</h2>
+<p>Questions: open an issue on <a href="https://github.com/luke7851-soungouk/lukemodel">GitHub</a>.</p>
+<p><a href="/terms.html">Terms</a> · <a href="/en/">English</a></p>
+</body>
+</html>

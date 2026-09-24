@@ -1,0 +1,20 @@
+# FaceLook / 페이스루크 (lukemodel.com)
+
+> Same-person AI faces and video in the browser — Bring Your Own Keys (BYOK).
+
+## Product
+FaceLook is a static GitHub Pages SPA for managing face models (image + video) under one identity. Upload or generate a face once, then keep further images/videos attached to that model. Share via local share codes.
+
+## Honest facts
+- Browser-local only: localStorage + IndexedDB. No lukemodel cloud sync yet.
+- API keys (Fal, Replicate, OpenAI, Google AI, Higgsfield, etc.) stay in the browser; they are never sent to lukemodel servers (there is no app backend).
+- Generation calls go from the user's browser to the provider the user chose.
+- Share codes are local packs on the same browser/device — not a multi-user cloud CDN.
+- Synthetic / consented faces only. Do not use non-consensual real-person likenesses.
+
+## Links
+- Home: https://lukemodel.com/
+- English: https://lukemodel.com/en/
+- Privacy: https://lukemodel.com/privacy.html
+- Terms: https://lukemodel.com/terms.html
+- Source: https://github.com/luke7851-soungouk/lukemodel

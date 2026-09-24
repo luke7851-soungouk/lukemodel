@@ -6,6 +6,27 @@
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://*.replicate.com https://api.openai.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai https://generativelanguage.googleapis.com; media-src data: blob: https: http:; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
 <title>페이스루크 — 얼굴 모델 전문 공유 플랫폼</title>
+<meta name="description" content="페이스루크(FaceLook) — 얼굴 한 번 업로드/생성하면 이미지·영상을 같은 모델 아래에. BYOK(Fal/Replicate 등). 공유 코드. 브라우저 로컬(서버 동기화 없음). Same-person AI faces & video — your API keys.">
+<link rel="canonical" href="https://lukemodel.com/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FaceLook / 페이스루크">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:url" content="https://lukemodel.com/">
+<meta property="og:title" content="페이스루크 / FaceLook — Same-person AI faces & video">
+<meta property="og:description" content="Upload/generate a face once, keep image+video under one model. BYOK (Fal/Replicate/…). Share codes. Browser-local — no cloud sync yet.">
+<meta property="og:image" content="https://lukemodel.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FaceLook / 페이스루크 — Same-person AI faces & video">
+<meta name="twitter:description" content="BYOK face+video studio. Browser-local. Share codes. Your API keys never leave your browser for lukemodel.">
+<meta name="twitter:image" content="https://lukemodel.com/og.png">
+<link rel="icon" href="/logo-512.png" type="image/png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"FaceLook","alternateName":["페이스루크","lukemodel"],"url":"https://lukemodel.com/","description":"Same-person AI faces and video — your API keys. Upload or generate a face once, keep image and video under one model. BYOK (Fal, Replicate, and more). Share codes. Browser-local — no cloud sync yet.","applicationCategory":"MultimediaApplication","operatingSystem":"Web Browser","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":["ko","en"],"featureList":["Bring-your-own-key AI image and video","Same-person face identity across assets","Local share codes","Browser localStorage and IndexedDB storage"],"isAccessibleForFree":true}
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0f1117;--panel:#1a1d27;--panel2:#151822;--line:#2b3040;--tx:#e6e8ef;--dim:#8b93a7;
@@ -384,6 +405,31 @@ body.has-ai-aside{padding-right:0}
   .ai-aside{width:min(400px,100vw)}
 }
 
+
+/* SEO / EN / legal / share landing */
+.en-banner{background:linear-gradient(100deg,#152038,#1a2540);border:1px solid #2e3f66;border-radius:13px;padding:14px 18px;margin:18px 0 6px;display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.en-banner .en-mark{flex-shrink:0;font-size:11px;font-weight:800;letter-spacing:.6px;color:#a8c0ff;background:#1e2a4a;border:1px solid #33406b;border-radius:6px;padding:4px 8px}
+.en-banner .en-body{flex:1;min-width:220px}
+.en-banner h2{font-size:14.5px;font-weight:800;margin:0 0 4px;color:#fff}
+.en-banner p{font-size:12.6px;color:#b9c4e4;line-height:1.65;margin:0}
+.en-banner .en-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.site-footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 36px;color:var(--dim);font-size:12.5px}
+.site-footer .foot-row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between}
+.site-footer nav{display:flex;flex-wrap:wrap;gap:12px}
+.site-footer a{color:var(--dim);text-decoration:none;font-weight:600}
+.site-footer a:hover{color:var(--tx)}
+.legal-page{padding:28px 0 60px;max-width:720px}
+.legal-page h1{font-size:22px;font-weight:800;margin-bottom:8px}
+.legal-page .dim{color:var(--dim);font-size:13px;margin-bottom:22px}
+.legal-page h2{font-size:14px;font-weight:800;color:var(--dim);letter-spacing:.4px;margin:22px 0 8px}
+.legal-page p,.legal-page li{font-size:14px;line-height:1.8;color:#c9cfe0}
+.legal-page ul{padding-left:18px;margin:8px 0}
+.share-landing{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 22px 18px;margin:20px 0 8px}
+.share-landing h2{font-size:17px;font-weight:800;margin:0 0 8px}
+.share-landing p{font-size:13.5px;color:var(--dim);line-height:1.7;margin:0 0 12px}
+.share-landing .code{font-family:Consolas,monospace;font-size:18px;font-weight:800;color:var(--warn);letter-spacing:1px}
+.share-landing .acts{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+
 </style>
 </head>
 <body>
@@ -401,6 +447,18 @@ body.has-ai-aside{padding-right:0}
 <button type="button" class="ai-aside-fab" id="aiAsideFab" title="내 AI 모델">내 AI 모델</button>
 <div id="modal"></div>
 <div class="toast" id="toast"></div>
+
+<footer class="site-footer">
+  <div class="wrap foot-row">
+    <div>FaceLook / 페이스루크 · BYOK · browser-local</div>
+    <nav>
+      <a href="/en/">English</a>
+      <a href="/privacy.html" onclick="go('privacy');return false;">Privacy</a>
+      <a href="/terms.html" onclick="go('terms');return false;">Terms</a>
+      <a href="https://github.com/luke7851-soungouk/lukemodel" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</footer>
 
 <script>
 'use strict';
@@ -1244,6 +1302,8 @@ function render(){
   else if(view==='detail') renderDetail(app);
   else if(view==='upload') renderUpload(app);
   else if(view==='mine') renderMine(app);
+  else if(view==='privacy') renderPrivacy(app);
+  else if(view==='terms') renderTerms(app);
   try{ syncAiAsideChrome(); }catch(e){}
 }
 
@@ -1259,6 +1319,34 @@ function matches(m){
 }
 
 function renderBrowse(app){
+  /* EN one-liner (visible to EN visitors; KR UX unchanged below) */
+  const en=document.createElement('div'); en.className='en-banner'; en.setAttribute('lang','en');
+  const em=document.createElement('div'); em.className='en-mark'; em.textContent='EN';
+  const eb=document.createElement('div'); eb.className='en-body';
+  const eh=document.createElement('h2'); eh.textContent='Same-person AI faces & video — your API keys';
+  const ep=document.createElement('p'); ep.textContent='FaceLook — upload/generate a face once, keep image+video under one model. BYOK (Fal/Replicate/…). Share codes. Browser-local — no cloud sync yet.';
+  eb.appendChild(eh); eb.appendChild(ep);
+  const ea=document.createElement('div'); ea.className='en-acts';
+  const ea1=document.createElement('a'); ea1.className='btn ghost sm'; ea1.href='/en/'; ea1.textContent='English page';
+  const ea2=document.createElement('button'); ea2.className='btn sm'; ea2.textContent='AI Studio'; ea2.onclick=()=>go('studio');
+  ea.appendChild(ea1); ea.appendChild(ea2);
+  en.appendChild(em); en.appendChild(eb); en.appendChild(ea); app.appendChild(en);
+
+  /* ?share=CODE public-ish instruction card (no backend — local pack may still be required) */
+  if(pendingShareCode){
+    const sl=document.createElement('div'); sl.className='share-landing';
+    const sh=document.createElement('h2'); sh.textContent='Share code received';
+    const sp=document.createElement('p');
+    sp.innerHTML='Code <span class="code">'+pendingShareCode.replace(/[<>&]/g,s=>({ "<":"&lt;",">":"&gt;","&":"&amp;" }[s]))+'</span> — FaceLook has no cloud library. Full model import needs the share pack already saved in <b>this browser</b> (owner ran 「공유 코드 만들기」 here), then import after login. This card is an honest hand-off, not remote fetch.';
+    const acts=document.createElement('div'); acts.className='acts';
+    const b1=document.createElement('button'); b1.className='btn'; b1.textContent='Import in this browser';
+    b1.onclick=()=>{ if(!DB.user){ openLogin('공유 코드를 가져오려면 로그인이 필요합니다.'); return; } openImportShareModal(); setTimeout(()=>{ const inp=document.querySelector('#modal input.inp'); if(inp){ inp.value=pendingShareCode; } },0); };
+    const b2=document.createElement('button'); b2.className='btn ghost'; b2.textContent='Copy code'; b2.onclick=()=>copy(pendingShareCode,'공유 코드');
+    const b3=document.createElement('button'); b3.className='btn ghost'; b3.textContent='Dismiss'; b3.onclick=()=>{ pendingShareCode=null; try{ const u=new URL(location.href); u.searchParams.delete('share'); history.replaceState(null,'',u.pathname+(u.search||'')+(u.hash||'')); }catch(e){} render(); };
+    acts.appendChild(b1); acts.appendChild(b2); acts.appendChild(b3);
+    sl.appendChild(sh); sl.appendChild(sp); sl.appendChild(acts); app.appendChild(sl);
+  }
+
   /* 매일 자동 등록 배너 */
   const todayCnt = DB.models.filter(m=>new Date(m.createdAt).toISOString().slice(0,10)===today()).length;
   const bn=document.createElement('div'); bn.className='banner';
@@ -3550,6 +3638,37 @@ function renderModelAssetsSection(left, m){
 }
 
 
+
+
+function renderPrivacy(app){
+  const back=document.createElement('button'); back.className='back'; back.textContent='\u2190 돌아가기'; back.onclick=()=>go('browse'); app.appendChild(back);
+  const box=document.createElement('div'); box.className='legal-page'; box.setAttribute('lang','ko');
+  box.innerHTML='<h1>Privacy / 개인정보</h1><p class="dim">브라우저 로컬 앱을 위한 짧은 고지 · <a href="/privacy.html" style="color:var(--acc)">privacy.html</a></p>'
+    +'<h2>저장</h2><p>카탈로그·설정·공유 팩은 <b>localStorage</b>, 큰 이미지·영상은 <b>IndexedDB</b>에만 저장됩니다. lukemodel 클라우드 동기화 서버는 아직 없습니다.</p>'
+    +'<h2>API keys (BYOK)</h2><p>Fal / Replicate / OpenAI / Google AI 등 키는 브라우저에만 남으며 <b>lukemodel 서버로 전송되지 않습니다</b>(앱 백엔드 없음). 생성 요청은 선택한 제공자로 브라우저에서 직접 갑니다.</p>'
+    +'<h2>Login</h2><p>Google/Kakao/Naver 로그인은 로컬 신원·슬롯 구분용입니다. FaceLook 자체 계정 DB 서버는 운영하지 않습니다.</p>'
+    +'<p style="margin-top:18px"><a href="#" onclick="go(\'terms\');return false;" style="color:var(--acc)">Terms</a> · <a href="/en/" style="color:var(--acc)">English</a></p>';
+  app.appendChild(box);
+}
+function renderTerms(app){
+  const back=document.createElement('button'); back.className='back'; back.textContent='\u2190 돌아가기'; back.onclick=()=>go('browse'); app.appendChild(back);
+  const box=document.createElement('div'); box.className='legal-page';
+  box.innerHTML='<h1>Terms / 이용약관</h1><p class="dim">짧은 정직한 약관 · <a href="/terms.html" style="color:var(--acc)">terms.html</a></p>'
+    +'<h2>서비스</h2><p>같은 인물(얼굴) 아래로 이미지·영상을 모으는 BYOK 정적 사이트입니다. 데이터는 브라우저에 남으며, 내보내기·로컬 공유 팩 외 클라우드 라이브러리는 없습니다.</p>'
+    +'<h2>허용 / 금지</h2><ul><li><b>합성(synthetic)</b> 얼굴, 또는 명확한 <b>동의</b>가 있는 실존 인물만.</li><li>비동의 실존 인물 딥페이크·사칭·불법 콘텐츠 금지.</li><li>제3자 AI 요금·정책 준수는 사용자 책임.</li></ul>'
+    +'<h2>보증 없음</h2><p>있는 그대로 제공. 사이트 데이터 삭제 시 로컬 모델이 사라집니다. 공유 코드는 호스팅 CDN이 아닙니다.</p>'
+    +'<p style="margin-top:18px"><a href="#" onclick="go(\'privacy\');return false;" style="color:var(--acc)">Privacy</a></p>';
+  app.appendChild(box);
+}
+
+let pendingShareCode=null;
+(function bootShareParam(){
+  try{
+    const u=new URL(location.href);
+    const raw=(u.searchParams.get('share')||'').trim();
+    if(raw){ pendingShareCode=raw.toUpperCase(); view='browse'; }
+  }catch(e){}
+})();
 
 $('q').addEventListener('input', e=>{ filt.q=e.target.value; if(view!=='browse') view='browse'; render(); });
 
