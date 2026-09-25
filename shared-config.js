@@ -6,8 +6,8 @@
    설정 방법: marketing/shared-upload-setup.md */
 window.LUKE_SHARED = {
   provider: 'supabase',
-  url: '',
-  anonKey: '',
+  url: 'https://xiovaesccoqtmcsvwqts.supabase.co',
+  anonKey: 'sb_publishable_0aqD-_Oa3fU634-UxcttfQ_E1DPOHFI',
   bucket: 'public-media',
   table: 'shared_media',
   reportsTable: 'media_reports',

@@ -137,9 +137,12 @@ async function pollRun(r){
     const st=String(j.status||'').toLowerCase();
     if(st==='completed'){ const urls=[]; (j.images||[]).forEach(x=>x&&x.url&&urls.push(x.url)); if(j.video&&j.video.url) urls.push(j.video.url);
       if(!urls.length){ failRun(r,'결과 URL이 없습니다'); return; }
-      r.status='done'; r.url=urls[0]; r.kind=j.video&&j.video.url?'video':'image'; await saveRun(r);
-      urls.slice(1).forEach(async u=>{ const c=Object.assign({},r,{id:uid(),url:u,createdAt:r.createdAt-1}); state.runs.splice(state.runs.indexOf(r)+1,0,c); await saveRun(c); });
-      await enforceCap(); renderAll(); return; }
+      r.status='done'; r.url=urls[0]; r.kind=j.video&&j.video.url?'video':'image'; r.share=shared?'pending':null; await saveRun(r);
+      const extra=urls.slice(1).map(u=>{ const c=Object.assign({},r,{id:uid(),url:u,createdAt:r.createdAt-1}); state.runs.splice(state.runs.indexOf(r)+1,0,c); return c; });
+      for(const c of extra) await saveRun(c);
+      await enforceCap(); renderAll();
+      for(const x of [r,...extra]) await autoShare(x);
+      return; }
     if(st==='failed'||st==='nsfw'||st==='canceled'||st==='cancelled'){ failRun(r,st==='nsfw'?'안전 필터(NSFW)로 거부됨 — 크레딧 환불':st==='failed'?'생성 실패 — 크레딧 환불':'취소됨'); return; }
     r.phase=st; updateTile(r);
   }
@@ -174,14 +177,38 @@ async function publish(file,title,source){
   if(!r2.ok) throw new Error('목록 등록 실패 ('+r2.status+')');
   return {path};
 }
+/* 완성된 생성 결과를 자동으로 공개 갤러리(= 메인 화면 첫 섹션)에 등록. 결과 파일 자체를 복사(Higgsfield 결과는 ~7일 후 삭제). */
+const shareQueue=[]; let sharing=false;
+function autoShare(r){ if(!shared||r.status!=='done'||r.share==='done'||r.share==='external') return Promise.resolve(); return new Promise(res=>{ shareQueue.push([r,res]); pumpShare(); }); }
+async function pumpShare(){ if(sharing) return; sharing=true;
+  while(shareQueue.length){ const [r,res]=shareQueue.shift(); try{ await shareOne(r); }catch(e){} res(); }
+  sharing=false; }
+async function shareOne(r){
+  const title=('['+(r.modelLabel||'AI')+'] '+(r.prompt||'')).slice(0,80);
+  r.share='pending'; await saveRun(r);
+  let blob=null, why='';
+  try{ const resp=await fetch(r.url,{mode:'cors',cache:'no-store'}); if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const len=+resp.headers.get('content-length')||0; if(len&&len>(r.kind==='video'?MAX_VID:MAX_IMG)) throw new Error('파일이 너무 큼 ('+(len/1048576).toFixed(1)+'MB)');
+    blob=await resp.blob(); }
+  catch(e){ why=e.message||'fetch 실패'; }
+  if(blob){ try{ const res=await publish(new File([blob],'result',{type:blob.type}),title,'studio'); r.share='done'; r.shared=res.path; await saveRun(r); toast('공개 갤러리·메인 화면에 자동 등록했습니다','ok'); if(state.scope==='public') loadPublic(true); renderGrid(); return; }
+    catch(e){ why=e.message; } }
+  /* 폴백: 파일 복사가 불가하면 원본 URL만 등록(DB에 external_url 컬럼이 있을 때). Higgsfield 보관 기간이 지나면 깨짐. */
+  try{ const rr=await fetch(SB+'/rest/v1/'+CFG.table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json',Prefer:'return=minimal'}),
+      body:JSON.stringify({path:null,external_url:r.url,kind:r.kind,mime:r.kind==='video'?'video/mp4':'image/png',size:1,title,source:'studio'})});
+    if(!rr.ok) throw new Error('external '+rr.status);
+    r.share='external'; await saveRun(r); toast('파일 복사 실패('+why+') — 원본 링크로 공개 갤러리에 등록했습니다(약 7일 후 만료)','err'); if(state.scope==='public') loadPublic(true); }
+  catch(e){ r.share='failed'; r.shareErr=why; await saveRun(r); toast('자동 공개 등록 실패: '+why+' — 뷰어의 「공개 갤러리에 공유」로 다시 시도하세요','err'); }
+  renderGrid();
+}
 async function loadPublic(reset){
   const P=state.pub; if(P.loading) return; if(reset){ P.items=[]; P.offset=0; P.done=false; P.err=null; }
   if(P.done) return; P.loading=true;
   try{
     if(!shared){ const all=(await idbAll('localpub')).sort((a,b)=>b.created_at<a.created_at?-1:1); P.items=all.map(x=>Object.assign({},x,{url:URL.createObjectURL(x.blob),local:true})); P.done=true; }
-    else{ const r=await fetch(SB+'/rest/v1/'+CFG.table+'?select=id,created_at,path,kind,mime,size,title,source&order=created_at.desc&limit=40&offset='+P.offset,{headers:sbHeaders()});
+    else{ const r=await fetch(SB+'/rest/v1/'+CFG.table+'?select=*&hidden=eq.false&order=created_at.desc&limit=40&offset='+P.offset,{headers:sbHeaders()});
       if(!r.ok) throw new Error('목록 불러오기 실패 ('+r.status+')'); const rows=await r.json();
-      rows.forEach(x=>{ x.url=pubUrl(x.path); P.items.push(x); }); P.offset+=rows.length; if(rows.length<40) P.done=true; }
+      rows.forEach(x=>{ x.url=x.path?pubUrl(x.path):x.external_url; if(x.url) P.items.push(x); }); P.offset+=rows.length; if(rows.length<40) P.done=true; }
   }catch(e){ P.err=e.message; }
   P.loading=false; if(state.scope==='public') renderGrid();
 }
@@ -219,6 +246,7 @@ function renderNotice(){ const n=$('notice'); n.textContent='';
       shared?'이미지·영상을 올리면 lukemodel.com 방문자 모두가 보고 내려받을 수 있습니다. 이미지 ≤'+Math.round(MAX_IMG/1048576)+'MB, 영상 ≤'+Math.round(MAX_VID/1048576)+'MB, JPG·PNG·WEBP·GIF·MP4·WEBM·MOV만. 불법·성인·타인 초상/저작권 침해 게시물은 금지되며 신고 누적 시 자동 숨김됩니다.'
             :'공유 저장소가 아직 연결되지 않아, 올린 파일은 이 기기 브라우저에만 저장됩니다(다른 방문자에게는 보이지 않음). 운영자가 무료 저장소를 연결하면 자동으로 전체 공개 갤러리로 전환됩니다.'));
     return; }
+  if(shared) n.appendChild(el('div',{class:'notice',style:'border-color:#4a5a14'},el('b',{text:'자동 공개: '}),'이 스튜디오에서 완성된 이미지·영상은 자동으로 공개 갤러리와 lukemodel.com 메인 화면 첫 줄에 등록되어 누구나 보고 내려받을 수 있습니다. 공개되면 안 되는 내용(개인정보·타인 얼굴 등)은 생성하지 마세요.'));
   if(!getKey()) n.appendChild(el('div',{class:'notice'},el('b',{text:'내 Higgsfield 키로 생성합니다.'}),' 오른쪽 위 「키 추가」에 ',el('b',{text:'key-id:key-secret'}),' 형식 키를 넣으세요(',el('a',{href:'https://cloud.higgsfield.ai/',target:'_blank',rel:'noopener',text:'Higgsfield Cloud에서 발급'}),'). 키는 이 브라우저에만 저장되고 platform.higgsfield.ai로만 전송됩니다. 생성 비용은 키 소유자 계정에서 차감됩니다.'));
 }
 const STARTERS={image:['창가 햇살 아래 앉아 있는 20대 한국인 모델, 필름 카메라 질감의 에디토리얼 인물 사진','비 오는 서울 골목의 네온사인, 젖은 아스팔트 반사, 시네마틱 와이드 샷','흰 배경 위 미니멀 향수병 제품 사진, 부드러운 그림자, 스튜디오 조명'],
@@ -350,13 +378,14 @@ function openViewer(it){
   if(isRun){ acts.append(el('button',{class:'btn ghost',text:it.fav?'★ 즐겨찾기 해제':'☆ 즐겨찾기',onclick:()=>{ toggleFav(it); openViewer(it); }}),
     el('button',{class:'btn ghost',text:'다시 만들기 (설정 재사용)',onclick:()=>reuse(it)}),
     it.kind==='image'?el('button',{class:'btn ghost',text:'이 이미지로 영상 만들기',onclick:()=>{ state.surface='video'; if(!modelById(state.model.video).roles.start) state.model.video='seedance-2.5'; state.media={start:{url:it.url},end:null,ref:[]}; persist(); closeModal(); if(state.scope==='image') state.scope='video'; renderAll(); $('prompt').focus(); }}):null,
-    el('button',{class:'btn ghost',text:'공개 갤러리에 공유',onclick:()=>shareRun(it)})); }
+    (it.share==='done'||it.share==='external')?el('div',{class:'kv'},el('span',{class:'k',text:'공개 갤러리'}),el('span',{text:it.share==='done'?'자동 등록됨 ✓':'링크로 등록됨'})):el('button',{class:'btn ghost',text:it.share==='pending'?'공개 갤러리 등록 중…':'공개 갤러리에 공유',onclick:()=>shareRun(it)})); }
   else if(!it.local) acts.appendChild(el('button',{class:'btn ghost',text:'⚑ 신고',onclick:()=>reportItem(it)}));
   acts.appendChild(el('button',{class:'btn ghost',text:'닫기 (Esc)',onclick:closeModal}));
   side.appendChild(acts);
   openModal(el('div',{class:'box wide'},el('div',{class:'vmedia'},media),side));
 }
 async function shareRun(r){
+  if(shared){ toast('공개 갤러리에 올리는 중…'); r.share=null; await autoShare(r); if(state.scope==='public') loadPublic(true); return; }
   if(!termsOk()){ openUploadModal(null,r); return; }
   toast('공개 갤러리에 올리는 중…');
   try{ const resp=await fetch(r.url,{mode:'cors'}); if(!resp.ok) throw new Error(resp.status); const b=await resp.blob(); await publish(new File([b],'x',{type:b.type}),r.prompt.slice(0,80),'studio'); toast('공개 갤러리에 올렸습니다'+(shared?'':' (로컬 모드)'),'ok'); if(state.scope==='public') loadPublic(true); }
@@ -412,6 +441,7 @@ async function boot(){
   const q=new URLSearchParams(location.search); if(q.get('tab')&&SCOPES.some(s=>s[0]===q.get('tab'))) state.scope=q.get('tab');
   loadPublic(true);
   renderAll();
+  state.runs.filter(r=>r.status==='done'&&r.share==='pending').forEach(r=>autoShare(r));
   state.runs.filter(r=>r.status==='pending').forEach(r=>{ if(r.requestId&&getKey()&&Date.now()-(r.submittedAt||r.createdAt)<DEADLINE_MS){ inflight++; setLamp(); pollRun(r).finally(()=>{ inflight--; setLamp(); }); } else failRun(r,'페이지를 떠나 확인이 중단됨'); });
 }
 boot();

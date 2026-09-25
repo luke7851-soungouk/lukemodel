@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://*.replicate.com https://api.openai.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai https://generativelanguage.googleapis.com https://abacus.jasoncameron.dev; media-src data: blob: https: http:; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
+      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://*.replicate.com https://api.openai.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai https://generativelanguage.googleapis.com https://abacus.jasoncameron.dev https://*.supabase.co; media-src data: blob: https: http:; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
 <title>페이스루크 — 얼굴 모델 전문 공유 플랫폼</title>
 <meta name="description" content="페이스루크(FaceLook) — 얼굴 한 번 업로드/생성하면 이미지·영상을 같은 모델 아래에. BYOK(Fal/Replicate 등). 공유 코드. 브라우저 로컬(서버 동기화 없음). Same-person AI faces & video — your API keys.">
 <link rel="canonical" href="https://lukemodel.com/">
@@ -445,6 +445,21 @@ nav.top a.nav-hf:hover{filter:brightness(1.08)}
 nav.top a.nav-pub{color:var(--dim)}
 nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 @media (max-width:640px){.hf-hero{flex-direction:column;align-items:stretch;padding:15px 16px}.hf-acts a{flex:1;justify-content:center}}
+.hs-sec{margin:20px 0 6px}
+.hs-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.hs-head h2{font-size:17px;font-weight:800;margin:0;color:#fff}
+.hs-head .hs-sub{font-size:12.5px;color:var(--dim);flex:1;min-width:180px}
+.hs-head a{text-decoration:none}
+.hs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.hs-card{position:relative;border-radius:12px;overflow:hidden;background:#14171f;border:1px solid var(--line);aspect-ratio:3/4}
+.hs-card video,.hs-card img{width:100%;height:100%;object-fit:cover;display:block;background:#14171f}
+.hs-card .hs-tag{position:absolute;top:8px;left:8px;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:5px;background:rgba(0,0,0,.66);color:#fff}
+.hs-card .hs-cap{position:absolute;left:0;right:0;bottom:0;padding:26px 10px 9px;background:linear-gradient(transparent,rgba(0,0,0,.82));display:flex;align-items:flex-end;gap:8px}
+.hs-card .hs-cap span{flex:1;font-size:11.5px;color:#e3e6ee;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4}
+.hs-dl{flex-shrink:0;background:#d1fe17;color:#111!important;font-weight:800;font-size:12px;border-radius:8px;padding:6px 10px;text-decoration:none;white-space:nowrap}
+.hs-dl:hover{filter:brightness(1.08)}
+.hs-empty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--dim);font-size:13px}
+@media (max-width:640px){.hs-grid{grid-template-columns:repeat(2,1fr);gap:8px}.hs-card .hs-cap span{display:none}.hs-dl{margin-left:auto}}
 </style>
 </head>
 <body>
@@ -480,6 +495,7 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 </footer>
 
 <script src="/traffic.js"></script>
+<script src="/shared-config.js"></script>
 <script>
 'use strict';
 /* ===========================================================================
@@ -1340,7 +1356,59 @@ function matches(m){
   return true;
 }
 
+
+/* ── 공개 갤러리 (Supabase) — 홈 첫 섹션: 최신순, 누구나 다운로드 ─────────────────── */
+let homeShared={rows:null,loading:false,err:null,at:0};
+function sharedCfg(){ const c=window.LUKE_SHARED||{}; const url=String(c.url||'').replace(/\/$/,''); return (url&&c.anonKey&&/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url))?Object.assign({},c,{url}):null; }
+function loadHomeShared(force){
+  const c=sharedCfg(); if(!c||homeShared.loading) return;
+  if(!force&&homeShared.rows&&Date.now()-homeShared.at<60000) return;
+  homeShared.loading=true;
+  const h={apikey:c.anonKey}; if(/^eyJ/.test(c.anonKey)) h.Authorization='Bearer '+c.anonKey;
+  fetch(c.url+'/rest/v1/'+(c.table||'shared_media')+'?select=*&hidden=eq.false&order=created_at.desc&limit=24',{headers:h})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(rows=>{ homeShared.rows=rows; homeShared.err=null; })
+    .catch(e=>{ homeShared.err=e.message; if(!homeShared.rows) homeShared.rows=[]; })
+    .finally(()=>{ homeShared.loading=false; homeShared.at=Date.now(); const box=document.getElementById('homeSharedGrid'); if(box) fillHomeShared(box); });
+}
+function sharedItemUrl(c,x){ if(x.path) return c.url+'/storage/v1/object/public/'+encodeURIComponent(c.bucket||'public-media')+'/'+String(x.path).split('/').map(encodeURIComponent).join('/'); return /^https:\/\//.test(x.external_url||'')?x.external_url:null; }
+function fillHomeShared(box){
+  const c=sharedCfg(); box.textContent='';
+  const rows=(homeShared.rows||[]).filter(x=>!x.hidden);
+  if(!rows.length){ const e=document.createElement('div'); e.className='hs-empty'; e.style.gridColumn='1/-1';
+    e.textContent=homeShared.loading||homeShared.rows==null?'불러오는 중…':(homeShared.err?'공개 갤러리를 불러오지 못했습니다 ('+homeShared.err+')':'아직 올라온 영상·이미지가 없습니다. 힉스필드 스튜디오에서 만들거나 직접 올려보세요.'); box.appendChild(e); return; }
+  rows.forEach(x=>{
+    const url=sharedItemUrl(c,x); if(!url) return;
+    const card=document.createElement('div'); card.className='hs-card';
+    let m;
+    if(x.kind==='video'){ m=document.createElement('video'); m.muted=true; m.defaultMuted=true; m.loop=true; m.autoplay=true; m.playsInline=true; m.setAttribute('playsinline',''); m.setAttribute('muted',''); m.preload='metadata'; m.src=url+'#t=0.1'; }
+    else { m=document.createElement('img'); m.loading='lazy'; m.decoding='async'; m.alt=x.title||''; m.src=url; }
+    m.addEventListener('click',()=>window.open(url,'_blank','noopener'));
+    card.appendChild(m);
+    const tg=document.createElement('span'); tg.className='hs-tag'; tg.textContent=x.kind==='video'?'VIDEO':'IMAGE'; card.appendChild(tg);
+    const cap=document.createElement('div'); cap.className='hs-cap';
+    const t=document.createElement('span'); t.textContent=x.title||(x.source==='studio'?'힉스필드 스튜디오 결과':'업로드'); cap.appendChild(t);
+    const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'})[x.mime]||(x.kind==='video'?'mp4':'png');
+    const name='lukemodel-'+String(x.id||'').slice(0,8)+'.'+ext;
+    const a=document.createElement('a'); a.className='hs-dl'; a.textContent='⤓ 다운로드'; a.download=name; a.rel='noopener';
+    a.href=x.path?url+'?download='+encodeURIComponent(name):url; if(!x.path) a.target='_blank';
+    cap.appendChild(a); card.appendChild(cap); box.appendChild(card);
+  });
+  if('IntersectionObserver' in window){ const io=new IntersectionObserver(es=>es.forEach(e=>{ const v=e.target; if(e.isIntersecting) v.play().catch(()=>{}); else v.pause(); }),{threshold:.2}); box.querySelectorAll('video').forEach(v=>io.observe(v)); }
+}
+function renderHomeShared(app){
+  if(!sharedCfg()) return;
+  const sec=document.createElement('section'); sec.className='hs-sec'; sec.setAttribute('aria-label','공개 갤러리');
+  const hd=document.createElement('div'); hd.className='hs-head';
+  const h=document.createElement('h2'); h.textContent='공개 갤러리 · 최신 영상·이미지';
+  const sub=document.createElement('span'); sub.className='hs-sub'; sub.textContent='힉스필드 스튜디오에서 만든 결과가 자동으로 여기 맨 앞에 올라옵니다. 누구나 무료로 다운로드.';
+  const up=document.createElement('a'); up.className='btn sm'; up.href='/higgsfield/?tab=public'; up.textContent='+ 올리기 · 전체 보기';
+  hd.appendChild(h); hd.appendChild(sub); hd.appendChild(up); sec.appendChild(hd);
+  const grid=document.createElement('div'); grid.className='hs-grid'; grid.id='homeSharedGrid'; sec.appendChild(grid);
+  app.appendChild(sec); fillHomeShared(grid); loadHomeShared(false);
+}
 function renderBrowse(app){
+  renderHomeShared(app);
   /* 힉스필드 스튜디오 + 공개 갤러리 진입 (lukemodel.com/higgsfield/) */
   { const hb=document.createElement('div'); hb.className='hf-hero';
     const ht=document.createElement('div'); ht.className='t';
