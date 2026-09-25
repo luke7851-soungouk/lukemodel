@@ -15,7 +15,7 @@ a{color:#4f7cff} h1{font-size:1.6rem;margin-bottom:8px} h2{font-size:1.1rem;marg
 <body>
 <p><a href="/">← FaceLook / 페이스루크</a></p>
 <h1>Privacy / 개인정보</h1>
-<p class="dim">Last updated: 2026-09-24 · Honest short notice for a static GitHub Pages app.</p>
+<p class="dim">Last updated: 2026-09-25 · Honest short notice for a static GitHub Pages app.</p>
 
 <h2>What we store</h2>
 <p>FaceLook runs in your browser. Model catalogs, preferences, and share packs use <strong>localStorage</strong>. Larger image/video blobs use <strong>IndexedDB</strong>. There is no lukemodel application server that syncs your library across devices yet.</p>
@@ -28,6 +28,10 @@ a{color:#4f7cff} h1{font-size:1.6rem;margin-bottom:8px} h2{font-size:1.1rem;marg
 <h2>Login</h2>
 <p>Optional Google / Kakao / Naver sign-in is used for local identity scoping (e.g. per-account AI slots). We do not operate a FaceLook account database on our own servers.</p>
 
+
+<h2>Public gallery &amp; accounts / 공개 갤러리·계정 (Supabase)</h2>
+<p>Files you upload or generate and choose to share (and Higgsfield studio results, which are shared automatically) are stored in a Supabase project (Seoul region) and are visible to everyone. To let you delete your own items, the site may create an <strong>anonymous account</strong> for your browser (a random ID kept in this browser's localStorage). If you connect GitHub or an email address, Supabase stores that login identifier (email or GitHub account ID/username) so you can manage your items from other devices. We do not sell or share this data. You can delete your items yourself; ask via GitHub issue to delete your account.</p>
+<p>공유한 파일과 힉스필드 스튜디오 결과(자동 공유)는 Supabase(서울 리전)에 저장되어 누구나 볼 수 있습니다. 내 작품을 직접 삭제할 수 있도록 브라우저마다 <strong>익명 계정</strong>(무작위 ID, 이 브라우저 localStorage에 보관)이 만들어질 수 있습니다. GitHub·이메일을 연결하면 다른 기기에서 관리할 수 있도록 로그인 식별자(이메일 또는 GitHub 계정 ID/이름)가 Supabase에 저장됩니다. 판매·제3자 제공은 하지 않으며, 작품은 직접 삭제할 수 있고 계정 삭제는 GitHub 이슈로 요청하세요.</p>
 
 <h2>Traffic counting / 트래픽 집계</h2>
 <p>We count anonymous aggregate pageviews, approximate unique visitors (browser localStorage first-visit flag), coarse traffic-source buckets, and a few feature events (upload / AI generate / share code / download). Counts go to a third-party public counter service (Abacus; fallback beacon). We do <strong>not</strong> store IP addresses or personal profiles for this. Keys are public; numbers are approximate.</p>

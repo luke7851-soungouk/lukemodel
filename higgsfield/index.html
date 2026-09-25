@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob: https:; media-src data: blob: https:; connect-src 'self' blob: https:; base-uri 'none'; form-action 'none'">
+      content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src 'self' data: blob: https:; media-src data: blob: https:; connect-src 'self' blob: https:; base-uri 'none'; form-action 'none'">
 <title>루크 스튜디오 — Higgsfield 이미지·영상 생성 · 공개 갤러리 | 페이스루크</title>
 <meta name="description" content="lukemodel.com 루크 스튜디오: 하나의 프롬프트 바로 Soul·Seedance·Kling·Wan 등 Higgsfield 모델 이미지·영상 생성(내 키 사용), 공개 갤러리에 누구나 업로드·다운로드.">
 <link rel="canonical" href="https://lukemodel.com/higgsfield/">
@@ -181,6 +181,7 @@ textarea#prompt{width:100%;min-height:52px;max-height:180px;resize:none;backgrou
 <div class="toast" id="toast" role="status"></div>
 
 <script src="/shared-config.js"></script>
+<script src="/lm-auth.js"></script>
 <script src="/traffic.js" defer></script>
 <script src="/hf-core.js"></script>
 <script src="app.js"></script>

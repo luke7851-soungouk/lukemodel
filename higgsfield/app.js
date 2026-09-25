@@ -121,6 +121,40 @@ async function reportItem(it){
     if(!r.ok) throw new Error(r.status); toast('신고가 접수되었습니다. 누적 신고 시 자동으로 숨겨집니다','ok'); }catch(e){ toast('신고 실패: '+e.message,'err'); }
 }
 
+/* 소유자 삭제 (공개 갤러리 항목: 목록 행 + 저장소 파일) */
+async function deletePublic(it){
+  if(!confirm('이 항목을 삭제할까요?\n목록과 저장된 파일이 완전히 지워지며 되돌릴 수 없습니다.')) return;
+  try{ const r=await H.deleteItem(it); state.pub.items=state.pub.items.filter(x=>x.id!==it.id); closeModal(); renderGrid();
+    toast(r.fileOk?'삭제했습니다':'목록에서 삭제했습니다 (파일 정리는 운영자가 합니다)',r.fileOk?'ok':'err'); }
+  catch(e){ toast(e.message,'err'); }
+}
+/* 「참고로 사용」: 이미지 → 참고 이미지 / 시작 프레임, 영상 → 장면 추출(마지막 = 이어서, 첫 장면 = 참고) */
+function useAsRef(url){ state.surface='image'; if(!modelById(state.model.image).roles.ref) state.model.image='soul-2'; const m=modelById(state.model.image);
+  if(!state.media.ref.some(x=>x.url===url)){ if(state.media.ref.length>=m.roles.ref) state.media.ref.splice(0,1); state.media.ref.push({url}); }
+  if(state.scope==='video') state.scope='image'; persist(); closeModal(); renderAll(); $('prompt').focus(); toast(m.label+' 참고 이미지로 추가했습니다','ok'); }
+function useAsStartFrame(url){ state.surface='video'; if(!modelById(state.model.video).roles.start) state.model.video='seedance-2.5'; state.media={start:{url},end:null,ref:[]};
+  persist(); closeModal(); if(state.scope==='image') state.scope='video'; renderAll(); $('prompt').focus(); toast('시작 프레임으로 넣었습니다 — 영상 프롬프트를 쓰고 생성을 누르세요','ok'); }
+async function useVideoFrame(url,which,as){ closeModal(); toast('영상 장면 추출·업로드 중…');
+  try{ const u=await H.frameUrl(url,which); if(as==='ref') useAsRef(u); else useAsStartFrame(u); }catch(e){ toast('장면 추출 실패: '+e.message,'err'); } }
+function useButtons(url,kind){ return kind==='video'
+  ? [el('button',{class:'btn use-last',text:'마지막 장면에서 이어서 영상 만들기',onclick:()=>useVideoFrame(url,'last','start')}),el('button',{class:'btn ghost use-first',text:'첫 장면을 참고 이미지로',onclick:()=>useVideoFrame(url,'first','ref')})]
+  : [el('button',{class:'btn use-ref',text:'참고 이미지로 (이미지 생성)',onclick:()=>useAsRef(url)}),el('button',{class:'btn ghost use-start',text:'시작 프레임으로 (영상 생성)',onclick:()=>useAsStartFrame(url)})]; }
+function openUseChooser(url,kind){
+  const media=kind==='video'?el('video',{src:url+'#t=0.1',muted:true,playsinline:true,preload:'metadata',style:'width:100%;max-height:260px;border-radius:10px;background:#000;margin-bottom:10px'}):el('img',{src:url,alt:'',referrerpolicy:'no-referrer',style:'width:100%;max-height:260px;object-fit:contain;border-radius:10px;background:#000;margin-bottom:10px'});
+  openModal(el('div',{class:'box use-chooser'},el('h3',{text:'참고로 사용'}),el('p',{text:kind==='video'?'이 영상의 한 장면을 이미지로 뽑아 입력으로 씁니다. 마지막 장면을 시작 프레임으로 넣으면 같은 인물·장면이 자연스럽게 이어집니다.':'다른 사람의 결과를 참고 이미지(같은 인물·스타일 유지)나 영상의 시작 프레임으로 써서 처음부터 다시 만드는 토큰을 아낄 수 있습니다.'}),media,
+    el('div',{class:'acts2',style:'justify-content:flex-start'},...useButtons(url,kind),el('button',{class:'btn ghost',text:'취소',onclick:closeModal}))));
+}
+/* 이 브라우저 전용(로컬 모드 시절) 갤러리 항목 → 공개 갤러리 */
+async function shareLocalPub(btn){
+  const list=state.localPub||[]; if(!list.length) return;
+  if(!confirm('이 브라우저에만 저장된 공개 갤러리 항목 '+list.length+'개를 모든 방문자에게 공개할까요?')) return;
+  let ok=0; const errs=[];
+  for(let i=0;i<list.length;i++){ const it=list[i]; if(btn) btn.textContent='공유 중 '+(i+1)+'/'+list.length+'…';
+    try{ await H.publish(it.blob,it.title||'',it.source||'upload'); await idbDel('localpub',it.id); ok++; }catch(e){ errs.push(e.message); } }
+  try{ state.localPub=await idbAll('localpub'); }catch(e){ state.localPub=[]; }
+  toast(ok+'개 공유했습니다'+(errs.length?' · 실패 '+errs.length+'개 — '+errs[0]:''),errs.length?'err':'ok'); loadPublic(true); renderNotice();
+}
+
 /* ───────── Download ───────── */
 const download=(it,i)=>H.download(it,i);
 
@@ -139,6 +173,8 @@ function renderNotice(){ const n=$('notice'); n.textContent='';
       el('b',{text:shared?'공개 갤러리 — 누구나 업로드·다운로드':'공개 갤러리 (현재 이 브라우저 전용 모드)'}),' ',
       shared?'이미지·영상을 올리면 lukemodel.com 방문자 모두가 보고 내려받을 수 있습니다. 이미지 ≤'+Math.round(MAX_IMG/1048576)+'MB, 영상 ≤'+Math.round(MAX_VID/1048576)+'MB, JPG·PNG·WEBP·GIF·MP4·WEBM·MOV만. 불법·성인·타인 초상/저작권 침해 게시물은 금지되며 신고 누적 시 자동 숨김됩니다.'
             :'공유 저장소가 아직 연결되지 않아, 올린 파일은 이 기기 브라우저에만 저장됩니다(다른 방문자에게는 보이지 않음). 운영자가 무료 저장소를 연결하면 자동으로 전체 공개 갤러리로 전환됩니다.'));
+    if(shared&&state.localPub&&state.localPub.length){ const b=el('button',{class:'btn sm',text:'이 브라우저 전용 항목 '+state.localPub.length+'개 공유하기',onclick:()=>shareLocalPub(b)});
+      n.appendChild(el('div',{class:'notice'},el('b',{text:'이 브라우저에만 있던 항목: '}),'예전에 로컬 모드로 올린 파일이 있습니다. ',b)); }
     return; }
   if(shared) n.appendChild(el('div',{class:'notice',style:'border-color:#4a5a14'},el('b',{text:'자동 공개: '}),'이 스튜디오에서 완성된 이미지·영상은 자동으로 공개 갤러리와 lukemodel.com 메인 화면 첫 줄에 등록되어 누구나 보고 내려받을 수 있습니다. 공개되면 안 되는 내용(개인정보·타인 얼굴 등)은 생성하지 마세요.'));
   if(!getKey()) n.appendChild(el('div',{class:'notice'},el('b',{text:'내 Higgsfield 키로 생성합니다.'}),' 오른쪽 위 「키 추가」에 ',el('b',{text:'key-id:key-secret'}),' 형식 키를 넣으세요(',el('a',{href:'https://cloud.higgsfield.ai/',target:'_blank',rel:'noopener',text:'Higgsfield Cloud에서 발급'}),'). 키는 이 브라우저에만 저장되고 platform.higgsfield.ai로만 전송됩니다. 생성 비용은 키 소유자 계정에서 차감됩니다.'));
@@ -168,7 +204,8 @@ function tileFor(it,idx,items){
     el('button',{class:'ic',title:'재사용','aria-label':'재사용',text:'↺',onclick:e=>{e.stopPropagation(); reuse(it);}})); }
   acts.append(el('button',{class:'ic',title:'다운로드','aria-label':'다운로드',text:'⤓',onclick:e=>{e.stopPropagation(); download(it);}}));
   if(isRun) acts.append(el('button',{class:'ic',title:'삭제','aria-label':'삭제',text:'🗑',onclick:e=>{e.stopPropagation(); removeRuns([it.id]);}}));
-  else if(!it.local) acts.append(el('button',{class:'ic',title:'신고','aria-label':'신고',text:'⚑',onclick:e=>{e.stopPropagation(); reportItem(it);}}));
+  else if(!it.local){ if(H.canDelete(it)) acts.append(el('button',{class:'ic del',title:'내 작품 삭제','aria-label':'삭제',text:'🗑',onclick:e=>{e.stopPropagation(); deletePublic(it);}}));
+    acts.append(el('button',{class:'ic',title:'신고','aria-label':'신고',text:'⚑',onclick:e=>{e.stopPropagation(); reportItem(it);}})); }
   else acts.append(el('button',{class:'ic',title:'삭제','aria-label':'삭제',text:'🗑',onclick:async e=>{e.stopPropagation(); await idbDel('localpub',it.id); loadPublic(true);}}));
   t.appendChild(acts);
   t.appendChild(el('div',{class:'cap'},el('span',{text:it.prompt||H.displayTitle(it.title)||(it.source==='studio'?'스튜디오 결과':'업로드')}),el('span',{text:it.modelLabel||(it.size?(it.size/1048576).toFixed(1)+'MB':'')})));
@@ -297,7 +334,9 @@ function openViewer(it){
     it.kind==='image'?el('button',{class:'btn ghost',text:'참고 이미지로 사용',onclick:()=>{ state.surface='image'; if(!modelById(state.model.image).roles.ref) state.model.image='soul-2'; const m=modelById(state.model.image); const u=it.shared&&shared?pubUrl(it.shared):it.url; if(!state.media.ref.some(x=>x.url===u)){ if(state.media.ref.length>=m.roles.ref) state.media.ref.splice(0,1); state.media.ref.push({url:u}); } if(state.scope==='video') state.scope='image'; persist(); closeModal(); renderAll(); $('prompt').focus(); toast(m.label+' 참고 이미지로 추가했습니다','ok'); }}):null,
     it.kind==='image'?el('button',{class:'btn ghost',text:'이 이미지로 영상 만들기',onclick:()=>{ state.surface='video'; if(!modelById(state.model.video).roles.start) state.model.video='seedance-2.5'; state.media={start:{url:it.url},end:null,ref:[]}; persist(); closeModal(); if(state.scope==='image') state.scope='video'; renderAll(); $('prompt').focus(); }}):null,
     (it.share==='done'||it.share==='external')?el('div',{class:'kv'},el('span',{class:'k',text:'공개 갤러리'}),el('span',{text:it.share==='done'?'자동 등록됨 ✓':'링크로 등록됨'})):el('button',{class:'btn ghost',text:it.share==='pending'?'공개 갤러리 등록 중…':'공개 갤러리에 공유',onclick:()=>shareRun(it)})); }
-  else if(!it.local) acts.appendChild(el('button',{class:'btn ghost',text:'⚑ 신고',onclick:()=>reportItem(it)}));
+  else if(!it.local){ acts.append(...useButtons(it.url,it.kind));
+    if(H.canDelete(it)) acts.appendChild(el('button',{class:'btn danger',text:'🗑 내 작품 삭제',onclick:()=>deletePublic(it)}));
+    acts.appendChild(el('button',{class:'btn ghost',text:'⚑ 신고',onclick:()=>reportItem(it)})); }
   acts.appendChild(el('button',{class:'btn ghost',text:'닫기 (Esc)',onclick:closeModal}));
   side.appendChild(acts);
   openModal(el('div',{class:'box wide'},el('div',{class:'vmedia'},media),side));
@@ -329,7 +368,7 @@ function openUploadModal(files,pendingRun){
     closeModal(); toast(ok+'개 업로드 완료'+(errs.length?' · 실패 '+errs.length+'개 — '+errs[0]:''),errs.length?'err':'ok'); setScope('public'); };
   if(files) add(files);
   openModal(el('div',{class:'box'},el('h3',{text:pendingRun?'공개 갤러리에 공유':'공개 갤러리에 업로드'}),
-    el('p',{text:shared?'올린 파일은 lukemodel.com의 모든 방문자가 보고 다운로드할 수 있습니다. 올린 뒤에는 직접 삭제할 수 없습니다(신고/운영자 삭제만 가능).':'현재 공유 저장소 미연결 — 이 브라우저에만 저장됩니다.'}),
+    el('p',{text:shared?(H.schemaV2()?'올린 파일은 lukemodel.com의 모든 방문자가 보고 다운로드할 수 있습니다. 내가 올린 파일은 언제든 직접 삭제할 수 있습니다(이 브라우저, 또는 「내 계정」에서 연결한 계정으로).':'올린 파일은 lukemodel.com의 모든 방문자가 보고 다운로드할 수 있습니다. 올린 뒤에는 직접 삭제할 수 없습니다(신고/운영자 삭제만 가능).'):'현재 공유 저장소 미연결 — 이 브라우저에만 저장됩니다.'}),
     pendingRun?null:drop, fin, pendingRun?null:list, pendingRun?null:title,
     el('label',{style:'display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:#c3c8d4;line-height:1.6'},agree,el('span',{},'내가 권리를 가진 콘텐츠만 올리며, 불법·성적·폭력적 콘텐츠, 타인의 얼굴·개인정보를 동의 없이 올리지 않습니다. 위반 시 삭제될 수 있습니다. (',el('a',{href:'/terms.html',target:'_blank',text:'이용약관'}),')')),
     el('div',{class:'acts2'},el('button',{class:'btn ghost',text:'취소',onclick:closeModal}),go)));
@@ -368,8 +407,16 @@ async function boot(){
   document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&state.selecting&&!$('modal').firstChild){ exitSelect(); renderGrid(); } });
   $('keyBtn').onclick=()=>openKeyModal(); $('upBtn').onclick=()=>openUploadModal(); $('moreBtn').onclick=()=>loadPublic(false);
   const q=new URLSearchParams(location.search); if(q.get('tab')&&SCOPES.some(s=>s[0]===q.get('tab'))) state.scope=q.get('tab');
+  { const right=document.querySelector('.top .right'); if(right&&window.LukeAuth&&LukeAuth.chip) right.insertBefore(LukeAuth.chip(),right.firstChild); }
+  if(window.LukeAuth&&LukeAuth.onChange) LukeAuth.onChange(()=>{ if(state.scope==='public') renderGrid(); const n=LukeAuth.takeNotice&&LukeAuth.takeNotice(); if(n) toast(n.text,n.kind==='err'?'err':'ok'); });
+  window.addEventListener('lukemedia:deleted',e=>{ const id=e.detail&&e.detail.id; if(state.pub.items.some(x=>x.id===id)){ state.pub.items=state.pub.items.filter(x=>x.id!==id); renderGrid(); } });
+  if(shared) idbAll('localpub').then(a=>{ state.localPub=a||[]; if(state.localPub.length) renderNotice(); }).catch(()=>{});
   loadPublic(true);
   renderAll();
+  /* 홈·상세의 「참고로 사용」 → /higgsfield/?use=<파일 URL>&kind=image|video */
+  { const use=q.get('use'), kind=q.get('kind')==='video'?'video':'image';
+    if(use){ try{ const u=new URL(location.href); u.searchParams.delete('use'); u.searchParams.delete('kind'); history.replaceState(null,'',u.pathname+(u.search||'')); }catch(e){}
+      if(H.okMediaUrl(use)) openUseChooser(use,kind); else toast('참고로 쓸 수 없는 주소입니다','err'); } }
   state.runs.filter(r=>r.status==='done'&&r.share==='pending').forEach(r=>autoShare(r));
   state.runs.filter(r=>r.status==='pending').forEach(r=>{ if(r.requestId&&getKey()&&Date.now()-(r.submittedAt||r.createdAt)<DEADLINE_MS){ inflight++; setLamp(); pollRun(r).finally(()=>{ inflight--; setLamp(); }); } else failRun(r,'페이지를 떠나 확인이 중단됨'); });
 }

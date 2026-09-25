@@ -128,7 +128,37 @@ function resume(st){
     } else if(r.status==='done'&&r.share==='pending'&&!polling.has(r.id)){ polling.add(r.id); share(st,r,'['+r.modelLabel+'] '+r.prompt).finally(()=>polling.delete(r.id)); }
   });
 }
-function useAsStart(st,url){ st.start={url}; st.tab='video'; drawForm(st); const f=st.root&&st.root.querySelector('.fhf-form'); if(f){ try{ f.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){} const t=f.querySelector('textarea'); if(t) setTimeout(()=>t.focus(),250); } toast('이 결과를 시작 프레임으로 넣었습니다. 영상 프롬프트를 쓰고 「영상 만들기」를 누르세요','ok'); }
+function useAsStart(st,url,label){ st.start={url,label:label||null}; st.tab='video'; drawForm(st); const f=st.root&&st.root.querySelector('.fhf-form'); if(f){ try{ f.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){} const t=f.querySelector('textarea'); if(t) setTimeout(()=>t.focus(),250); } toast('시작 프레임으로 넣었습니다. 영상 프롬프트를 쓰고 「영상 만들기」를 누르세요','ok'); }
+/* 「참고로 사용」: 이미지 → 영상 시작 프레임, 영상 → 마지막 장면을 추출해 시작 프레임(이어서 만들기) */
+async function useItem(st,x,btn){
+  if(x.kind!=='video'){ useAsStart(st,x.url,'선택한 작품 이미지'); return; }
+  if(btn){ btn.disabled=true; btn.textContent='장면 추출 중…'; }
+  try{ const u=await H.frameUrl(x.url,'last'); useAsStart(st,u,'선택한 영상의 마지막 장면'); }
+  catch(e){ toast('장면 추출 실패: '+e.message,'err'); }
+  finally{ if(btn&&btn.isConnected){ btn.disabled=false; btn.textContent='참고로 사용'; } }
+}
+/* 소유자 삭제 (행 + 파일) */
+async function removeItem(st,x,btn){
+  if(!confirm('이 작품을 삭제할까요?\n목록과 저장된 파일이 완전히 지워지며 되돌릴 수 없습니다.')) return;
+  if(btn) btn.disabled=true;
+  try{ const r=await H.deleteItem(x); st.items=st.items.filter(y=>y.id!==x.id); st.ids.delete(x.id); redraw(st);
+    toast(r.fileOk?'삭제했습니다':'목록에서 삭제했습니다 (파일 정리는 운영자가 합니다)',r.fileOk?'ok':'err'); }
+  catch(e){ if(btn) btn.disabled=false; toast(e.message,'err'); }
+}
+/* 이 얼굴에 이미지·영상 올리기 (face 태그) */
+const LS_TERMS='lukehf.terms';
+async function uploadFiles(st,files){
+  const list=[...(files||[])].slice(0,10); if(!list.length) return;
+  if(!H.shared){ toast('공유 저장소가 설정되지 않았습니다','err'); return; }
+  let agreed=false; try{ agreed=localStorage.getItem(LS_TERMS)==='1'; }catch(e){}
+  if(!agreed){ if(!confirm('올린 파일은 lukemodel.com 방문자 모두가 보고 내려받을 수 있습니다.\n내가 권리를 가진 콘텐츠만 올리며, 불법·성적 콘텐츠나 타인의 얼굴·개인정보를 동의 없이 올리지 않는 데 동의합니까?')) return; try{ localStorage.setItem(LS_TERMS,'1'); }catch(e){} }
+  st.uploading={i:0,n:list.length}; redraw(st);
+  let ok=0; const errs=[];
+  for(const f of list){ st.uploading.i++; redraw(st);
+    try{ await H.publish(f,(st.face.name||'얼굴')+' · 업로드','upload',st.key); ok++; }catch(e){ errs.push((f.name||'파일')+': '+e.message); } }
+  st.uploading=null; await loadNew(st); redraw(st);
+  toast(ok+'개 올렸습니다'+(errs.length?' · 실패 '+errs.length+'개 — '+errs[0]:''),errs.length?'err':'ok');
+}
 
 /* ── 그리기 ── */
 function redraw(st){ if(!alive(st)) return; drawGallery(st); }
@@ -157,7 +187,7 @@ function drawForm(st){
   if(kind==='video'){
     const src=st.start?st.start.url:st.face.preview;
     box.appendChild(el('div',{class:'fhf-start'},el('span',{class:'th',style:'background-image:url("'+String(src||'').replace(/"/g,'%22')+'")'}),
-      el('span',{class:'t'},el('b',{text:'시작 프레임: '}),st.start?'이 페이지에서 만든 이미지':'이 얼굴 사진',el('br'),el('small',{text:'첫 장면을 이 이미지로 고정해 같은 사람이 움직이게 합니다.'})),
+      el('span',{class:'t'},el('b',{text:'시작 프레임: '}),st.start?(st.start.label||'이 페이지에서 만든 이미지'):'이 얼굴 사진',el('br'),el('small',{text:'첫 장면을 이 이미지로 고정해 같은 사람이 움직이게 합니다.'})),
       st.start?el('button',{class:'btn ghost sm',type:'button',text:'얼굴 사진으로 되돌리기',onclick:()=>{ st.start=null; drawForm(st); }}):null));
   } else {
     box.appendChild(el('div',{class:'fhf-hint',text:'이 얼굴 사진을 참고 이미지로 자동 첨부합니다 ('+(m.id.startsWith('soul')?'Soul Reference: image_reference_url':m.id==='ideogram-4'?'Ideogram: image_url + 참고 강도':'Qwen 편집: image_urls')+').'}));
@@ -205,13 +235,18 @@ function tileItem(st,x){
   t.appendChild(el('span',{class:'bd',text:x.kind==='video'?'VIDEO':'IMAGE'}));
   t.appendChild(el('div',{class:'cap'},el('span',{class:'t',text:H.displayTitle(x.title)||'힉스필드 결과'}),el('small',{text:new Date(x.created_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}),
     el('div',{class:'acts'},el('button',{class:'btn sm fhf-dl',type:'button',text:'⤓ 다운로드',onclick:()=>H.download(Object.assign({},x,{model:'face-'+st.key}))}),
-      x.kind==='image'?el('button',{class:'btn ghost sm',type:'button',text:'이 결과로 영상 만들기',onclick:()=>useAsStart(st,x.url)}):null)));
+      el('button',{class:'btn ghost sm fhf-use',type:'button',text:'참고로 사용',title:x.kind==='video'?'이 영상의 마지막 장면을 시작 프레임으로 넣어 이어서 영상 만들기':'이 이미지를 시작 프레임으로 넣어 영상 만들기',onclick:e=>useItem(st,x,e.currentTarget)}),
+      H.canDelete&&H.canDelete(x)?el('button',{class:'btn ghost sm fhf-del',type:'button',text:'삭제',title:'내가 올리거나 만든 작품 삭제',onclick:e=>removeItem(st,x,e.currentTarget)}):null)));
   return t;
 }
 function drawGallery(st){
   if(!alive(st)) return; const box=st.root.querySelector('.fhf-gal'); box.textContent='';
   const runs=runsOf(st);
-  box.appendChild(el('div',{class:'fhf-ghead'},el('h3',{text:'이 얼굴로 만든 작품'}),el('span',{class:'cnt',text:st.items.length?(st.items.length+(st.done?'개':'개+')):''}),el('span',{class:'sp'}),
+  const fin=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime',multiple:true,hidden:true,class:'fhf-file','aria-label':'이 얼굴에 올릴 파일'});
+  fin.addEventListener('change',()=>{ const fs=[...fin.files]; fin.value=''; uploadFiles(st,fs); });
+  const chip=window.LukeAuth&&window.LukeAuth.chip?window.LukeAuth.chip():null;
+  box.appendChild(el('div',{class:'fhf-ghead'},el('h3',{text:'이 얼굴의 작품 · 최신순'}),el('span',{class:'cnt',text:st.items.length?(st.items.length+(st.done?'개':'개+')):''}),el('span',{class:'sp'}),chip,
+    H.shared?el('button',{class:'btn sm fhf-up',type:'button',disabled:st.uploading?true:null,text:st.uploading?('올리는 중 '+st.uploading.i+'/'+st.uploading.n+'…'):'+ 이 얼굴에 올리기',title:'이미지(≤'+Math.round(H.MAX_IMG/1048576)+'MB)·영상(≤'+Math.round(H.MAX_VID/1048576)+'MB)을 이 얼굴 작품으로 공개 등록',onclick:()=>fin.click()}):null,fin,
     el('button',{class:'btn ghost sm',type:'button',text:st.loading?'불러오는 중…':'새로고침',disabled:st.loading?true:null,onclick:()=>loadFirst(st)})));
   const grid=el('div',{class:'fhf-grid'});
   runs.forEach(r=>grid.appendChild(tileRun(st,r)));
@@ -219,7 +254,9 @@ function drawGallery(st){
   box.appendChild(grid);
   if(!runs.length&&!st.items.length) box.appendChild(el('div',{class:'fhf-empty',text:st.loading?'불러오는 중…':st.err?('불러오지 못했습니다: '+st.err):'아직 이 얼굴로 만든 작품이 없습니다. 위에서 첫 이미지나 영상을 만들어 보세요.'}));
   else if(st.err) box.appendChild(el('div',{class:'fhf-empty',text:'불러오지 못했습니다: '+st.err}));
-  if(st.items.length&&!st.done) box.appendChild(el('div',{style:'text-align:center;margin-top:10px'},el('button',{class:'btn ghost sm',type:'button',text:st.loading?'불러오는 중…':'더 보기',disabled:st.loading?true:null,onclick:()=>loadMore(st)})));
+  if(st.items.length&&!st.done){ const mb=el('div',{class:'fhf-more',style:'text-align:center;margin-top:10px'},el('button',{class:'btn ghost sm',type:'button',text:st.loading?'불러오는 중…':'더 보기',disabled:st.loading?true:null,onclick:()=>loadMore(st)})); box.appendChild(mb);
+    /* 끝까지 스크롤하면 자동으로 다음 페이지 (버튼은 백업) */
+    if('IntersectionObserver' in window&&!st.err){ if(st.moreIO) st.moreIO.disconnect(); st.moreIO=new IntersectionObserver(es=>{ if(es.some(e=>e.isIntersecting)&&!st.loading&&!st.done) loadMore(st); },{rootMargin:'400px 0px'}); st.moreIO.observe(mb); } }
 }
 function updatePhase(st,r){ if(!alive(st)) return; const p=st.root.querySelector('.fhf-tile[data-run="'+r.id+'"] .phase'); if(p) p.textContent=r.phase==='in_progress'?'생성 중…':'대기열…'; }
 
@@ -244,7 +281,7 @@ const CSS=`.fhf{border:1px solid var(--acc);border-radius:14px;background:rgba(7
 .fhf-chip select option{background:#1a1d27}.fhf-chip input{accent-color:var(--acc)}
 .fhf-go{padding:9px 18px}
 .fhf-gal{margin-top:18px}
-.fhf-ghead{display:flex;align-items:center;gap:8px;margin-bottom:10px}.fhf-ghead h3{font-size:14px;font-weight:800;margin:0}.fhf-ghead .cnt{font-size:12px;color:var(--dim)}
+.fhf-ghead{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}.fhf-ghead h3{font-size:14px;font-weight:800;margin:0}.fhf-ghead .cnt{font-size:12px;color:var(--dim)}
 .fhf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .fhf-tile{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden;display:flex;flex-direction:column}
 .fhf-tile img,.fhf-tile video{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:#14171f}
@@ -268,7 +305,7 @@ function mount(container,face){
   const st=stateFor(face);
   const root=el('section',{class:'fhf',id:'faceHf','aria-label':'이 얼굴로 힉스필드 제작','data-face':st.key},
     el('h2',{text:'이 얼굴로 힉스필드 제작'}),
-    el('div',{class:'sub',text:'이 얼굴 사진을 매번 자동으로 함께 보내 같은 사람으로 이미지와 영상을 만듭니다. 완성된 결과는 아래 「이 얼굴로 만든 작품」과 홈 공개 갤러리에 자동 저장되어 누구나 보고 내려받을 수 있습니다. 공개되면 안 되는 내용은 만들지 마세요.'}),
+    el('div',{class:'sub',text:'이 얼굴 사진을 매번 자동으로 함께 보내 같은 사람으로 이미지와 영상을 만듭니다. 완성된 결과와 직접 올린 파일은 아래 「이 얼굴의 작품」과 홈 공개 갤러리에 저장되어 누구나 보고 내려받을 수 있습니다. 다른 사람 작품도 「참고로 사용」으로 시작 프레임에 넣어 토큰을 아낄 수 있습니다. 공개되면 안 되는 내용은 만들지 마세요.'}),
     el('div',{class:'fhf-key'}),el('div',{class:'fhf-face'}),el('div',{class:'fhf-form'}),el('div',{class:'fhf-gal'}));
   container.appendChild(root); st.root=root; root._fresh=true; setTimeout(()=>{ root._fresh=false; },0);
   drawKey(st); drawStatus(st); drawForm(st); drawGallery(st);
@@ -278,5 +315,8 @@ function mount(container,face){
   if(!st.timer) st.timer=setInterval(()=>{ if(!alive(st)){ clearInterval(st.timer); st.timer=null; return; } if(!document.hidden) loadNew(st); },REFRESH_MS);
   return st;
 }
+/* 로그인 상태가 바뀌면 삭제 버튼 표시를 다시 계산 · 다른 곳에서 삭제된 항목은 목록에서 제거 */
+if(window.LukeAuth&&window.LukeAuth.onChange) window.LukeAuth.onChange(()=>states.forEach(st=>redraw(st)));
+window.addEventListener('lukemedia:deleted',e=>{ const id=e.detail&&e.detail.id; states.forEach(st=>{ if(st.ids.has(id)){ st.items=st.items.filter(y=>y.id!==id); st.ids.delete(id); redraw(st); } }); });
 window.LukeFaceHF={mount,IMG_MODELS,VID_MODELS,_states:states};
 })();

@@ -49,3 +49,12 @@ Google로 로그인하면 **「내 AI 모델」** aside에 계정별 슬롯이 �
 
 ### 한계
 공유·카탈로그·키는 브라우저 로컬입니다. 기기 간 클라우드 동기화·타사 OAuth 키 브로커는 백엔드가 필요합니다.
+
+### 통합 타임라인 · 소유자 삭제 · 참고로 사용 (`/lm-auth.js`)
+- **통합 타임라인**: 홈 첫 섹션과 얼굴 상세 「이 얼굴의 작품」은 모두 Supabase `shared_media` 한 곳에서 최신순으로 불러옵니다. 저장소 얼굴 사진(`faces/*.jpg` 38장)은 SQL로 `external_url`(https://lukemodel.com/faces/…) 행으로 이관(`source='repo'`, `face_id='r-<파일명>'`).
+- **이 브라우저에만 있던 예전 작품**(IndexedDB `facenaru.files.v1` assets, 스튜디오 `lukehf.localpub`)은 홈 「내 브라우저 작품 N개 공유하기」 / 스튜디오 공개 갤러리 알림에서 공개 갤러리로 올릴 수 있음.
+- **소유자 삭제**: Supabase Auth 익명 로그인(처음 올리거나 만들 때 조용히 발급) → `owner_id = auth.uid()`. 내 항목에만 「삭제」(확인창 → 행 삭제 + 저장소 파일 삭제). GitHub·이메일(·Google) 연결로 다른 기기에서도 관리(`linkIdentity` / `updateUser({email})`).
+- **자동 기능 감지**: `shared_media.owner_id/face_id` 열이 있을 때만 켜짐(그 전엔 supabase-js도 안 불러옴). `LUKE_SHARED.auth=false`로 강제 끔. supabase-js 2.117.1 은 jsDelivr + SRI.
+- **얼굴 상세 업로드**: 「+ 이 얼굴에 올리기」 → `face_id`(+ 제목 `#face:` 태그) 로 등록, 내 것은 삭제 가능.
+- **참고로 사용**: 홈·스튜디오 → `/higgsfield/?use=<URL>&kind=image|video` 선택창(참고 이미지 / 시작 프레임, 영상은 마지막·첫 장면 추출). 얼굴 상세 → 영상 시작 프레임(영상은 마지막 장면).
+- 설정 SQL·대시보드 체크리스트는 운영자 로컬 문서(저장소 밖) 참고.

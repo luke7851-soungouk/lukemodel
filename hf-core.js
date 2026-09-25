@@ -133,7 +133,12 @@ const SB=shared?String(CFG.url).replace(/\/$/,''):'';
 const BUCKET=CFG.bucket||'public-media', TABLE=CFG.table||'shared_media';
 const MAX_IMG=(CFG.maxImageMB||10)*1048576, MAX_VID=(CFG.maxVideoMB||50)*1048576;
 const OK_MIME={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'};
-function sbHeaders(extra){ const h={apikey:CFG.anonKey}; if(/^eyJ/.test(CFG.anonKey||'')) h.Authorization='Bearer '+CFG.anonKey; return Object.assign(h,extra||{}); }
+/* 요청 헤더: 로그인(익명 포함) 세션이 있으면 사용자 토큰 → owner_id 자동 기록·본인 삭제 가능. 없으면 기존 anon 키 */
+const AUTH=()=>window.LukeAuth||null;
+function sbHeaders(extra){ const A=AUTH(); if(A&&A.headers) return A.headers(extra); const h={apikey:CFG.anonKey}; if(/^eyJ/.test(CFG.anonKey||'')) h.Authorization='Bearer '+CFG.anonKey; return Object.assign(h,extra||{}); }
+/* 쓰기 전에 세션 보장(스키마 v2 + 익명 로그인 켜짐일 때만 실제 로그인). 실패해도 기존 anon 방식으로 계속 */
+async function prepWrite(){ const A=AUTH(); if(A&&A.ensure){ try{ await A.ensure(); }catch(e){} } }
+const schemaV2=()=>{ const A=AUTH(); return !!(A&&A.schemaV2); };
 const pubUrl=path=>SB+'/storage/v1/object/public/'+encodeURIComponent(BUCKET)+'/'+String(path).split('/').map(encodeURIComponent).join('/');
 const itemUrl=x=>x.path?pubUrl(x.path):(/^https:\/\//.test(x.external_url||'')?x.external_url:null);
 async function sniff(file){ const b=new Uint8Array(await file.slice(0,16).arrayBuffer()); const hex=[...b].map(x=>x.toString(16).padStart(2,'0')).join(''); const asc=String.fromCharCode(...b);
@@ -148,12 +153,16 @@ async function validateUpload(file){
 /* 버킷 정책상 경로는 YYYY/MM/<uuid>.<ext> 형식만 허용 */
 function newPath(ext){ const d=new Date(); return d.getUTCFullYear()+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+uid()+'.'+ext; }
 async function putObject(file,v){
+  await prepWrite();
   const path=newPath(v.ext);
   const r=await fetch(SB+'/storage/v1/object/'+encodeURIComponent(BUCKET)+'/'+path,{method:'POST',headers:sbHeaders({'Content-Type':v.mime,'x-upsert':'false','cache-control':'31536000'}),body:file});
   if(!r.ok){ let t=''; try{t=(await r.json()).message||'';}catch(e){} throw new Error('업로드 실패 ('+r.status+') '+t); }
   return path;
 }
 async function insertRow(row){
+  await prepWrite();
+  row=Object.assign({},row);
+  if(schemaV2()){ const f=faceOf(row.title); if(f&&!row.face_id) row.face_id=f; } else delete row.face_id;   /* 구 스키마엔 face_id 열이 없음 */
   const r=await fetch(SB+'/rest/v1/'+TABLE,{method:'POST',headers:sbHeaders({'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify(row)});
   if(!r.ok){ let t=''; try{t=(await r.json()).message||'';}catch(e){} const e=new Error('목록 등록 실패 ('+r.status+') '+t); e.status=r.status; throw e; }
 }
@@ -197,12 +206,48 @@ async function shareResult(o){
 /* 얼굴별 목록 (최신순). before: created_at 키셋 */
 async function listByFace(faceKey,opts){
   opts=opts||{}; if(!shared) return [];
-  let q=SB+'/rest/v1/'+TABLE+'?select=*&hidden=eq.false&title=like.*'+encodeURIComponent(faceTag(faceKey).trim())+'&order=created_at.desc,id.desc&limit='+(opts.limit||24);
+  const A=AUTH(); if(A&&A.detect){ try{ await A.detect(); }catch(e){} }
+  const filt=schemaV2()?'face_id=eq.'+encodeURIComponent(cleanKey(faceKey)):'title=like.*'+encodeURIComponent(faceTag(faceKey).trim());
+  let q=SB+'/rest/v1/'+TABLE+'?select=*&hidden=eq.false&'+filt+'&order=created_at.desc,id.desc&limit='+(opts.limit||24);
   if(opts.before) q+='&created_at=lt.'+encodeURIComponent(opts.before);
   if(opts.after) q+='&created_at=gt.'+encodeURIComponent(opts.after);
   const r=await fetch(q,{headers:sbHeaders()}); if(!r.ok) throw new Error('목록 불러오기 실패 ('+r.status+')');
   const rows=await r.json(); rows.forEach(x=>{ x.url=itemUrl(x); }); return rows.filter(x=>x.url);
 }
+
+/* ───────── 소유자 삭제: 목록 행 삭제(RLS: owner_id = auth.uid()) → 성공 시 저장소 파일 삭제(RLS: storage owner_id) ───────── */
+const canDelete=x=>{ const A=AUTH(); return !!(A&&A.isMine&&A.isMine(x)); };
+async function deleteItem(x){
+  if(!shared) throw new Error('공유 저장소가 설정되지 않았습니다');
+  const A=AUTH(); if(!A||!A.schemaV2) throw new Error('삭제 기능이 아직 켜지지 않았습니다');
+  await prepWrite(); if(!A.isMine(x)) throw new Error('내가 올리거나 만든 항목만 삭제할 수 있습니다');
+  const r=await fetch(SB+'/rest/v1/'+TABLE+'?id=eq.'+encodeURIComponent(x.id),{method:'DELETE',headers:sbHeaders({Prefer:'return=representation'})});
+  if(!r.ok){ let t=''; try{t=(await r.json()).message||'';}catch(e){} throw new Error('삭제 실패 ('+r.status+') '+t); }
+  const gone=await r.json().catch(()=>[]); if(!Array.isArray(gone)||!gone.length) throw new Error('삭제 권한이 없거나 이미 삭제된 항목입니다');
+  let fileOk=true;
+  if(x.path){ try{ const d=await fetch(SB+'/storage/v1/object/'+encodeURIComponent(BUCKET),{method:'DELETE',headers:sbHeaders({'Content-Type':'application/json'}),body:JSON.stringify({prefixes:[x.path]})});
+      const j=d.ok?await d.json().catch(()=>[]):[]; fileOk=d.ok&&Array.isArray(j)&&j.length>0; }catch(e){ fileOk=false; } }
+  try{ window.dispatchEvent(new CustomEvent('lukemedia:deleted',{detail:{id:x.id}})); }catch(e){}
+  return {fileOk};
+}
+/* 참고용 URL 허용 목록: 이 사이트 저장소/파일, Higgsfield CDN */
+function okMediaUrl(u){ try{ const x=new URL(u); if(x.protocol!=='https:') return false; return (SB&&x.origin===SB)||x.hostname==='lukemodel.com'||x.origin===location.origin||/(^|\.)cloudfront\.net$|(^|\.)higgsfield\.ai$/.test(x.hostname); }catch(e){ return false; } }
+/* 영상에서 한 장면(JPEG) 추출: which='last'(이어서 만들기) | 'first'. CORS 허용 파일만 가능(Supabase·lukemodel·Higgsfield CDN) */
+function videoFrame(url,which){
+  return new Promise((res,rej)=>{
+    const v=document.createElement('video'); v.crossOrigin='anonymous'; v.muted=true; v.playsInline=true; v.preload='auto';
+    let done=false; const fin=(e,f)=>{ if(done) return; done=true; clearTimeout(to); v.removeAttribute('src'); try{ v.load(); }catch(x){} e?rej(e):res(f); };
+    const to=setTimeout(()=>fin(new Error('영상 장면 추출 시간 초과')),20000);
+    v.addEventListener('error',()=>fin(new Error('영상을 불러오지 못했습니다')));
+    v.addEventListener('loadedmetadata',()=>{ const d=isFinite(v.duration)?v.duration:0; try{ v.currentTime=which==='last'?Math.max(0,d-0.08):Math.min(0.1,d/2); }catch(e){ fin(e); } });
+    v.addEventListener('seeked',()=>{ try{ const w=v.videoWidth,h=v.videoHeight; if(!w||!h) throw new Error('영상 크기를 읽을 수 없습니다');
+      const sc=Math.min(1,2048/Math.max(w,h)); const c=document.createElement('canvas'); c.width=Math.round(w*sc); c.height=Math.round(h*sc); c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+      c.toBlob(b=>b?fin(null,new File([b],'frame.jpg',{type:'image/jpeg'})):fin(new Error('장면 변환 실패')),'image/jpeg',0.92); }catch(e){ fin(e.name==='SecurityError'?new Error('이 영상은 장면 추출이 허용되지 않습니다(CORS)'):e); } },{once:true});
+    v.src=url;
+  });
+}
+/* 영상 → 장면 이미지 공개 URL (참고/시작 프레임용 입력 파일, 갤러리 행 없음) */
+async function frameUrl(url,which){ return uploadInput(await videoFrame(url,which)); }
 
 /* ───────── 다운로드 (실제 파일 저장) ───────── */
 function fname(it,i){ const ext=(it.mime&&OK_MIME[it.mime])||(it.kind==='video'?'mp4':(String(it.url||'').match(/\.(png|jpe?g|webp|gif)(\?|$)/i)||[,'png'])[1]); return 'lukemodel-'+(it.model||it.source||'media')+'-'+new Date(it.createdAt||it.created_at||Date.now()).toISOString().slice(0,19).replace(/[:T]/g,'')+(i!=null?'-'+(i+1):'')+'.'+ext; }
@@ -219,5 +264,6 @@ async function download(it,i){
 window.LukeHF={API,LS_KEY,POLL_MS,DEADLINE_MS,uid,MODELS,modelById,defaultsFor,fixSettings,REF_MODELS,buildRequest,
   getKey,setKey,validKey,hfFetch,hfSubmit,hfStatus,hfUpload,readStatus,waitForResult,
   CFG,shared,SB,MAX_IMG,MAX_VID,OK_MIME,sbHeaders,pubUrl,itemUrl,sniff,validateUpload,insertRow,publish,uploadInput,shareResult,listByFace,
+  prepWrite,schemaV2,canDelete,deleteItem,okMediaUrl,videoFrame,frameUrl,
   faceTag,makeTitle,displayTitle,faceOf,cleanKey,fname,saveBlob,download};
 })();
