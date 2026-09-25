@@ -311,7 +311,7 @@ function renderComposer(){
   if(m.s.dur) c.appendChild(sel('길이',m.s.dur,s.dur,v=>v+'s',v=>setSetting('dur',v)));
   if(m.s.res) c.appendChild(sel('해상도',m.s.res,s.res,null,v=>setSetting('res',v)));
   if(m.kind==='image'){ const cap=m.roles.ref||0, n=state.media.ref.length;
-    const tip=cap?('참고 이미지 '+n+'/'+cap+' — 파일 끌어놓기·붙여넣기(Ctrl+V)·클릭, 내 결과, 공개 갤러리에서 추가'):('이 모델은 참고 이미지를 지원하지 않습니다. 지원 모델: '+REF_MODELS());
+    const tip=cap?('참고 이미지 '+Math.min(n,cap)+'/'+cap+(n>cap?' (초과분은 무시됨)':'')+' — 파일 끌어놓기·붙여넣기(Ctrl+V)·클릭, 내 결과, 공개 갤러리에서 추가'):('이 모델은 참고 이미지를 지원하지 않습니다. 지원 모델: '+REF_MODELS());
     const b=el('button',{class:'chip ref-btn'+(n?' on':''),title:tip,'aria-label':tip,'aria-disabled':cap?null:'true',onclick:()=>{ if(!cap){ toast(tip,'err'); return; } if(n>=cap){ toast('이 모델은 참고 이미지를 최대 '+cap+'장까지 씁니다','err'); return; } openAssetPicker('ref','참고 이미지'); }},'🖼 참고 이미지',cap?el('span',{class:'cnt',text:' '+Math.min(n,cap)+'/'+cap+(n>cap?' (+'+(n-cap)+' 미사용)':'')}):el('span',{class:'cnt',text:n?' 미지원 · '+n+'장 무시됨':' 미지원'}));
     c.appendChild(b);
     if(m.s.weight&&n) c.appendChild(sel('참고 강도',m.s.weight,s.weight,v=>'강도 '+v,v=>setSetting('weight',v))); }
