@@ -17,10 +17,12 @@ let toastT; function toast(msg,kind){ const t=$('toast'); t.textContent=msg; t.c
 const IMG_AR=['1:1','4:3','3:4','16:9','9:16','3:2','2:3'];
 const VID_AR=['16:9','9:16','1:1'];
 const SD_AR=['16:9','4:3','1:1','3:4','9:16','21:9'];
-const img=(id,label,path,extra)=>Object.assign({id,label,kind:'image',t:path,roles:{ref:4},s:{ar:IMG_AR,res:['1k','2k','4k']}},extra||{});
+const img=(id,label,path,extra)=>Object.assign({id,label,kind:'image',t:path,roles:{},s:{ar:IMG_AR,res:['1k','2k','4k']}},extra||{});
 const vid=(id,label,t,i,extra)=>Object.assign({id,label,kind:'video',t,i,roles:i?{start:1}:{},s:{ar:VID_AR,res:['720p','1080p'],dur:[5,8,10]}},extra||{});
 const t2v=p=>[p,p.replace(/text-to-video$/,'image-to-video')];
-const soul=(id,label,path)=>({id,label,kind:'image',t:path,roles:{},s:{ar:['9:16','16:9','4:3','3:4','1:1','2:3','3:2'],res:['720p','1080p'],batchNative:true},body:(p,s)=>({prompt:p.prompt,batch_size:s.batch>1?4:1,resolution:s.res,aspect_ratio:s.ar,enhance_prompt:false})});
+/* Soul: 참고 이미지가 있으면 higgsfield-ai/soul/reference (image_reference_url, 720p/1080p, batch 1|4) */
+const soul=(id,label,path)=>({id,label,kind:'image',t:path,r:'higgsfield-ai/soul/reference',roles:{ref:1},refNote:'Soul Reference',s:{ar:['9:16','16:9','4:3','3:4','1:1','2:3','3:2'],res:['720p','1080p'],batchNative:true},
+  body:(p,s)=>{ const b={prompt:p.prompt,batch_size:s.batch>1?4:1,resolution:s.res,aspect_ratio:s.ar,enhance_prompt:false}; if(p.refs.length) b.image_reference_url=p.refs[0]; return b; }});
 const seed=(id,label,prefix,res)=>({id,label,kind:'video',t:prefix+'/text-to-video',i:prefix+'/image-to-video',roles:{start:1,end:1},s:{ar:SD_AR,res,dur:[4,5,8,10,12,15],audio:true},
   body:(p,s)=>{ const b={prompt:p.prompt,resolution:s.res,duration:+s.dur,generate_audio:!!s.audio}; if(p.start){ b.image_url=p.start; if(p.end) b.end_image_url=p.end; } else b.aspect_ratio=s.ar; return b; }});
 const kling3=(id,label,prefix)=>({id,label,kind:'video',t:prefix+'/text-to-video',i:prefix+'/image-to-video',roles:{start:1,end:1},s:{ar:VID_AR,dur:[5,8,10,15],audio:true},
@@ -30,9 +32,13 @@ const MODELS=[
   soul('soul-cinema','Soul Cinema','higgsfield-ai/soul/cinema'),
   img('z-image-turbo','Z-Image Turbo','z-image/turbo'),
   img('flux-2','Flux 2 Pro','flux-2-pro'),
-  img('ideogram-4','Ideogram 4.0','ideogram/v4.0'),
+  /* Ideogram 4.0: image_url + image_weight(1–100), 해상도 파라미터 없음 */
+  {id:'ideogram-4',label:'Ideogram 4.0',kind:'image',t:'ideogram/v4.0',roles:{ref:1},s:{ar:['1:1','4:3','3:4','16:9','9:16','3:2','2:3','4:5','5:4'],weight:[20,40,60,80,100]},
+    body:(p,s)=>{ const b={prompt:p.prompt,aspect_ratio:s.ar,rendering_speed:'DEFAULT'}; if(p.refs.length){ b.image_url=p.refs[0]; b.image_weight=+s.weight||60; } return b; }},
   img('recraft-4.1','Recraft 4.1','recraft/v4.1/text-to-image'),
-  img('qwen-image-3','Qwen Image 3','alibaba/qwen-image-3/text-to-image'),
+  /* Qwen Image 3: 참고 이미지가 있으면 alibaba/qwen-image-3/edit (image_urls 1–3) */
+  {id:'qwen-image-3',label:'Qwen Image 3',kind:'image',t:'alibaba/qwen-image-3/text-to-image',r:'alibaba/qwen-image-3/edit',roles:{ref:3},s:{ar:['1:1','4:3','3:4','16:9','9:16','3:2','2:3','21:9'],res:['1k','2k']},
+    body:(p,s)=>{ const b={prompt:p.prompt,resolution:s.res,aspect_ratio:s.ar}; if(p.refs.length) b.image_urls=p.refs.slice(0,3); return b; }},
   img('grok-imagine-2','Grok Imagine 2.0','xai/grok-imagine-image-2.0'),
   seed('seedance-2.5','Seedance 2.5','bytedance/seedance-2.5',['480p','720p']),
   seed('seedance-2','Seedance 2.0','bytedance/seedance-2.0',['480p','720p','1080p']),
@@ -56,17 +62,21 @@ const MODELS=[
   {id:'dop',label:'Higgsfield DoP (이미지→영상)',kind:'video',t:null,i:'higgsfield-ai/dop/lite',roles:{start:1},needStart:true,s:{ar:VID_AR,res:['720p','1080p'],dur:[5,8,10]}},
 ];
 const modelById=id=>MODELS.find(m=>m.id===id)||MODELS[0];
-function defaultsFor(m){ const s=m.s; return {ar:s.ar?s.ar[0]:null,res:s.res?s.res[0]:null,dur:s.dur?String(s.dur.includes(5)?5:s.dur[0]):null,audio:!!s.audio,batch:1}; }
+function defaultsFor(m){ const s=m.s; return {ar:s.ar?s.ar[0]:null,res:s.res?s.res[0]:null,dur:s.dur?String(s.dur.includes(5)?5:s.dur[0]):null,audio:!!s.audio,batch:1,weight:s.weight?'60':null}; }
+const REF_MODELS=()=>MODELS.filter(m=>m.kind==='image'&&m.roles.ref).map(m=>m.label).join(', ');
 function buildRequest(m,prompt,media,s){
-  const p={prompt,start:media.start&&media.start.url,end:media.end&&media.end.url,refs:(media.ref||[]).map(x=>x.url)};
+  const all=[media.start,media.end,...(media.ref||[])].filter(Boolean);
+  if(all.some(x=>x.uploading)) throw new Error('입력 이미지를 업로드하는 중입니다. 잠시 후 다시 누르세요');
+  const refs=m.roles.ref?(media.ref||[]).slice(0,m.roles.ref).map(x=>x.url):[];
+  const p={prompt,start:m.roles.start&&media.start&&media.start.url,end:m.roles.end&&media.end&&media.end.url,refs};
   if(m.needStart&&!p.start) throw new Error(m.label+' 모델은 시작 프레임(이미지)이 필요합니다');
-  const path=(p.start&&m.i)?m.i:(m.t||m.i);
+  const path=(p.refs.length&&m.r)?m.r:(p.start&&m.i)?m.i:(m.t||m.i);
   if(!path) throw new Error('이 모델의 엔드포인트가 없습니다');
   if(path===m.i && m.kind==='video' && m.t && !p.start && m.i!==m.t) {/* noop */}
   let body;
   if(m.body) body=m.body(p,s);
   else{ body={prompt}; if(s.ar&&!p.start) body.aspect_ratio=s.ar; if(s.res) body.resolution=s.res; if(s.dur&&m.kind==='video') body.duration=+s.dur;
-    if(p.start&&m.i) body.image_url=p.start; if(p.refs.length&&m.kind==='image') body.image_urls=p.refs; }
+    if(p.start&&m.i) body.image_url=p.start; }
   return {path,body};
 }
 
@@ -76,7 +86,7 @@ const state={scope:saved.scope||'video',surface:saved.surface||'video',model:{im
 function persist(){ try{ localStorage.setItem(LS_STATE,JSON.stringify({scope:state.scope,surface:state.surface,mImage:state.model.image,mVideo:state.model.video,settings:state.settings})); }catch(e){} }
 const curModel=()=>modelById(state.model[state.surface]);
 function curSettings(){ const m=curModel(); const d=defaultsFor(m); const s=Object.assign({},d,state.settings[m.id]||{});
-  if(m.s.ar&&!m.s.ar.includes(s.ar)) s.ar=d.ar; if(m.s.res&&!m.s.res.includes(s.res)) s.res=d.res; if(m.s.dur&&!m.s.dur.map(String).includes(String(s.dur))) s.dur=d.dur; return s; }
+  if(m.s.ar&&!m.s.ar.includes(s.ar)) s.ar=d.ar; if(m.s.res&&!m.s.res.includes(s.res)) s.res=d.res; if(m.s.weight&&!m.s.weight.map(String).includes(String(s.weight))) s.weight=d.weight; if(m.s.dur&&!m.s.dur.map(String).includes(String(s.dur))) s.dur=d.dur; return s; }
 const getKey=()=>{ try{return (localStorage.getItem(LS_KEY)||'').trim();}catch(e){return '';} };
 
 /* ───────── IndexedDB ───────── */
@@ -300,6 +310,11 @@ function renderComposer(){
   if(m.s.ar&&!(m.kind==='video'&&state.media.start&&m.id!=='dop')) c.appendChild(sel('화면비',m.s.ar,s.ar,null,v=>setSetting('ar',v)));
   if(m.s.dur) c.appendChild(sel('길이',m.s.dur,s.dur,v=>v+'s',v=>setSetting('dur',v)));
   if(m.s.res) c.appendChild(sel('해상도',m.s.res,s.res,null,v=>setSetting('res',v)));
+  if(m.kind==='image'){ const cap=m.roles.ref||0, n=state.media.ref.length;
+    const tip=cap?('참고 이미지 '+n+'/'+cap+' — 파일 끌어놓기·붙여넣기(Ctrl+V)·클릭, 내 결과, 공개 갤러리에서 추가'):('이 모델은 참고 이미지를 지원하지 않습니다. 지원 모델: '+REF_MODELS());
+    const b=el('button',{class:'chip ref-btn'+(n?' on':''),title:tip,'aria-label':tip,'aria-disabled':cap?null:'true',onclick:()=>{ if(!cap){ toast(tip,'err'); return; } if(n>=cap){ toast('이 모델은 참고 이미지를 최대 '+cap+'장까지 씁니다','err'); return; } openAssetPicker('ref','참고 이미지'); }},'🖼 참고 이미지',cap?el('span',{class:'cnt',text:' '+Math.min(n,cap)+'/'+cap+(n>cap?' (+'+(n-cap)+' 미사용)':'')}):el('span',{class:'cnt',text:n?' 미지원 · '+n+'장 무시됨':' 미지원'}));
+    c.appendChild(b);
+    if(m.s.weight&&n) c.appendChild(sel('참고 강도',m.s.weight,s.weight,v=>'강도 '+v,v=>setSetting('weight',v))); }
   if(m.s.audio){ const cb=el('input',{type:'checkbox'}); cb.checked=!!s.audio; cb.onchange=()=>setSetting('audio',cb.checked); c.appendChild(el('label',{class:'chip',title:'오디오 생성'},cb,'오디오')); }
   c.appendChild(sel('개수',m.s.batchNative?[1,4]:[1,2,3,4],s.batch,v=>v+'개',v=>setSetting('batch',+v)));
   c.appendChild(el('span',{class:'spacer'}));
@@ -308,12 +323,39 @@ function renderComposer(){
   $('prompt').placeholder=m.kind==='video'?'찍고 싶은 샷을 설명하세요 (카메라 움직임, 조명, 분위기)…':'만들고 싶은 이미지를 설명하세요…';
 }
 function renderTray(){ const m=curModel(), t=$('tray'); t.textContent='';
-  const roles=[['start','시작 프레임'],['end','끝 프레임'],['ref','참조 이미지']].filter(([k])=>m.roles[k]);
+  const roles=[['start','시작 프레임'],['end','끝 프레임'],['ref','참고 이미지']].filter(([k])=>m.roles[k]||(k==='ref'&&m.kind==='image'&&state.media.ref.length));
   if(m.roles.end&&!state.media.start) roles.splice(roles.findIndex(r=>r[0]==='end'),1);
-  roles.forEach(([k,l])=>{ const list=k==='ref'?state.media.ref:(state.media[k]?[state.media[k]]:[]);
-    list.forEach((x,i)=>t.appendChild(el('div',{class:'slot filled'},el('span',{class:'th',style:'background-image:url("'+encodeURI(x.url)+'")'}),l,el('button',{class:'x','aria-label':'제거',text:'✕',onclick:()=>{ if(k==='ref') state.media.ref.splice(i,1); else { state.media[k]=null; if(k==='start') state.media.end=null; } renderComposer(); }}))));
-    const cap=m.roles[k]; if(list.length<cap) t.appendChild(el('button',{class:'slot',onclick:()=>openAssetPicker(k,l)},el('span',{class:'th',text:'+'}),l+(m.needStart&&k==='start'?' (필수)':''))); });
+  roles.forEach(([k,l])=>{ const list=k==='ref'?state.media.ref:(state.media[k]?[state.media[k]]:[]); const cap=m.roles[k]||0;
+    list.forEach((x,i)=>{ const unused=k==='ref'&&i>=cap; t.appendChild(el('div',{class:'slot filled'+(unused?' unused':''),title:unused?(cap?'이 모델은 참고 이미지를 '+cap+'장까지만 사용 — 이 이미지는 무시됨':'현재 모델은 참고 이미지를 쓰지 않습니다 — 생성 시 무시됨'):(x.url||'')},
+      el('span',{class:'th',style:x.preview||x.url?'background-image:url("'+encodeURI(x.preview||x.url)+'")':''},x.uploading?'…':''),x.uploading?l+' 업로드 중…':(l+(k==='ref'&&list.length>1?' '+(i+1):'')+(unused?' (미사용)':'')),
+      el('button',{class:'x','aria-label':'제거',text:'✕',onclick:()=>{ if(k==='ref') state.media.ref.splice(i,1); else { state.media[k]=null; if(k==='start') state.media.end=null; } renderComposer(); }}))); });
+    if(k!=='ref'&&list.length<cap) t.appendChild(el('button',{class:'slot',onclick:()=>openAssetPicker(k,l)},el('span',{class:'th',text:'+'}),l+(m.needStart&&k==='start'?' (필수)':''))); });
 }
+/* 로컬 파일 → 공개 URL: Supabase public-media(갤러리 행 없이 파일만) 우선, 미설정 시 Higgsfield 업로드 URL */
+async function uploadInput(file){
+  if(!/^image\/(jpeg|jpg|png|webp|gif)$/.test(file.type)) throw new Error('JPG·PNG·WEBP·GIF 이미지만 가능합니다');
+  if(file.size>MAX_IMG) throw new Error('이미지 최대 '+Math.round(MAX_IMG/1048576)+'MB');
+  if(shared){ const v=await validateUpload(file); const d=new Date(); const path=d.getUTCFullYear()+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+uid()+'.'+v.ext;
+    const r=await fetch(SB+'/storage/v1/object/'+encodeURIComponent(CFG.bucket)+'/'+path,{method:'POST',headers:sbHeaders({'Content-Type':v.mime,'x-upsert':'false','cache-control':'31536000'}),body:file});
+    if(!r.ok){ let t=''; try{t=(await r.json()).message||'';}catch(e){} throw new Error('업로드 실패 ('+r.status+') '+t); }
+    return pubUrl(path); }
+  if(!getKey()) throw new Error('파일 업로드에는 Higgsfield 키가 필요합니다(공유 저장소 미설정)');
+  return hfUpload(file);
+}
+/* role: 'ref' | 'start' | 'end'. 업로드 동안 미리보기 슬롯 표시 */
+async function addLocalFiles(role,files){
+  const m=curModel(); const cap=role==='ref'?(m.roles.ref||0):1; let room=role==='ref'?cap-state.media.ref.length:1;
+  const imgs=[...files].filter(f=>/^image\//.test(f.type)); if(!imgs.length){ toast('이미지 파일이 아닙니다','err'); return; }
+  if(room<=0){ toast(cap?'이 모델은 참고 이미지를 최대 '+cap+'장까지 씁니다':'이 모델은 참고 이미지를 지원하지 않습니다','err'); return; }
+  const jobs=imgs.slice(0,room).map(f=>{ const item={url:'',preview:URL.createObjectURL(f),uploading:true}; if(role==='ref') state.media.ref.push(item); else { state.media[role]=item; } return [f,item]; });
+  if(imgs.length>room) toast('최대 '+cap+'장까지 — '+(imgs.length-room)+'장은 제외했습니다','err');
+  renderComposer();
+  await Promise.all(jobs.map(async([f,item])=>{ try{ item.url=await uploadInput(f); item.uploading=false; }
+    catch(e){ toast('업로드 실패: '+e.message,'err'); if(role==='ref'){ const i=state.media.ref.indexOf(item); if(i>=0) state.media.ref.splice(i,1); } else if(state.media[role]===item) state.media[role]=null; }
+    finally{ URL.revokeObjectURL(item.preview); delete item.preview; } }));
+  renderComposer();
+}
+function dropRole(){ const m=curModel(); if(m.kind==='image') return m.roles.ref?'ref':null; if(m.roles.start&&!state.media.start) return 'start'; if(m.roles.end&&state.media.start&&!state.media.end) return 'end'; return null; }
 
 /* selection */
 function toggleSel(it,idx,items,shift){ state.selecting=true;
@@ -359,7 +401,7 @@ function openModelPicker(){
   const draw=()=>{ list.textContent=''; const s=q.value.trim().toLowerCase();
     [['image','이미지'],['video','영상']].forEach(([k,l])=>{ const ms=MODELS.filter(m=>m.kind===k&&(!s||m.label.toLowerCase().includes(s)||m.id.includes(s))); if(!ms.length) return; list.appendChild(el('div',{class:'mhead',text:l+' · '+ms.length}));
       ms.forEach(m=>list.appendChild(el('button',{class:state.model[m.kind]===m.id&&state.surface===m.kind?'on':'',onclick:()=>{ state.surface=m.kind; state.model[m.kind]=m.id; if(state.scope==='image'||state.scope==='video') state.scope=m.kind; persist(); closeModal(); renderAll(); }},
-        el('span',{text:m.label}),el('small',{text:[m.roles.start?'이미지→':'' ,m.s.dur?m.s.dur[0]+'–'+m.s.dur[m.s.dur.length-1]+'s':'',m.s.audio?'오디오':''].filter(Boolean).join(' · ')})))); }); };
+        el('span',{text:m.label}),el('small',{text:[m.roles.ref?'참고 이미지 '+m.roles.ref+'장':'',m.roles.start?'이미지→':'' ,m.s.dur?m.s.dur[0]+'–'+m.s.dur[m.s.dur.length-1]+'s':'',m.s.audio?'오디오':''].filter(Boolean).join(' · ')})))); }); };
   q.oninput=draw; draw();
   openModal(el('div',{class:'box'},el('h3',{text:'모델 선택 · '+MODELS.length+'개'}),q,list));
 }
@@ -377,6 +419,7 @@ function openViewer(it){
   acts.appendChild(el('button',{class:'btn',text:'다운로드',onclick:()=>download(it)}));
   if(isRun){ acts.append(el('button',{class:'btn ghost',text:it.fav?'★ 즐겨찾기 해제':'☆ 즐겨찾기',onclick:()=>{ toggleFav(it); openViewer(it); }}),
     el('button',{class:'btn ghost',text:'다시 만들기 (설정 재사용)',onclick:()=>reuse(it)}),
+    it.kind==='image'?el('button',{class:'btn ghost',text:'참고 이미지로 사용',onclick:()=>{ state.surface='image'; if(!modelById(state.model.image).roles.ref) state.model.image='soul-2'; const m=modelById(state.model.image); const u=it.shared&&shared?pubUrl(it.shared):it.url; if(!state.media.ref.some(x=>x.url===u)){ if(state.media.ref.length>=m.roles.ref) state.media.ref.splice(0,1); state.media.ref.push({url:u}); } if(state.scope==='video') state.scope='image'; persist(); closeModal(); renderAll(); $('prompt').focus(); toast(m.label+' 참고 이미지로 추가했습니다','ok'); }}):null,
     it.kind==='image'?el('button',{class:'btn ghost',text:'이 이미지로 영상 만들기',onclick:()=>{ state.surface='video'; if(!modelById(state.model.video).roles.start) state.model.video='seedance-2.5'; state.media={start:{url:it.url},end:null,ref:[]}; persist(); closeModal(); if(state.scope==='image') state.scope='video'; renderAll(); $('prompt').focus(); }}):null,
     (it.share==='done'||it.share==='external')?el('div',{class:'kv'},el('span',{class:'k',text:'공개 갤러리'}),el('span',{text:it.share==='done'?'자동 등록됨 ✓':'링크로 등록됨'})):el('button',{class:'btn ghost',text:it.share==='pending'?'공개 갤러리 등록 중…':'공개 갤러리에 공유',onclick:()=>shareRun(it)})); }
   else if(!it.local) acts.appendChild(el('button',{class:'btn ghost',text:'⚑ 신고',onclick:()=>reportItem(it)}));
@@ -418,16 +461,22 @@ function openUploadModal(files,pendingRun){
 }
 function openAssetPicker(role,label){
   let tab='file'; const body=el('div'); const tabs=el('div',{class:'ptabs'});
-  const pick=url=>{ if(role==='ref') state.media.ref.push({url}); else state.media[role]={url}; closeModal(); renderComposer(); };
+  const room=()=>role==='ref'?(curModel().roles.ref||0)-state.media.ref.length:1;
+  const pick=url=>{ if(role==='ref'){ if(state.media.ref.some(x=>x.url===url)){ toast('이미 추가된 이미지입니다'); return; } state.media.ref.push({url}); } else state.media[role]={url}; renderComposer(); if(room()<=0) closeModal(); else { toast('추가했습니다 ('+state.media.ref.length+'/'+curModel().roles.ref+')','ok'); draw(); } };
   const draw=()=>{ tabs.textContent=''; body.textContent='';
-    [['file','파일 업로드'],['url','URL'],['runs','내 결과'],['public','공개 갤러리']].forEach(([k,l])=>tabs.appendChild(el('button',{class:tab===k?'on':'',text:l,onclick:()=>{ tab=k; if(k==='public'&&!state.pub.items.length) loadPublic(true).then(draw); draw(); }})));
-    if(tab==='file'){ const fin=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp,image/gif',hidden:true}); const st=el('p',{text:'이미지를 Higgsfield 임시 저장소(1시간 유효 업로드 URL)에 올려 입력으로 사용합니다. 내 키가 필요합니다.'});
-      fin.onchange=async()=>{ const f=fin.files[0]; if(!f) return; if(!getKey()){ openKeyModal(); return; } st.textContent='업로드 중…'; try{ pick(await hfUpload(f)); }catch(e){ st.textContent='업로드 실패: '+e.message+' — URL 탭이나 공개 갤러리에서 선택해 보세요.'; } };
-      body.append(st,fin,el('div',{class:'drop',role:'button',tabindex:'0',onclick:()=>fin.click(),text:'이미지 선택 (JPG·PNG·WEBP)'})); }
+    [['file','내 파일'],['runs','내 결과·에셋'],['public','공개 갤러리'],['url','URL']].forEach(([k,l])=>tabs.appendChild(el('button',{class:tab===k?'on':'',text:l,onclick:()=>{ tab=k; if(k==='public'&&!state.pub.items.length) loadPublic(true).then(draw); draw(); }})));
+    if(tab==='file'){ const fin=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp,image/gif',multiple:role==='ref',hidden:true});
+      const st=el('p',{text:shared?'선택한 이미지는 lukemodel 공개 저장소에 파일로만 올라가(갤러리·메인 화면에는 표시되지 않음) 모델 입력 URL로 사용됩니다. 최대 '+Math.round(MAX_IMG/1048576)+'MB.':'이미지를 Higgsfield 임시 저장소에 올려 입력으로 사용합니다(내 키 필요).'});
+      fin.onchange=()=>{ if(fin.files.length){ closeModal(); addLocalFiles(role,fin.files); } };
+      const drop=el('div',{class:'drop',role:'button',tabindex:'0',onclick:()=>fin.click(),onkeydown:e=>{ if(e.key==='Enter'||e.key===' ') fin.click(); }},'클릭하거나 이미지를 끌어다 놓으세요',el('br'),el('small',{text:'JPG·PNG·WEBP·GIF'+(role==='ref'?' · 남은 칸 '+room()+'장':'')+' · 프롬프트 창에 Ctrl+V로 붙여넣기도 됩니다'}));
+      drop.addEventListener('dragover',e=>{ e.preventDefault(); drop.classList.add('hot'); }); drop.addEventListener('dragleave',()=>drop.classList.remove('hot'));
+      drop.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); drop.classList.remove('hot'); if(e.dataTransfer.files.length){ closeModal(); addLocalFiles(role,e.dataTransfer.files); } });
+      body.append(st,fin,drop); }
     if(tab==='url'){ const u=el('input',{class:'inp',placeholder:'https://… 공개 이미지 URL'}); body.append(u,el('div',{class:'acts2'},el('button',{class:'btn',text:'사용',onclick:()=>{ const v=u.value.trim(); if(!/^https:\/\/\S+$/.test(v)){ toast('https URL을 입력하세요','err'); return; } pick(v); }}))); }
-    if(tab==='runs'||tab==='public'){ const src=tab==='runs'?state.runs.filter(r=>r.status==='done'&&r.kind==='image'):state.pub.items.filter(x=>x.kind==='image'&&!x.local);
+    if(tab==='runs'||tab==='public'){ const src=tab==='runs'?state.runs.filter(r=>r.status==='done'&&r.kind==='image').map(r=>({url:r.shared&&shared?pubUrl(r.shared):r.url,title:r.prompt})):state.pub.items.filter(x=>x.kind==='image'&&!x.local);
       if(!src.length) body.appendChild(el('p',{text:tab==='runs'?'완성된 이미지 결과가 없습니다.':(shared?'공개 갤러리에 이미지가 없습니다.':'공유 저장소 미연결 — 로컬 파일은 외부 URL이 없어 입력으로 쓸 수 없습니다.')}));
-      const g=el('div',{class:'pgrid'}); src.forEach(x=>g.appendChild(el('button',{style:'background-image:url("'+encodeURI(x.url)+'")',title:x.prompt||x.title||'',onclick:()=>pick(x.url)}))); body.appendChild(g); } };
+      const g=el('div',{class:'pgrid'}); src.forEach(x=>{ const on=role==='ref'&&state.media.ref.some(y=>y.url===x.url); g.appendChild(el('button',{style:'background-image:url("'+encodeURI(x.url)+'")'+(on?';outline:2px solid var(--acc)':''),title:x.title||x.prompt||'',onclick:()=>pick(x.url)})); }); body.appendChild(g);
+      if(tab==='public'&&shared&&!state.pub.done) body.appendChild(el('div',{class:'acts2'},el('button',{class:'btn ghost sm',text:'더 불러오기',onclick:()=>loadPublic(false).then(draw)}))); } };
   draw(); openModal(el('div',{class:'box'},el('h3',{text:label+' 추가'}),tabs,body));
 }
 
@@ -436,6 +485,11 @@ async function boot(){
   try{ state.runs=(await idbAll('runs')).sort((a,b)=>b.createdAt-a.createdAt); }catch(e){ state.runs=[]; }
   const p=$('prompt'); p.addEventListener('input',autosize);
   p.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){ e.preventDefault(); generate(); } });
+  p.addEventListener('paste',e=>{ const fs=[...(e.clipboardData&&e.clipboardData.files||[])].filter(f=>/^image\//.test(f.type)); if(!fs.length) return; const r=dropRole(); if(!r){ toast(curModel().kind==='image'?'이 모델은 참고 이미지를 지원하지 않습니다. 지원: '+REF_MODELS():'이 모델은 이미지 입력을 받지 않습니다','err'); return; } e.preventDefault(); addLocalFiles(r,fs); });
+  const comp=$('composer');
+  comp.addEventListener('dragover',e=>{ if([...e.dataTransfer.types].includes('Files')){ e.preventDefault(); comp.classList.add('hot'); } });
+  comp.addEventListener('dragleave',e=>{ if(!comp.contains(e.relatedTarget)) comp.classList.remove('hot'); });
+  comp.addEventListener('drop',e=>{ comp.classList.remove('hot'); if(!e.dataTransfer.files.length) return; e.preventDefault(); const r=dropRole(); if(!r){ toast('현재 모델은 이미지 입력을 받지 않습니다. 참고 이미지 지원: '+REF_MODELS(),'err'); return; } addLocalFiles(r,e.dataTransfer.files); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&state.selecting&&!$('modal').firstChild){ exitSelect(); renderGrid(); } });
   $('keyBtn').onclick=()=>openKeyModal(); $('upBtn').onclick=()=>openUploadModal(); $('moreBtn').onclick=()=>loadPublic(false);
   const q=new URLSearchParams(location.search); if(q.get('tab')&&SCOPES.some(s=>s[0]===q.get('tab'))) state.scope=q.get('tab');
