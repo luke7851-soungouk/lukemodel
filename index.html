@@ -1472,8 +1472,21 @@ function pollHomeNew(){
   const first=homeShared.rows[0];
   if(!first){ if(!homeShared.loading){ homeShared.done=false; loadHomeMore(); } return; }
   fetch(hsQuery(c,'&limit=50&created_at=gt.'+encodeURIComponent(first.created_at)),{headers:hsHeaders(c)})
-    .then(r=>r.ok?r.json():[]).then(rows=>{ const add=rows.filter(x=>!homeShared.ids.has(x.id)); if(!add.length) return; add.forEach(x=>homeShared.ids.add(x.id)); homeShared.rows.unshift(...add); hsAppend(add,true); hsStatus(); })
+    .then(r=>r.ok?r.json():[]).then(rows=>{ const add=rows.filter(x=>!homeShared.ids.has(x.id)); if(add.length){ add.forEach(x=>homeShared.ids.add(x.id)); homeShared.rows.unshift(...add); hsAppend(add,true); hsStatus(); } return hsReconcile(c); })
     .catch(()=>{});
+}
+/* 전체를 다 받은 상태에서 서버 개수가 다르면(과거 날짜로 추가·이관되거나 다른 곳에서 삭제됨) 목록을 처음부터 다시 받음
+   — 예: 페이지를 연 뒤 얼굴 38개가 과거 날짜로 이관되면 새 항목 폴링(created_at 이후)으로는 안 잡혀 「2개 · 전체 표시됨」에 머물렀음 */
+function hsReconcile(c){
+  if(!homeShared.done||homeShared.loading) return;
+  return fetch(hsQuery(c,'&limit=1').replace('select=*','select=id'),{method:'HEAD',headers:Object.assign(hsHeaders(c),{Prefer:'count=exact'})})
+    .then(r=>{ const m=/\/(\d+)\s*$/.exec(r.headers.get('content-range')||''); if(!r.ok||!m) return; const n=+m[1];
+      if(n!==homeShared.rows.length&&homeShared.done&&!homeShared.loading) hsReload(); }).catch(()=>{});
+}
+function hsReload(){
+  homeShared.rows=[]; homeShared.ids=new Set(); homeShared.done=false; homeShared.err=null;
+  const box=document.getElementById('homeSharedGrid'); if(box) box.textContent='';
+  loadHomeMore();
 }
 function sharedItemUrl(c,x){ if(x.path) return c.url+'/storage/v1/object/public/'+encodeURIComponent(c.bucket||'public-media')+'/'+String(x.path).split('/').map(encodeURIComponent).join('/'); return /^https:\/\//.test(x.external_url||'')?x.external_url:null; }
 let hsVideoIO=null, hsMoreIO=null;
@@ -1590,30 +1603,6 @@ function renderHomeShared(app){
 }
 function renderBrowse(app){
   renderHomeShared(app);
-  /* 힉스필드 스튜디오 + 공개 갤러리 진입 (lukemodel.com/higgsfield/) */
-  { const hb=document.createElement('div'); hb.className='hf-hero';
-    const ht=document.createElement('div'); ht.className='t';
-    const hk=document.createElement('span'); hk.className='hf-new'; hk.textContent='NEW';
-    const hh=document.createElement('h2'); hh.textContent='힉스필드 스튜디오 — 프롬프트 한 줄로 이미지·영상 생성';
-    const hp=document.createElement('p'); hp.textContent='Soul · Seedance · Kling · Wan 등 20여 개 모델을 한 화면에서. 내 Higgsfield 키로 생성하고, 공개 갤러리에는 누구나 이미지·영상을 올리고 내려받을 수 있습니다.';
-    ht.appendChild(hk); ht.appendChild(hh); ht.appendChild(hp); hb.appendChild(ht);
-    const ha=document.createElement('div'); ha.className='hf-acts';
-    const h1=document.createElement('a'); h1.className='btn hf-go'; h1.href='/higgsfield/'; h1.textContent='스튜디오 열기';
-    const h2=document.createElement('a'); h2.className='btn ghost'; h2.href='/higgsfield/?tab=public'; h2.textContent='공개 갤러리 · 업로드';
-    ha.appendChild(h1); ha.appendChild(h2); hb.appendChild(ha); app.appendChild(hb); }
-  /* EN one-liner (visible to EN visitors; KR UX unchanged below) */
-  const en=document.createElement('div'); en.className='en-banner'; en.setAttribute('lang','en');
-  const em=document.createElement('div'); em.className='en-mark'; em.textContent='EN';
-  const eb=document.createElement('div'); eb.className='en-body';
-  const eh=document.createElement('h2'); eh.textContent='Same-person AI faces & video — your API keys';
-  const ep=document.createElement('p'); ep.textContent='FaceLook — upload/generate a face once, keep image+video under one model. BYOK (Fal/Replicate/…). Share codes. Browser-local — no cloud sync yet.';
-  eb.appendChild(eh); eb.appendChild(ep);
-  const ea=document.createElement('div'); ea.className='en-acts';
-  const ea1=document.createElement('a'); ea1.className='btn ghost sm'; ea1.href='/en/'; ea1.textContent='English page';
-  const ea2=document.createElement('button'); ea2.className='btn sm'; ea2.textContent='AI Studio'; ea2.onclick=()=>go('studio');
-  ea.appendChild(ea1); ea.appendChild(ea2);
-  en.appendChild(em); en.appendChild(eb); en.appendChild(ea); app.appendChild(en);
-
   /* ?share=CODE public-ish instruction card (no backend — local pack may still be required) */
   if(pendingShareCode){
     const sl=document.createElement('div'); sl.className='share-landing';
@@ -1629,19 +1618,10 @@ function renderBrowse(app){
     sl.appendChild(sh); sl.appendChild(sp); sl.appendChild(acts); app.appendChild(sl);
   }
 
-  /* 매일 자동 등록 배너 */
-  const todayCnt = DB.models.filter(m=>new Date(m.createdAt).toISOString().slice(0,10)===today()).length;
-  const bn=document.createElement('div'); bn.className='banner';
-  const bt=document.createElement('div'); bt.className='t';
-  const bh=document.createElement('h2'); bh.textContent='매일 새 얼굴 모델이 올라옵니다';
-  const bp=document.createElement('p');
-  bp.textContent='자동 등록 봇이 하루 '+AUTO_PER_DAY+'개씩 새 모델을 올립니다. 오늘 등록된 모델 '+todayCnt+'개 · 마지막 실행 '+(DB.lastAuto||'없음');
-  bt.appendChild(bh); bt.appendChild(bp); bn.appendChild(bt);
-  const brun=document.createElement('button'); brun.className='btn ghost'; brun.textContent='지금 실행';
-  brun.onclick=()=>{ const n=runDailyAuto(true); toast('새 모델 '+n+'개를 등록했습니다','ok'); render(); };
-  const bstudio=document.createElement('button'); bstudio.className='btn'; bstudio.textContent='AI 스튜디오';
-  bstudio.onclick=()=>go('studio');
-  bn.appendChild(bstudio); bn.appendChild(brun); app.appendChild(bn);
+  /* 공개 갤러리(이미지·영상 타임라인) 다음에 바로 얼굴 모델 목록 — 홍보/안내 카드 없음 */
+  const fh=document.createElement('div'); fh.className='seclabel'; fh.style.margin='22px 0 0';
+  const fht=document.createElement('span'); fht.textContent='얼굴 모델'; fht.style.cssText='font-size:13px;font-weight:800;color:var(--dim)';
+  const fhl=document.createElement('span'); fhl.className='ln'; fh.appendChild(fht); fh.appendChild(fhl); app.appendChild(fh);
 
   const f=document.createElement('div'); f.className='filters';
   const chip=(label,on,fn)=>{ const b=document.createElement('button'); b.className='chip'+(on?' on':''); b.textContent=label; b.onclick=fn; f.appendChild(b); };
