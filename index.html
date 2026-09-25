@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://*.replicate.com https://api.openai.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai https://generativelanguage.googleapis.com; media-src data: blob: https: http:; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
+      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://*.replicate.com https://api.openai.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai https://generativelanguage.googleapis.com https://abacus.jasoncameron.dev; media-src data: blob: https: http:; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
 <title>페이스루크 — 얼굴 모델 전문 공유 플랫폼</title>
 <meta name="description" content="페이스루크(FaceLook) — 얼굴 한 번 업로드/생성하면 이미지·영상을 같은 모델 아래에. BYOK(Fal/Replicate 등). 공유 코드. 브라우저 로컬(서버 동기화 없음). Same-person AI faces & video — your API keys.">
 <link rel="canonical" href="https://lukemodel.com/">
@@ -431,6 +431,20 @@ body.has-ai-aside{padding-right:0}
 .share-landing .code{font-family:Consolas,monospace;font-size:18px;font-weight:800;color:var(--warn);letter-spacing:1px}
 .share-landing .acts{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
 
+.hf-hero{background:linear-gradient(100deg,#171d08,#1d2210 45%,#1a1d27);border:1px solid #4a5a14;border-radius:14px;padding:18px 20px;margin:20px 0 4px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.hf-hero .t{flex:1;min-width:240px}
+.hf-hero h2{font-size:17px;font-weight:800;margin:4px 0 5px;color:#fff}
+.hf-hero p{font-size:13px;color:#c9d2b0;line-height:1.6}
+.hf-new{display:inline-block;font-size:10.5px;font-weight:900;letter-spacing:.8px;background:#d1fe17;color:#111;border-radius:5px;padding:2px 7px}
+.hf-acts{display:flex;gap:8px;flex-wrap:wrap}
+.hf-acts a{text-decoration:none;display:inline-flex;align-items:center}
+.hf-go{background:#d1fe17!important;color:#111!important;font-weight:800}
+nav.top a.nav-hf,nav.top a.nav-pub{padding:7px 13px;border-radius:7px;font-size:13.5px;font-weight:700;text-decoration:none;white-space:nowrap;flex:0 0 auto}
+nav.top a.nav-hf{color:#111;background:#d1fe17}
+nav.top a.nav-hf:hover{filter:brightness(1.08)}
+nav.top a.nav-pub{color:var(--dim)}
+nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
+@media (max-width:640px){.hf-hero{flex-direction:column;align-items:stretch;padding:15px 16px}.hf-acts a{flex:1;justify-content:center}}
 </style>
 </head>
 <body>
@@ -453,6 +467,8 @@ body.has-ai-aside{padding-right:0}
   <div class="wrap foot-row">
     <div>FaceLook / 페이스루크 · BYOK · browser-local</div>
     <nav>
+      <a href="/higgsfield/">힉스필드 스튜디오</a>
+      <a href="/higgsfield/?tab=public">공개 갤러리</a>
       <a href="/en/">English</a>
       <a href="/privacy.html" onclick="go('privacy');return false;">Privacy</a>
       <a href="/terms.html" onclick="go('terms');return false;">Terms</a>
@@ -1283,6 +1299,8 @@ function render(){
   [['browse','모델 탐색'],['studio','AI 스튜디오'],['mine','내 페이지']].forEach(([k,l])=>{
     const b=document.createElement('button'); b.textContent=l; if(view===k)b.className='on';
     b.onclick=()=>go(k); nav.appendChild(b); });
+  { const hf=document.createElement('a'); hf.href='/higgsfield/'; hf.className='nav-hf'; hf.textContent='힉스필드 스튜디오'; hf.title='Higgsfield 모델로 이미지·영상 생성 + 공개 갤러리 (lukemodel.com/higgsfield/)'; nav.appendChild(hf);
+    const pg=document.createElement('a'); pg.href='/higgsfield/?tab=public'; pg.className='nav-pub'; pg.textContent='공개 갤러리'; pg.title='누구나 업로드·다운로드'; nav.appendChild(pg); }
 
   const au=$('auth'); au.textContent='';
   au.style.cssText='display:flex;align-items:center;gap:9px';
@@ -1323,6 +1341,17 @@ function matches(m){
 }
 
 function renderBrowse(app){
+  /* 힉스필드 스튜디오 + 공개 갤러리 진입 (lukemodel.com/higgsfield/) */
+  { const hb=document.createElement('div'); hb.className='hf-hero';
+    const ht=document.createElement('div'); ht.className='t';
+    const hk=document.createElement('span'); hk.className='hf-new'; hk.textContent='NEW';
+    const hh=document.createElement('h2'); hh.textContent='힉스필드 스튜디오 — 프롬프트 한 줄로 이미지·영상 생성';
+    const hp=document.createElement('p'); hp.textContent='Soul · Seedance · Kling · Wan 등 20여 개 모델을 한 화면에서. 내 Higgsfield 키로 생성하고, 공개 갤러리에는 누구나 이미지·영상을 올리고 내려받을 수 있습니다.';
+    ht.appendChild(hk); ht.appendChild(hh); ht.appendChild(hp); hb.appendChild(ht);
+    const ha=document.createElement('div'); ha.className='hf-acts';
+    const h1=document.createElement('a'); h1.className='btn hf-go'; h1.href='/higgsfield/'; h1.textContent='스튜디오 열기';
+    const h2=document.createElement('a'); h2.className='btn ghost'; h2.href='/higgsfield/?tab=public'; h2.textContent='공개 갤러리 · 업로드';
+    ha.appendChild(h1); ha.appendChild(h2); hb.appendChild(ha); app.appendChild(hb); }
   /* EN one-liner (visible to EN visitors; KR UX unchanged below) */
   const en=document.createElement('div'); en.className='en-banner'; en.setAttribute('lang','en');
   const em=document.createElement('div'); em.className='en-mark'; em.textContent='EN';
