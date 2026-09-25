@@ -5,89 +5,24 @@
    Public gallery: pluggable Supabase backend (/shared-config.js); falls back to local IndexedDB. */
 'use strict';
 (function(){
-const API='https://platform.higgsfield.ai';
-const LS_KEY='lukehf.key', LS_STATE='lukehf.state', LS_TERMS='lukehf.terms';
-const HISTORY_CAP=60, POLL_MS=4000, DEADLINE_MS=10*60*1000;
+const H=window.LukeHF; /* 공용 모듈 /hf-core.js (얼굴 상세 페이지와 공유) */
+const LS_STATE='lukehf.state', LS_TERMS='lukehf.terms';
+const HISTORY_CAP=60, POLL_MS=H.POLL_MS, DEADLINE_MS=H.DEADLINE_MS;
 const $=id=>document.getElementById(id);
 const el=(tag,props,...kids)=>{const n=document.createElement(tag); if(props) for(const k in props){ const v=props[k]; if(v==null||v===false) continue; if(k==='class') n.className=v; else if(k==='text') n.textContent=v; else if(k.startsWith('on')) n.addEventListener(k.slice(2),v); else if(k==='style') n.style.cssText=v; else n.setAttribute(k,v===true?'':v); } kids.flat().forEach(c=>{ if(c==null||c===false) return; n.appendChild(typeof c==='string'?document.createTextNode(c):c); }); return n; };
-const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+const uid=H.uid;
 let toastT; function toast(msg,kind){ const t=$('toast'); t.textContent=msg; t.className='toast on '+(kind||''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',kind==='err'?6000:3200); }
 
-/* ───────── Model catalog (own format; endpoints = Higgsfield platform API paths) ───────── */
-const IMG_AR=['1:1','4:3','3:4','16:9','9:16','3:2','2:3'];
-const VID_AR=['16:9','9:16','1:1'];
-const SD_AR=['16:9','4:3','1:1','3:4','9:16','21:9'];
-const img=(id,label,path,extra)=>Object.assign({id,label,kind:'image',t:path,roles:{},s:{ar:IMG_AR,res:['1k','2k','4k']}},extra||{});
-const vid=(id,label,t,i,extra)=>Object.assign({id,label,kind:'video',t,i,roles:i?{start:1}:{},s:{ar:VID_AR,res:['720p','1080p'],dur:[5,8,10]}},extra||{});
-const t2v=p=>[p,p.replace(/text-to-video$/,'image-to-video')];
-/* Soul: 참고 이미지가 있으면 higgsfield-ai/soul/reference (image_reference_url, 720p/1080p, batch 1|4) */
-const soul=(id,label,path)=>({id,label,kind:'image',t:path,r:'higgsfield-ai/soul/reference',roles:{ref:1},refNote:'Soul Reference',s:{ar:['9:16','16:9','4:3','3:4','1:1','2:3','3:2'],res:['720p','1080p'],batchNative:true},
-  body:(p,s)=>{ const b={prompt:p.prompt,batch_size:s.batch>1?4:1,resolution:s.res,aspect_ratio:s.ar,enhance_prompt:false}; if(p.refs.length) b.image_reference_url=p.refs[0]; return b; }});
-const seed=(id,label,prefix,res)=>({id,label,kind:'video',t:prefix+'/text-to-video',i:prefix+'/image-to-video',roles:{start:1,end:1},s:{ar:SD_AR,res,dur:[4,5,8,10,12,15],audio:true},
-  body:(p,s)=>{ const b={prompt:p.prompt,resolution:s.res,duration:+s.dur,generate_audio:!!s.audio}; if(p.start){ b.image_url=p.start; if(p.end) b.end_image_url=p.end; } else b.aspect_ratio=s.ar; return b; }});
-const kling3=(id,label,prefix)=>({id,label,kind:'video',t:prefix+'/text-to-video',i:prefix+'/image-to-video',roles:{start:1,end:1},s:{ar:VID_AR,dur:[5,8,10,15],audio:true},
-  body:(p,s)=>{ const b={prompt:p.prompt,sound:s.audio?'on':'off',duration:+s.dur,cfg_scale:0.5,multi_shots:false}; if(p.start){ b.image_url=p.start; if(p.end) b.last_image_url=p.end; } else b.aspect_ratio=s.ar; return b; }});
-const MODELS=[
-  soul('soul-2','Soul 2','higgsfield-ai/soul/v2/standard'),
-  soul('soul-cinema','Soul Cinema','higgsfield-ai/soul/cinema'),
-  img('z-image-turbo','Z-Image Turbo','z-image/turbo'),
-  img('flux-2','Flux 2 Pro','flux-2-pro'),
-  /* Ideogram 4.0: image_url + image_weight(1–100), 해상도 파라미터 없음 */
-  {id:'ideogram-4',label:'Ideogram 4.0',kind:'image',t:'ideogram/v4.0',roles:{ref:1},s:{ar:['1:1','4:3','3:4','16:9','9:16','3:2','2:3','4:5','5:4'],weight:[20,40,60,80,100]},
-    body:(p,s)=>{ const b={prompt:p.prompt,aspect_ratio:s.ar,rendering_speed:'DEFAULT'}; if(p.refs.length){ b.image_url=p.refs[0]; b.image_weight=+s.weight||60; } return b; }},
-  img('recraft-4.1','Recraft 4.1','recraft/v4.1/text-to-image'),
-  /* Qwen Image 3: 참고 이미지가 있으면 alibaba/qwen-image-3/edit (image_urls 1–3) */
-  {id:'qwen-image-3',label:'Qwen Image 3',kind:'image',t:'alibaba/qwen-image-3/text-to-image',r:'alibaba/qwen-image-3/edit',roles:{ref:3},s:{ar:['1:1','4:3','3:4','16:9','9:16','3:2','2:3','21:9'],res:['1k','2k']},
-    body:(p,s)=>{ const b={prompt:p.prompt,resolution:s.res,aspect_ratio:s.ar}; if(p.refs.length) b.image_urls=p.refs.slice(0,3); return b; }},
-  img('grok-imagine-2','Grok Imagine 2.0','xai/grok-imagine-image-2.0'),
-  seed('seedance-2.5','Seedance 2.5','bytedance/seedance-2.5',['480p','720p']),
-  seed('seedance-2','Seedance 2.0','bytedance/seedance-2.0',['480p','720p','1080p']),
-  seed('seedance-2-fast','Seedance 2.0 Fast','bytedance/seedance-2.0/fast',['480p','720p']),
-  {id:'kling-3-turbo',label:'Kling 3.0 Turbo',kind:'video',t:'kling-video/v3.0-turbo/text-to-video',i:'kling-video/v3.0-turbo/image-to-video',roles:{start:1},s:{ar:VID_AR,res:['720p','1080p'],dur:[5,8,10,15]},
-    body:(p,s)=>{ const b={prompt:p.prompt,duration:+s.dur,resolution:s.res}; if(p.start) b.image_url=p.start; else b.aspect_ratio=s.ar; return b; }},
-  kling3('kling-3-std','Kling 3.0 Standard','kling-video/v3.0/std'),
-  kling3('kling-3-pro','Kling 3.0 Pro','kling-video/v3.0/pro'),
-  vid('kling-2.6','Kling 2.6 Pro',...t2v('kling-video/v2.6/pro/text-to-video')),
-  {id:'kling-2.5-turbo-pro',label:'Kling 2.5 Turbo Pro',kind:'video',t:'kling-video/v2.5-turbo/pro/text-to-video',i:'kling-video/v2.5-turbo/pro/image-to-video',roles:{start:1},s:{dur:[5,10]},
-    body:(p,s)=>{ const b={prompt:p.prompt,duration:+s.dur,cfg_scale:0.5}; if(p.start) b.image_url=p.start; return b; }},
-  {id:'hailuo-2.3',label:'MiniMax Hailuo 2.3',kind:'video',t:'minimax/hailuo-2.3/standard/text-to-video',i:'minimax/hailuo-2.3/standard/image-to-video',roles:{start:1},s:{dur:[6,10]},
-    body:(p,s)=>{ const b={prompt:p.prompt,duration:+s.dur,prompt_optimizer:true}; if(p.start) b.image_url=p.start; return b; }},
-  vid('minimax-h3','MiniMax H3',...t2v('minimax/h3/text-to-video')),
-  vid('wan-3','Wan 3.0',...t2v('alibaba/wan-3.0/text-to-video')),
-  vid('wan-3-prime','Wan 3.0 Prime',...t2v('alibaba/wan-3.0-prime/text-to-video')),
-  vid('wan-2.6','Wan 2.6',...t2v('wan/v2.6/text-to-video')),
-  vid('pixverse-6','PixVerse 6',...t2v('pixverse/v6/text-to-video')),
-  vid('ltx-2.5-fast','LTX 2.5 Fast','lightricks/ltx-2.5/text-to-video/fast','lightricks/ltx-2.5/image-to-video/fast'),
-  vid('happy-horse-1.1','Happy Horse 1.1',...t2v('alibaba/happy-horse/v1.1/text-to-video')),
-  {id:'dop',label:'Higgsfield DoP (이미지→영상)',kind:'video',t:null,i:'higgsfield-ai/dop/lite',roles:{start:1},needStart:true,s:{ar:VID_AR,res:['720p','1080p'],dur:[5,8,10]}},
-];
-const modelById=id=>MODELS.find(m=>m.id===id)||MODELS[0];
-function defaultsFor(m){ const s=m.s; return {ar:s.ar?s.ar[0]:null,res:s.res?s.res[0]:null,dur:s.dur?String(s.dur.includes(5)?5:s.dur[0]):null,audio:!!s.audio,batch:1,weight:s.weight?'60':null}; }
-const REF_MODELS=()=>MODELS.filter(m=>m.kind==='image'&&m.roles.ref).map(m=>m.label).join(', ');
-function buildRequest(m,prompt,media,s){
-  const all=[media.start,media.end,...(media.ref||[])].filter(Boolean);
-  if(all.some(x=>x.uploading)) throw new Error('입력 이미지를 업로드하는 중입니다. 잠시 후 다시 누르세요');
-  const refs=m.roles.ref?(media.ref||[]).slice(0,m.roles.ref).map(x=>x.url):[];
-  const p={prompt,start:m.roles.start&&media.start&&media.start.url,end:m.roles.end&&media.end&&media.end.url,refs};
-  if(m.needStart&&!p.start) throw new Error(m.label+' 모델은 시작 프레임(이미지)이 필요합니다');
-  const path=(p.refs.length&&m.r)?m.r:(p.start&&m.i)?m.i:(m.t||m.i);
-  if(!path) throw new Error('이 모델의 엔드포인트가 없습니다');
-  if(path===m.i && m.kind==='video' && m.t && !p.start && m.i!==m.t) {/* noop */}
-  let body;
-  if(m.body) body=m.body(p,s);
-  else{ body={prompt}; if(s.ar&&!p.start) body.aspect_ratio=s.ar; if(s.res) body.resolution=s.res; if(s.dur&&m.kind==='video') body.duration=+s.dur;
-    if(p.start&&m.i) body.image_url=p.start; }
-  return {path,body};
-}
+/* 모델 카탈로그·요청 생성은 공용 모듈에 있음 */
+const {MODELS,modelById,defaultsFor,REF_MODELS,buildRequest}=H;
 
 /* ───────── State ───────── */
 const saved=(()=>{ try{return JSON.parse(localStorage.getItem(LS_STATE)||'{}');}catch(e){return {};} })();
 const state={scope:saved.scope||'video',surface:saved.surface||'video',model:{image:saved.mImage||'soul-2',video:saved.mVideo||'seedance-2.5'},settings:saved.settings||{},media:{start:null,end:null,ref:[]},runs:[],selected:new Set(),selecting:false,lastSel:null,undo:null,pub:{items:[],offset:0,done:false,loading:false,err:null}};
 function persist(){ try{ localStorage.setItem(LS_STATE,JSON.stringify({scope:state.scope,surface:state.surface,mImage:state.model.image,mVideo:state.model.video,settings:state.settings})); }catch(e){} }
 const curModel=()=>modelById(state.model[state.surface]);
-function curSettings(){ const m=curModel(); const d=defaultsFor(m); const s=Object.assign({},d,state.settings[m.id]||{});
-  if(m.s.ar&&!m.s.ar.includes(s.ar)) s.ar=d.ar; if(m.s.res&&!m.s.res.includes(s.res)) s.res=d.res; if(m.s.weight&&!m.s.weight.map(String).includes(String(s.weight))) s.weight=d.weight; if(m.s.dur&&!m.s.dur.map(String).includes(String(s.dur))) s.dur=d.dur; return s; }
-const getKey=()=>{ try{return (localStorage.getItem(LS_KEY)||'').trim();}catch(e){return '';} };
+function curSettings(){ const m=curModel(); return H.fixSettings(m,state.settings[m.id]); }
+const getKey=H.getKey;
 
 /* ───────── IndexedDB ───────── */
 let dbp=null;
@@ -99,22 +34,8 @@ const idbDel=(store,k)=>idb(store,'readwrite',st=>st.delete(k));
 async function saveRun(r){ try{ await idbPut('runs',r); }catch(e){} }
 async function enforceCap(){ const done=state.runs.filter(r=>!r.fav).sort((a,b)=>b.createdAt-a.createdAt); for(const r of done.slice(HISTORY_CAP)){ state.runs=state.runs.filter(x=>x.id!==r.id); try{await idbDel('runs',r.id);}catch(e){} } }
 
-/* ───────── Higgsfield API ───────── */
-function authHeaders(json){ const h={Authorization:'Key '+getKey()}; if(json) h['Content-Type']='application/json'; return h; }
-function errText(status,j){ if(j&&typeof j.detail==='string') return j.detail; if(j&&Array.isArray(j.detail)) return j.detail.map(d=>(d.loc?d.loc.slice(-1)[0]+': ':'')+(d.msg||'')).join(' · '); if(status===401) return '키가 올바르지 않습니다 (Invalid credentials)'; if(status===402) return '크레딧 부족'; if(status===429) return '요청이 너무 많습니다. 잠시 후 다시 시도'; return '요청 실패 ('+status+')'; }
-async function hfFetch(url,opts){ const r=await fetch(url,opts); const txt=await r.text(); let j=null; try{ j=txt?JSON.parse(txt):null; }catch(e){ j={detail:txt.slice(0,200)}; } if(!r.ok){ const e=new Error(errText(r.status,j)); e.status=r.status; throw e; } return j; }
-async function hfSubmit(path,body){ return hfFetch(API+'/'+path,{method:'POST',headers:authHeaders(true),body:JSON.stringify(body)}); }
-async function hfStatus(id){ return hfFetch(API+'/requests/'+encodeURIComponent(id)+'/status',{headers:authHeaders(false)}); }
-async function hfUpload(file){
-  const ct=file.type==='image/jpg'?'image/jpeg':file.type;
-  if(!/^(image\/(jpeg|png|webp|gif)|video\/mp4|audio\/(wav|x-wav))$/.test(ct)) throw new Error('Higgsfield 입력은 JPG/PNG/WEBP/GIF/MP4만 지원합니다');
-  let up=null, lastErr=null;
-  for(const base of [API,'https://api.higgsfield.ai']){ try{ up=await hfFetch(base+'/files/generate-upload-url',{method:'POST',headers:authHeaders(true),body:JSON.stringify({content_type:ct})}); break; }catch(e){ lastErr=e; if(e.status===401) break; } }
-  if(!up) throw lastErr||new Error('업로드 URL 발급 실패');
-  const r=await fetch(up.upload_url,{method:'PUT',headers:up.upload_headers||{'Content-Type':ct},body:file});
-  if(!r.ok) throw new Error('파일 전송 실패 ('+r.status+')');
-  return up.public_url;
-}
+/* ───────── Higgsfield API (공용 모듈) ─────────*/
+const {hfSubmit,hfStatus}=H;
 
 /* ───────── Generate ───────── */
 let inflight=0;
@@ -161,31 +82,10 @@ async function pollRun(r){
 async function failRun(r,msg){ r.status='failed'; r.error=msg; await saveRun(r); renderAll(); }
 
 /* ───────── Public gallery (Supabase or local fallback) ───────── */
-const CFG=window.LUKE_SHARED||{};
-const shared=!!(CFG.url&&CFG.anonKey&&/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(CFG.url.replace(/\/$/,'')));
-const SB=shared?CFG.url.replace(/\/$/,''):'';
-const MAX_IMG=(CFG.maxImageMB||10)*1048576, MAX_VID=(CFG.maxVideoMB||50)*1048576;
-const OK_MIME={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'};
-function sbHeaders(extra){ const h={apikey:CFG.anonKey}; if(/^eyJ/.test(CFG.anonKey)) h.Authorization='Bearer '+CFG.anonKey; return Object.assign(h,extra||{}); }
-const pubUrl=path=>SB+'/storage/v1/object/public/'+encodeURIComponent(CFG.bucket)+'/'+path.split('/').map(encodeURIComponent).join('/');
-async function sniff(file){ const b=new Uint8Array(await file.slice(0,16).arrayBuffer()); const hex=[...b].map(x=>x.toString(16).padStart(2,'0')).join(''); const asc=String.fromCharCode(...b);
-  if(hex.startsWith('ffd8ff')) return 'image/jpeg'; if(hex.startsWith('89504e47')) return 'image/png'; if(asc.startsWith('GIF8')) return 'image/gif';
-  if(asc.startsWith('RIFF')&&asc.slice(8,12)==='WEBP') return 'image/webp'; if(hex.startsWith('1a45dfa3')) return 'video/webm';
-  if(asc.slice(4,8)==='ftyp') return asc.slice(8,10)==='qt'?'video/quicktime':'video/mp4'; return null; }
-async function validateUpload(file){
-  const real=await sniff(file); if(!real||!OK_MIME[real]) throw new Error('허용 형식: JPG·PNG·WEBP·GIF 이미지, MP4·WEBM·MOV 영상 (실행 파일·기타 형식 불가)');
-  const isVid=real.startsWith('video/'); if(file.size>(isVid?MAX_VID:MAX_IMG)) throw new Error((isVid?'영상':'이미지')+' 최대 '+Math.round((isVid?MAX_VID:MAX_IMG)/1048576)+'MB');
-  return {mime:real,kind:isVid?'video':'image',ext:OK_MIME[real]};
-}
+const {CFG,shared,SB,MAX_IMG,MAX_VID,OK_MIME,sbHeaders,pubUrl,validateUpload}=H;
 async function publish(file,title,source){
-  const v=await validateUpload(file); const clean=String(title||'').replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,80);
-  if(!shared){ const it={id:uid(),created_at:new Date().toISOString(),kind:v.kind,mime:v.mime,size:file.size,title:clean,source:source||'upload',blob:file}; await idbPut('localpub',it); return it; }
-  const d=new Date(); const path=d.getUTCFullYear()+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+uid()+'.'+v.ext;
-  const r=await fetch(SB+'/storage/v1/object/'+encodeURIComponent(CFG.bucket)+'/'+path,{method:'POST',headers:sbHeaders({'Content-Type':v.mime,'x-upsert':'false','cache-control':'31536000'}),body:file});
-  if(!r.ok){ let t=''; try{t=(await r.json()).message||'';}catch(e){} throw new Error('업로드 실패 ('+r.status+') '+t); }
-  const r2=await fetch(SB+'/rest/v1/'+CFG.table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({path,kind:v.kind,mime:v.mime,size:file.size,title:clean||null,source:source||'upload'})});
-  if(!r2.ok) throw new Error('목록 등록 실패 ('+r2.status+')');
-  return {path};
+  if(!shared){ const v=await validateUpload(file); const clean=H.makeTitle(title); const it={id:uid(),created_at:new Date().toISOString(),kind:v.kind,mime:v.mime,size:file.size,title:clean,source:source||'upload',blob:file}; await idbPut('localpub',it); return it; }
+  return H.publish(file,title,source);
 }
 /* 완성된 생성 결과를 자동으로 공개 갤러리(= 메인 화면 첫 섹션)에 등록. 결과 파일 자체를 복사(Higgsfield 결과는 ~7일 후 삭제). */
 const shareQueue=[]; let sharing=false;
@@ -194,21 +94,13 @@ async function pumpShare(){ if(sharing) return; sharing=true;
   while(shareQueue.length){ const [r,res]=shareQueue.shift(); try{ await shareOne(r); }catch(e){} res(); }
   sharing=false; }
 async function shareOne(r){
-  const title=('['+(r.modelLabel||'AI')+'] '+(r.prompt||'')).slice(0,80);
+  const title='['+(r.modelLabel||'AI')+'] '+(r.prompt||'');
   r.share='pending'; await saveRun(r);
-  let blob=null, why='';
-  try{ const resp=await fetch(r.url,{mode:'cors',cache:'no-store'}); if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const len=+resp.headers.get('content-length')||0; if(len&&len>(r.kind==='video'?MAX_VID:MAX_IMG)) throw new Error('파일이 너무 큼 ('+(len/1048576).toFixed(1)+'MB)');
-    blob=await resp.blob(); }
-  catch(e){ why=e.message||'fetch 실패'; }
-  if(blob){ try{ const res=await publish(new File([blob],'result',{type:blob.type}),title,'studio'); r.share='done'; r.shared=res.path; await saveRun(r); toast('공개 갤러리·메인 화면에 자동 등록했습니다','ok'); if(state.scope==='public') loadPublic(true); renderGrid(); return; }
-    catch(e){ why=e.message; } }
-  /* 폴백: 파일 복사가 불가하면 원본 URL만 등록(DB에 external_url 컬럼이 있을 때). Higgsfield 보관 기간이 지나면 깨짐. */
-  try{ const rr=await fetch(SB+'/rest/v1/'+CFG.table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json',Prefer:'return=minimal'}),
-      body:JSON.stringify({path:null,external_url:r.url,kind:r.kind,mime:r.kind==='video'?'video/mp4':'image/png',size:1,title,source:'studio'})});
-    if(!rr.ok) throw new Error('external '+rr.status);
-    r.share='external'; await saveRun(r); toast('파일 복사 실패('+why+') — 원본 링크로 공개 갤러리에 등록했습니다(약 7일 후 만료)','err'); if(state.scope==='public') loadPublic(true); }
-  catch(e){ r.share='failed'; r.shareErr=why; await saveRun(r); toast('자동 공개 등록 실패: '+why+' — 뷰어의 「공개 갤러리에 공유」로 다시 시도하세요','err'); }
+  try{ const res=await H.shareResult({url:r.url,kind:r.kind,title});
+    if(res.share==='done'){ r.share='done'; r.shared=res.path; await saveRun(r); toast('공개 갤러리·메인 화면에 자동 등록했습니다','ok'); }
+    else { r.share='external'; await saveRun(r); toast('파일 복사 실패('+res.why+') — 원본 링크로 공개 갤러리에 등록했습니다(약 7일 후 만료)','err'); }
+    if(state.scope==='public') loadPublic(true); }
+  catch(e){ r.share='failed'; r.shareErr=e.why||e.message; await saveRun(r); toast('자동 공개 등록 실패: '+(e.why||e.message)+' — 뷰어의 「공개 갤러리에 공유」로 다시 시도하세요','err'); }
   renderGrid();
 }
 async function loadPublic(reset){
@@ -230,15 +122,7 @@ async function reportItem(it){
 }
 
 /* ───────── Download ───────── */
-function fname(it,i){ const ext=(it.mime&&OK_MIME[it.mime])||(it.kind==='video'?'mp4':(String(it.url||'').match(/\.(png|jpe?g|webp|gif)(\?|$)/i)||[,'png'])[1]); return 'lukemodel-'+(it.model||it.source||'media')+'-'+new Date(it.createdAt||it.created_at||Date.now()).toISOString().slice(0,19).replace(/[:T]/g,'')+(i!=null?'-'+(i+1):'')+'.'+ext; }
-async function download(it,i){
-  const name=fname(it,i);
-  if(it.local&&it.blob){ saveBlob(it.blob,name); return true; }
-  if(it.path&&shared){ const a=el('a',{href:it.url+'?download='+encodeURIComponent(name)}); document.body.appendChild(a); a.click(); a.remove(); return true; }
-  try{ const r=await fetch(it.url,{mode:'cors'}); if(!r.ok) throw new Error(r.status); saveBlob(await r.blob(),name); return true; }
-  catch(e){ window.open(it.url,'_blank','noopener'); return false; }
-}
-function saveBlob(b,name){ const u=URL.createObjectURL(b); const a=el('a',{href:u,download:name}); document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000); }
+const download=(it,i)=>H.download(it,i);
 
 /* ───────── Rendering ───────── */
 const SCOPES=[['image','이미지'],['video','영상'],['assets','에셋'],['fav','즐겨찾기'],['public','공개 갤러리']];
@@ -273,7 +157,7 @@ function tileFor(it,idx,items){
   if(isRun&&it.status==='pending'){ t.appendChild(el('div',{class:'ph'},el('div',{},el('b',{text:it.modelLabel}),el('br'),it.phase==='in_progress'?'생성 중…':'대기열…'))); t.style.cursor='default'; return t; }
   if(isRun&&it.status==='failed'){ t.appendChild(el('div',{class:'fail'},el('b',{text:'실패 · '+it.modelLabel}),el('span',{text:it.error||''}),el('span',{style:'color:#aab;font-size:11.5px',text:it.prompt.slice(0,120)}),
     el('div',{style:'display:flex;gap:6px'},el('button',{class:'btn sm',text:'다시 시도',onclick:e=>{e.stopPropagation(); reuse(it); removeRuns([it.id],true);}}),el('button',{class:'btn ghost sm',text:'삭제',onclick:e=>{e.stopPropagation(); removeRuns([it.id]);}})))); t.style.cursor='default'; return t; }
-  const media=it.kind==='video'?el('video',{src:it.url,muted:true,loop:true,playsinline:true,preload:'metadata'}):el('img',{src:it.url,alt:it.prompt||it.title||'',loading:'lazy',decoding:'async',referrerpolicy:'no-referrer'});
+  const media=it.kind==='video'?el('video',{src:it.url,muted:true,loop:true,playsinline:true,preload:'metadata'}):el('img',{src:it.url,alt:it.prompt||H.displayTitle(it.title)||'',loading:'lazy',decoding:'async',referrerpolicy:'no-referrer'});
   if(it.kind==='video'){ media.muted=true; t.addEventListener('mouseenter',()=>media.play().catch(()=>{})); t.addEventListener('mouseleave',()=>media.pause()); }
   media.addEventListener('error',()=>{ media.replaceWith(el('div',{class:'fail',style:'color:var(--dim)'},el('span',{text:'미디어를 불러올 수 없습니다 (결과 URL 만료 가능 — 생성 결과는 최소 7일 보관)'}))); });
   t.appendChild(media);
@@ -287,7 +171,7 @@ function tileFor(it,idx,items){
   else if(!it.local) acts.append(el('button',{class:'ic',title:'신고','aria-label':'신고',text:'⚑',onclick:e=>{e.stopPropagation(); reportItem(it);}}));
   else acts.append(el('button',{class:'ic',title:'삭제','aria-label':'삭제',text:'🗑',onclick:async e=>{e.stopPropagation(); await idbDel('localpub',it.id); loadPublic(true);}}));
   t.appendChild(acts);
-  t.appendChild(el('div',{class:'cap'},el('span',{text:it.prompt||it.title||(it.source==='studio'?'스튜디오 결과':'업로드')}),el('span',{text:it.modelLabel||(it.size?(it.size/1048576).toFixed(1)+'MB':'')})));
+  t.appendChild(el('div',{class:'cap'},el('span',{text:it.prompt||H.displayTitle(it.title)||(it.source==='studio'?'스튜디오 결과':'업로드')}),el('span',{text:it.modelLabel||(it.size?(it.size/1048576).toFixed(1)+'MB':'')})));
   t.addEventListener('click',e=>{ if(state.selecting){ toggleSel(it,idx,items,e.shiftKey); return; } openViewer(it); });
   t.addEventListener('keydown',e=>{ if(e.key==='Enter') openViewer(it); });
   return t;
@@ -332,16 +216,7 @@ function renderTray(){ const m=curModel(), t=$('tray'); t.textContent='';
     if(k!=='ref'&&list.length<cap) t.appendChild(el('button',{class:'slot',onclick:()=>openAssetPicker(k,l)},el('span',{class:'th',text:'+'}),l+(m.needStart&&k==='start'?' (필수)':''))); });
 }
 /* 로컬 파일 → 공개 URL: Supabase public-media(갤러리 행 없이 파일만) 우선, 미설정 시 Higgsfield 업로드 URL */
-async function uploadInput(file){
-  if(!/^image\/(jpeg|jpg|png|webp|gif)$/.test(file.type)) throw new Error('JPG·PNG·WEBP·GIF 이미지만 가능합니다');
-  if(file.size>MAX_IMG) throw new Error('이미지 최대 '+Math.round(MAX_IMG/1048576)+'MB');
-  if(shared){ const v=await validateUpload(file); const d=new Date(); const path=d.getUTCFullYear()+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+uid()+'.'+v.ext;
-    const r=await fetch(SB+'/storage/v1/object/'+encodeURIComponent(CFG.bucket)+'/'+path,{method:'POST',headers:sbHeaders({'Content-Type':v.mime,'x-upsert':'false','cache-control':'31536000'}),body:file});
-    if(!r.ok){ let t=''; try{t=(await r.json()).message||'';}catch(e){} throw new Error('업로드 실패 ('+r.status+') '+t); }
-    return pubUrl(path); }
-  if(!getKey()) throw new Error('파일 업로드에는 Higgsfield 키가 필요합니다(공유 저장소 미설정)');
-  return hfUpload(file);
-}
+const uploadInput=H.uploadInput;
 /* role: 'ref' | 'start' | 'end'. 업로드 동안 미리보기 슬롯 표시 */
 async function addLocalFiles(role,files){
   const m=curModel(); const cap=role==='ref'?(m.roles.ref||0):1; let room=role==='ref'?cap-state.media.ref.length:1;
@@ -389,7 +264,7 @@ function modalEsc(e){ if(e.key==='Escape') closeModal(); }
 function openModal(box){ closeModal(); const ov=el('div',{class:'ov',onclick:e=>{ if(e.target===ov) closeModal(); }},box); $('modal').appendChild(ov); document.addEventListener('keydown',modalEsc); const f=box.querySelector('input,textarea,button'); if(f) setTimeout(()=>f.focus(),0); }
 function openKeyModal(after){
   const inp=el('input',{class:'inp',type:'password',placeholder:'key-id:key-secret',autocomplete:'off',spellcheck:'false'}); inp.value=getKey();
-  const save=()=>{ const v=inp.value.trim(); if(v&&!/^[^:\s]+:[^:\s]+$/.test(v)){ toast('형식: key-id:key-secret','err'); return; } try{ v?localStorage.setItem(LS_KEY,v):localStorage.removeItem(LS_KEY); }catch(e){} closeModal(); renderAll(); toast(v?'키를 저장했습니다 (이 브라우저에만)':'키를 삭제했습니다','ok'); if(v&&after) after(); };
+  const save=()=>{ const v=inp.value.trim(); if(v&&!H.validKey(v)){ toast('형식: key-id:key-secret','err'); return; } H.setKey(v); closeModal(); renderAll(); toast(v?'키를 저장했습니다 (이 브라우저에만)':'키를 삭제했습니다','ok'); if(v&&after) after(); };
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter') save(); });
   openModal(el('div',{class:'box'},el('h3',{text:'Higgsfield API 키'}),
     el('p',{},'Higgsfield Cloud에서 발급한 키를 ',el('b',{text:'key-id:key-secret'}),' 형식으로 붙여넣으세요. 키는 이 브라우저 localStorage에만 저장되고 platform.higgsfield.ai 외에는 어디로도 전송되지 않습니다. lukemodel.com 서버는 키를 보지 못합니다. 공용 PC에서는 사용 후 삭제하세요.'),
@@ -407,12 +282,12 @@ function openModelPicker(){
 }
 function openViewer(it){
   const isRun=!!it.model&&!it.path&&!it.local;
-  const media=it.kind==='video'?el('video',{src:it.url,controls:true,autoplay:true,loop:true,playsinline:true}):el('img',{src:it.url,alt:it.prompt||it.title||'',referrerpolicy:'no-referrer'});
+  const media=it.kind==='video'?el('video',{src:it.url,controls:true,autoplay:true,loop:true,playsinline:true}):el('img',{src:it.url,alt:it.prompt||H.displayTitle(it.title)||'',referrerpolicy:'no-referrer'});
   const side=el('div',{class:'vside'});
   if(isRun){ side.append(el('h3',{text:it.modelLabel}),el('div',{class:'ptxt',text:it.prompt||'(프롬프트 없음)'}),
     el('button',{class:'btn ghost sm',text:'프롬프트 복사',onclick:()=>navigator.clipboard.writeText(it.prompt||'').then(()=>toast('복사했습니다','ok'))}));
     const s=it.settings||{}; [['화면비',s.ar],['해상도',s.res],['길이',s.dur?s.dur+'s':null],['오디오',s.audio!=null&&modelById(it.model).s.audio?(s.audio?'켜짐':'꺼짐'):null],['생성 시각',new Date(it.createdAt).toLocaleString('ko-KR')]].forEach(([k,v])=>{ if(v) side.appendChild(el('div',{class:'kv'},el('span',{class:'k',text:k}),el('span',{text:String(v)}))); }); }
-  else { side.append(el('h3',{text:it.title||'공개 갤러리'}),el('div',{class:'kv'},el('span',{class:'k',text:'종류'}),el('span',{text:it.kind==='video'?'영상':'이미지'})),
+  else { side.append(el('h3',{text:H.displayTitle(it.title)||'공개 갤러리'}),el('div',{class:'kv'},el('span',{class:'k',text:'종류'}),el('span',{text:it.kind==='video'?'영상':'이미지'})),
     el('div',{class:'kv'},el('span',{class:'k',text:'크기'}),el('span',{text:it.size?(it.size/1048576).toFixed(2)+'MB':'-'})),
     el('div',{class:'kv'},el('span',{class:'k',text:'올린 시각'}),el('span',{text:new Date(it.created_at).toLocaleString('ko-KR')}))); }
   const acts=el('div',{style:'display:flex;flex-direction:column;gap:8px;margin-top:auto'});

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://*.replicate.com https://api.openai.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai https://generativelanguage.googleapis.com https://abacus.jasoncameron.dev https://*.supabase.co; media-src data: blob: https: http:; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'; frame-ancestors 'none'">
+      content="default-src 'none'; img-src data: blob: https: http:; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://*.replicate.com https://api.openai.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai https://generativelanguage.googleapis.com https://abacus.jasoncameron.dev https://*.supabase.co https:; media-src data: blob: https: http:; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'">
 <title>페이스루크 — 얼굴 모델 전문 공유 플랫폼</title>
 <meta name="description" content="페이스루크(FaceLook) — 얼굴 한 번 업로드/생성하면 이미지·영상을 같은 모델 아래에. BYOK(Fal/Replicate 등). 공유 코드. 브라우저 로컬(서버 동기화 없음). Same-person AI faces & video — your API keys.">
 <link rel="canonical" href="https://lukemodel.com/">
@@ -98,10 +98,6 @@ nav.top button.on{background:var(--panel);color:#fff}
 
 .detail{padding:20px 0 60px;display:grid;grid-template-columns:1fr 346px;gap:26px;align-items:start}
 .hero{height:520px;border-radius:12px;background:#14171f center 8%/cover no-repeat;margin-bottom:10px;overflow:hidden;position:relative}
-.angles{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:22px}
-.angles .a{border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#14171f center 10%/cover no-repeat;height:78px;position:relative}
-.angles .a.on{border-color:var(--acc)}
-.angles .a span{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);font-size:9.5px;font-weight:700;text-align:center;padding:2.5px 0;z-index:2}
 h1.tit{font-size:25px;font-weight:800;letter-spacing:-.5px;margin-bottom:9px;line-height:1.3}
 .byline{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--dim);margin-bottom:18px;flex-wrap:wrap}
 .sec{margin-bottom:26px}
@@ -256,9 +252,6 @@ body{overflow-x:hidden}
   h1.tit{font-size:20px}
   .byline{font-size:12px;margin-bottom:14px}
   .hero{height:380px}
-  .angles{grid-template-columns:repeat(3,1fr);gap:7px}
-  .angles .a{height:96px}
-  .angles .a span{font-size:9.5px;padding:3px 0}
   .facegrid{grid-template-columns:repeat(2,1fr)}
   .side{position:static}
   .desc{font-size:13.4px}
@@ -302,7 +295,6 @@ body{overflow-x:hidden}
 @media (max-width:340px){
   .grid{grid-template-columns:1fr;gap:12px}
   .cover{height:200px}
-  .angles{grid-template-columns:repeat(2,1fr)}
   .anglePrev{grid-template-columns:repeat(2,1fr)}
   .facegrid{grid-template-columns:1fr}
   .hero{height:320px}
@@ -325,24 +317,10 @@ body{overflow-x:hidden}
 .studio-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
 .studio-presets{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 4px}
 .studio-note{font-size:12px;color:var(--dim);line-height:1.65;margin-top:10px}
-.assetgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px}
-.assetcell{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative;cursor:pointer}
-.assetcell .thumb{height:160px;background:#14171f center/cover no-repeat}
-.assetcell .meta{padding:8px 9px;font-size:11.5px;color:var(--dim);line-height:1.45}
-.assetcell .badge{position:absolute;top:7px;left:7px;font-size:10px;font-weight:800;background:rgba(0,0,0,.7);color:#fff;padding:3px 7px;border-radius:5px}
-.assetcell .badge.upload{background:rgba(47,158,110,.88)}
-.assetcell video.thumbv{width:100%;height:160px;object-fit:cover;display:block;background:#14171f}
-.assetcell .dl-one{position:absolute;top:7px;right:7px;font-size:10px;font-weight:800;background:rgba(0,0,0,.65);color:#fff;padding:3px 7px;border-radius:5px;border:0;cursor:pointer;z-index:2}
-.assetcell .dl-one:hover{background:var(--acc)}
 .card.flash-new{outline:2px solid var(--acc);box-shadow:0 0 0 4px rgba(47,158,110,.35),0 12px 32px rgba(0,0,0,.45);animation:flashNew 1.6s ease-in-out 2}
 @keyframes flashNew{0%,100%{box-shadow:0 0 0 4px rgba(47,158,110,.2),0 12px 32px rgba(0,0,0,.45)}50%{box-shadow:0 0 0 8px rgba(47,158,110,.45),0 12px 36px rgba(0,0,0,.5)}}
 .drop.on{border-color:var(--acc);background:#171b26}
 .mbox.wide{max-width:560px}
-.media-lightbox{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;gap:12px}
-.media-lightbox .lb-media{max-width:min(960px,96vw);max-height:78vh;border-radius:10px;background:#000;display:block}
-.media-lightbox .lb-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.media-lightbox .lb-cap{font-size:12.5px;color:#c8cede;text-align:center;max-width:90vw;line-height:1.5}
-.sharebox{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:12px;font-size:12.8px;color:var(--dim);line-height:1.65}
 .reqlist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .reqitem{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13px}
 .alert{border-radius:10px;padding:11px 13px;font-size:12.8px;line-height:1.65;border:1px solid var(--line);background:var(--panel2);color:var(--dim)}
@@ -497,6 +475,8 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 
 <script src="/traffic.js"></script>
 <script src="/shared-config.js"></script>
+<script src="/hf-core.js"></script>
+<script src="/face-hf.js"></script>
 <script>
 'use strict';
 /* ===========================================================================
@@ -1005,11 +985,7 @@ async function resolveFaceRef(m){
   const imageUrl=httpUrl||dataUrl||null;
   return { dataUrl:dataUrl||null, httpUrl:httpUrl||null, imageUrl, mode: imageUrl ? 'image-ref' : 'prompt' };
 }
-function canFaceLockGenerate(m){
-  if(!m||!DB.user) return false;
-  ensureModelFields(m);
-  return isModelOwner(m) || !!m.aiStudio || !!m.faceId || !!(m.photos&&m.photos.length) || !!(m.file&&m.file.name);
-}
+
 let DB = load();
 if(DB&&Array.isArray(DB.models)) DB.models.forEach(ensureModelFields);
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
@@ -1370,9 +1346,9 @@ function requireLogin(reason){
 }
 
 /* ── 라우팅 ──────────────────────────────────────────────────────────── */
-let view='browse', curId=null, curAngle=0, mineTab='fav';
+let view='browse', curId=null, mineTab='fav';
 let filt={ kind:'', gender:'', age:'', style:'', sort:'new', q:'' };
-function go(v,id){ view=v; if(id!=null){curId=id;curAngle=0;} window.scrollTo(0,0); render(); }
+function go(v,id){ view=v; if(id!=null) curId=id; window.scrollTo(0,0); render(); }
 function toast(msg,kind){ const t=$('toast'); t.textContent=msg; t.className='toast show '+(kind||'');
   clearTimeout(t._h); const ms=String(msg||'').length>40?4200:2400; t._h=setTimeout(()=>{t.className='toast '+(kind||'');},ms); }
 function copy(text,label){ const ta=document.createElement('textarea'); ta.value=text;
@@ -1496,12 +1472,12 @@ function hsCard(c,x){
   let m;
   if(x.kind==='video'){ m=document.createElement('video'); m.muted=true; m.defaultMuted=true; m.loop=true; m.playsInline=true; m.setAttribute('playsinline',''); m.setAttribute('muted',''); m.preload='none';
     const io=hsVideoObserver(); if(io){ m.dataset.src=url+'#t=0.1'; io.observe(m); } else { m.src=url+'#t=0.1'; m.autoplay=true; } }
-  else { m=document.createElement('img'); m.loading='lazy'; m.decoding='async'; m.alt=x.title||''; m.src=url; }
+  else { m=document.createElement('img'); m.loading='lazy'; m.decoding='async'; m.alt=String(x.title||'').replace(/\s*#face:[a-z0-9-]+$/,''); m.src=url; }
   m.addEventListener('click',()=>window.open(url,'_blank','noopener'));
   card.appendChild(m);
   const tg=document.createElement('span'); tg.className='hs-tag'; tg.textContent=x.kind==='video'?'VIDEO':'IMAGE'; card.appendChild(tg);
   const cap=document.createElement('div'); cap.className='hs-cap';
-  const t=document.createElement('span'); t.textContent=x.title||(x.source==='studio'?'힉스필드 스튜디오 결과':'업로드'); cap.appendChild(t);
+  const t=document.createElement('span'); const ttl=window.LukeHF?LukeHF.displayTitle(x.title):String(x.title||'').replace(/\s*#face:[a-z0-9-]+$/,''); t.textContent=ttl||(x.source==='studio'?'힉스필드 스튜디오 결과':'업로드'); cap.appendChild(t);
   const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'})[x.mime]||(x.kind==='video'?'mp4':'png');
   const name='lukemodel-'+String(x.id||'').slice(0,8)+'.'+ext;
   const a=document.createElement('a'); a.className='hs-dl'; a.textContent='⤓ 다운로드'; a.download=name; a.rel='noopener';
@@ -1773,65 +1749,22 @@ function renderDetail(app){
   by.appendChild(av); by.appendChild(nm); by.appendChild(rt); left.appendChild(by);
 
   const hero=document.createElement('div'); hero.className='hero';
-  hero.style.backgroundImage='url("'+faceSrc(m,curAngle,900,900)+'")';
+  hero.style.backgroundImage='url("'+String(faceSrc(m,0,900,900)).replace(/"/g,'%22')+'")';
   left.appendChild(hero);
-  const ang=document.createElement('div'); ang.className='angles';
-  ANGLES.forEach((a,i)=>{
-    const d=document.createElement('div'); d.className='a'+(i===curAngle?' on':'');
-    d.style.backgroundImage='url("'+faceSrc(m,i,200,210)+'")';
-    const s=document.createElement('span'); s.textContent=a.ko; d.appendChild(s);
-    d.onclick=()=>{ curAngle=i; render(); }; ang.appendChild(d);
-  });
-  left.appendChild(ang);
 
-  if(canFaceLockGenerate(m)){
-    const cta=document.createElement('div'); cta.className='sec'; cta.style.cssText='padding:14px 16px;border:1px solid var(--acc);border-radius:12px;background:rgba(88,120,255,.08)';
-    const ctaH=document.createElement('h2'); ctaH.style.color='var(--tx)'; ctaH.textContent='이 얼굴로 AI 생성'; cta.appendChild(ctaH);
-    const ctaP=document.createElement('div'); ctaP.style.cssText='font-size:13px;color:var(--dim);margin:6px 0 12px;line-height:1.55';
-    ctaP.textContent='업로드·저장된 얼굴을 그대로 유지하면서, 연결해 둔 AI(Fal / Replicate / Higgsfield / OpenAI / Pollinations)로 이미지·영상을 만듭니다. 결과는 이 모델 작품에 자동 저장됩니다.';
-    cta.appendChild(ctaP);
-    const ctaRow=document.createElement('div'); ctaRow.className='studio-actions';
-    const c1=document.createElement('button'); c1.className='btn'; c1.textContent='이미지 생성'; c1.onclick=()=>openStudioForModel(m,'add-image');
-    const c2=document.createElement('button'); c2.className='btn ghost'; c2.textContent='영상 생성';
-    c2.onclick=()=>{
-      const cfg=loadStudioCfg();
-      if(!firstReadyVideoConnection(cfg)){ toast('영상용 API 키·연결이 필요합니다 (Fal / Replicate / Higgsfield)','err'); return; }
-      openStudioForModel(m,'add-video');
-    };
-    const c3=document.createElement('button'); c3.className='btn ghost'; c3.textContent='이미지·동영상 업로드';
-    c3.onclick=()=>openUploadWorksModal(m.id);
-    ctaRow.appendChild(c1); ctaRow.appendChild(c2); ctaRow.appendChild(c3); cta.appendChild(ctaRow); left.appendChild(cta);
-  } else if(DB.user && isModelOwner(m)){
-    const cta=document.createElement('div'); cta.className='sec'; cta.style.cssText='padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)';
-    const ctaH=document.createElement('h2'); ctaH.style.color='var(--tx)'; ctaH.textContent='내 작품 올리기'; cta.appendChild(ctaH);
-    const ctaP=document.createElement('div'); ctaP.style.cssText='font-size:13px;color:var(--dim);margin:6px 0 12px;line-height:1.55';
-    ctaP.textContent='내가 만든 이미지·동영상을 이 얼굴 아래에 바로 올릴 수 있습니다. 파일은 이 브라우저(IndexedDB)에만 저장되며, 다른 기기와는 자동 동기화되지 않습니다.';
-    cta.appendChild(ctaP);
-    const ctaRow=document.createElement('div'); ctaRow.className='studio-actions';
-    const c3=document.createElement('button'); c3.className='btn'; c3.textContent='이미지·동영상 업로드'; c3.onclick=()=>openUploadWorksModal(m.id);
-    ctaRow.appendChild(c3); cta.appendChild(ctaRow); left.appendChild(cta);
-  }
-
-  const s1=document.createElement('div'); s1.className='sec';
-  const s1h=document.createElement('h2'); s1h.textContent='모델 소개'; s1.appendChild(s1h);
-  const p=document.createElement('div'); p.className='desc'; p.textContent=m.desc; s1.appendChild(p); left.appendChild(s1);
+  /* 이 얼굴로 힉스필드 제작 (이미지·영상, 얼굴 유지) + 이 얼굴로 만든 작품 — /face-hf.js */
+  renderFaceHfPanel(left, m);
 
   /* 얼굴 속성 */
   const s2=document.createElement('div'); s2.className='sec';
   const s2h=document.createElement('h2'); s2h.textContent='얼굴 속성'; s2.appendChild(s2h);
   const fg=document.createElement('div'); fg.className='facegrid';
-  [['성별',GENDERS[m.gender]],['연령대',AGES[m.age]],['스타일',STYLES[m.style]],['초상권',CONSENT[m.consent].ko]].forEach(([k,v])=>{
+  [['성별',GENDERS[m.gender]],['연령대',AGES[m.age]],['스타일',STYLES[m.style]]].forEach(([k,v])=>{
     const c=document.createElement('div'); c.className='fcell';
     const kk=document.createElement('div'); kk.className='k'; kk.textContent=k;
     const vv=document.createElement('div'); vv.className='v'; vv.textContent=v;
     c.appendChild(kk); c.appendChild(vv); fg.appendChild(c); });
-  s2.appendChild(fg);
-  const cs=CONSENT[m.consent];
-  const cn=document.createElement('div'); cn.className='alert '+(m.consent==='synthetic'?'ok':'info'); cn.style.marginTop='11px';
-  cn.textContent=cs.ko+' — '+cs.d+'. 실존 인물의 무단 학습이 확인되면 즉시 삭제되며, 대상자는 언제든 삭제를 요청할 수 있습니다.';
-  s2.appendChild(cn); left.appendChild(s2);
-
-  renderModelAssetsSection(left, m);
+  s2.appendChild(fg); left.appendChild(s2);
 
   /* 리뷰 */
   const s3=document.createElement('div'); s3.className='sec';
@@ -1911,7 +1844,6 @@ function renderDetail(app){
     const b=document.createElement('span'); b.className='v'; b.textContent=v; r.appendChild(a); r.appendChild(b); vb.appendChild(r); };
   kv('베이스 모델', m.base); kv('종류', KINDS[m.kind]);
   kv('권장 강도', m.sMin!=null?m.sMin+' ~ '+m.sMax:null); kv('Clip Skip', m.clip);
-  kv('각도 이미지', m.angles.length+'방향');
 
   if(m.words.length){
     const lb=document.createElement('div'); lb.className='k'; lb.style.cssText='margin-top:12px;font-size:12.8px;color:var(--dim)';
@@ -2107,7 +2039,7 @@ function renderUpload(app){
   const st3=document.createElement('div'); st3.className='step';
   const t3=document.createElement('h2'); t3.textContent='4. 각도별 사진 자동 생성'; st3.appendChild(t3);
   const hint3=document.createElement('div'); hint3.className='hint';
-  hint3.textContent='별도 이미지를 올리지 않아도 됩니다. 모델 파일을 등록하면 정면·좌45·우45·좌측면·우측면·하이앵글 6방향 프리뷰가 자동으로 생성돼 상세 페이지에 붙습니다.';
+  hint3.textContent='별도 이미지를 올리지 않아도 됩니다. 모델 파일을 등록하면 정면·좌45·우45·좌측면·우측면·하이앵글 6방향 프리뷰가 자동으로 생성됩니다.';
   st3.appendChild(hint3);
   const prev=document.createElement('div'); prev.className='anglePrev'; st3.appendChild(prev);
   const prevNote=document.createElement('div'); prevNote.style.cssText='font-size:12px;color:var(--dim);margin-top:10px;line-height:1.6';
@@ -2399,11 +2331,6 @@ function pickDefaultConnection(kind, cfg){
   return ready||list[0]||null;
 }
 
-function firstReadyVideoConnection(cfg){
-  cfg=cfg||loadStudioCfg();
-  const list=listStudioConnections('video', cfg);
-  return list.find(c=>!connectionKeyMissing(c,cfg)&&String(c.model||'').trim())||list.find(c=>!connectionKeyMissing(c,cfg))||null;
-}
 
 /* ===== 내 AI 모델 aside hub ===== */
 let aiAsideOpen=false;
@@ -2616,11 +2543,7 @@ function renderAiAside(){
 }
 
 
-function crc32Bytes(buf){ let c=~0; if(!crc32Bytes._t){ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let x=n; for(let k=0;k<8;k++) x=x&1?0xedb88320^(x>>>1):x>>>1; t[n]=x; } crc32Bytes._t=t; } const u=buf instanceof Uint8Array?buf:new Uint8Array(buf); for(let i=0;i<u.length;i++) c=crc32Bytes._t[(c^u[i])&0xff]^(c>>>8); return (~c)>>>0; }
-function zU16(n){ const b=new Uint8Array(2); new DataView(b.buffer).setUint16(0,n,true); return b; }
-function zU32(n){ const b=new Uint8Array(4); new DataView(b.buffer).setUint32(0,n,true); return b; }
-function zCat(parts){ let n=0; parts.forEach(p=>n+=p.length); const o=new Uint8Array(n); let i=0; parts.forEach(p=>{o.set(p,i);i+=p.length;}); return o; }
-async function zipStore(files){ const enc=new TextEncoder(); const locals=[], centrals=[]; let offset=0; for(const f of files){ const nameBytes=enc.encode(f.name); const data=new Uint8Array(await f.blob.arrayBuffer()); const crc=crc32Bytes(data); const local=zCat([zU32(0x04034b50),zU16(20),zU16(0),zU16(0),zU16(0),zU16(0),zU32(crc),zU32(data.length),zU32(data.length),zU16(nameBytes.length),zU16(0),nameBytes,data]); const central=zCat([zU32(0x02014b50),zU16(20),zU16(20),zU16(0),zU16(0),zU16(0),zU16(0),zU32(crc),zU32(data.length),zU32(data.length),zU16(nameBytes.length),zU16(0),zU16(0),zU16(0),zU16(0),zU32(0),zU32(offset),nameBytes]); locals.push(local); centrals.push(central); offset+=local.length; } const centralDir=zCat(centrals); const end=zCat([zU32(0x06054b50),zU16(0),zU16(0),zU16(files.length),zU16(files.length),zU32(centralDir.length),zU32(offset),zU16(0)]); return new Blob([zCat(locals),centralDir,end],{type:'application/zip'}); }
+
 async function blobToDataUrl(blob){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>rej(fr.error); fr.readAsDataURL(blob); }); }
 async function fetchAsBlob(url){ const r=await fetch(url,{mode:'cors',credentials:'omit',referrerPolicy:'no-referrer'}); if(!r.ok) throw new Error('fetch '+r.status); return await r.blob(); }
 async function urlToDataUrl(url){ if(!url) return null; if(String(url).startsWith('data:')) return url; try{ return await blobToDataUrl(await fetchAsBlob(url)); }catch(e){ try{ const img=await new Promise((res,rej)=>{ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>res(im); im.onerror=rej; im.src=url; }); const c=document.createElement('canvas'); c.width=img.naturalWidth||768; c.height=img.naturalHeight||1024; c.getContext('2d').drawImage(img,0,0); return c.toDataURL('image/jpeg',0.88); }catch(e2){ return null; } } }
@@ -3238,57 +3161,10 @@ async function importShareCode(raw){
   DB.models.unshift(m); save(); _closeModal(); toast('공유 모델을 추가했습니다 (얼굴 재생성 없음)','ok'); go('detail', id);
 }
 
-function requestShareAccess(m){ if(!needLogin('공유 요청하려면 로그인이 필요합니다.')) return; ensureModelFields(m); if(isModelOwner(m)){ toast('본인 모델입니다','err'); return; } if(!m.share.code){ toast('아직 공유 코드가 없습니다','err'); return; } const me=_userKey(); if(m.share.requests.some(r=>r.fromKey===me&&r.status==='pending')){ toast('이미 대기 중인 요청이 있습니다'); return; } m.share.requests.push({ from:DB.user.nick, fromKey:me, at:Date.now(), status:'pending' }); save(); toast('공유 요청을 남겼습니다','ok'); render(); }
+
 function respondShareRequest(m, fromKey, accept){ ensureModelFields(m); if(!isModelOwner(m)){ toast('소유자만 처리 가능','err'); return; } const r=m.share.requests.find(x=>x.fromKey===fromKey&&x.status==='pending'); if(!r) return; r.status=accept?'accepted':'rejected'; save(); if(accept){ if(!m.share.code) publishShareCode(m); else { toast('수락 · 코드 '+m.share.code,'ok'); copy(m.share.code,'공유 코드'); } } else toast('거절했습니다'); render(); }
 
-async function downloadAllModelAssets(m){
-  if(!needLogin('전체 다운로드는 로그인이 필요합니다.')) return;
-  ensureModelFields(m); if(!isModelOwner(m)){ toast('소유자만 전체 작품을 받을 수 있습니다','err'); return; }
-  const safe=(m.name||'model').replace(/[\\\\/:*?"<>|]+/g,'_').slice(0,40); const files=[];
-  files.push({ name:safe+'/model.json', blob:new Blob([JSON.stringify({name:m.name,faceId:m.faceId,faceSeed:m.faceSeed,facePrompt:m.facePrompt,ownerKey:m.ownerKey,share:m.share,assets:(m.assets||[]).map(a=>({id:a.id,type:a.type,prompt:a.prompt,provider:a.provider,at:a.at,by:a.by}))},null,2)],{type:'application/json'}) });
-  try{ let b=await idbAssetGet('face-'+m.id); if(!b){ const src=m.faceRef||(m.photos&&m.photos[0]); if(src){ if(String(src).startsWith('data:')) b=await (await fetch(src)).blob(); else { try{ b=await fetchAsBlob(src);}catch(e){} } } } if(b) files.push({ name:safe+'/face.jpg', blob:b }); }catch(e){}
-  for(let i=0;i<(m.assets||[]).length;i++){ const a=m.assets[i]; let blob=null; if(a.blobKey){ try{ blob=await idbAssetGet(a.blobKey);}catch(e){} } if(!blob&&a.dataUrl){ try{ if(String(a.dataUrl).startsWith('data:')) blob=await (await fetch(a.dataUrl)).blob(); else blob=await fetchAsBlob(a.dataUrl);}catch(e){} } if(!blob) continue; const ext=a.type==='video'?'mp4':((blob.type||'').includes('png')?'png':'jpg'); files.push({ name:safe+'/assets/'+String(i+1).padStart(2,'0')+'-'+a.id+'.'+ext, blob }); }
-  if(files.length<=1){ toast('받을 작품이 없습니다','err'); return; }
-  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-  try{
-    if(isIOS && _shareFiles){ const fileList=files.map(f=>new File([f.blob], f.name.split('/').pop(), {type:f.blob.type||'application/octet-stream'})); await _shareFiles(fileList, m.name||safe, '모델 작품 전체'); toast('공유/저장 시트로 저장하세요','ok'); }
-    else { const zipBlob=await zipStore(files); if(_saveBlob) await _saveBlob(safe+'-assets.zip', zipBlob, 'application/zip'); else { const a=document.createElement('a'); a.href=URL.createObjectURL(zipBlob); a.download=safe+'-assets.zip'; a.click(); } toast('전체 작품 ZIP 저장됨','ok'); }
-  }catch(e){ if(e&&e.name==='AbortError') toast('저장 취소'); else toast('전체 다운로드 실패: '+(e.message||e),'err'); }
-}
 
-function openStudioForModel(m, mode){
-  if(!needLogin('추가 생성에는 로그인이 필요합니다.')) return;
-  ensureFaceIdentity(m); save();
-  studioState.attachToModelId=m.id; studioState.mode=mode||'add-image';
-  studioState.prompt=m.facePrompt||DEFAULT_PROMPT;
-  studioState.gender=m.gender||studioState.gender;
-  studioState.age=m.age||studioState.age;
-  studioState.style=m.style||'real';
-  studioState.base=m.base||studioState.base;
-  studioState._faceLockMode='image-ref';
-  const cfg=loadStudioCfg();
-  if(mode==='add-image'){
-    studioState.mediaKind='image';
-    studioState.prompt=photorealPrompt(m.facePrompt||DEFAULT_PROMPT, 'same identity as reference face photo, consistent face, same person, new pose or expression, adult only');
-    // Prefer Google AI (if key) → Fal I2I (face-ref) → any ready image connection
-    let conn=null;
-    const gImg=findConnection('c_google_img', cfg);
-    if(gImg && gImg.enabled!==false && !connectionKeyMissing(gImg,cfg)) conn=gImg;
-    if(!conn){ const i2i=findConnection('c_fal_flux_i2i', cfg); if(i2i && i2i.enabled!==false && !connectionKeyMissing(i2i,cfg)) conn=i2i; }
-    if(!conn) conn=pickDefaultConnection('image', cfg);
-    if(conn){ studioState.connectionId=conn.id; studioState.provider=conn.provider; }
-  } else if(mode==='add-video'){
-    studioState.mediaKind='video';
-    studioState.prompt=photorealPrompt(m.facePrompt||DEFAULT_PROMPT, 'short portrait clip, same identity as reference face, subtle natural motion, adult only');
-    let conn=null;
-    const i2v=findConnection('c_fal_kling_i2v', cfg);
-    if(i2v && i2v.enabled!==false && !connectionKeyMissing(i2v,cfg) && String(i2v.model||'').trim()) conn=i2v;
-    if(!conn) conn=firstReadyVideoConnection(cfg);
-    if(conn){ studioState.connectionId=conn.id; studioState.provider=conn.provider; }
-    else { toast('사용 가능한 영상 연결이 없습니다. 설정에서 Fal/Replicate/Higgsfield 키와 모델을 연결하세요','err'); }
-  }
-  go('studio');
-}
 
 function renderStudio(app){
   const cfg=loadStudioCfg();
@@ -3502,71 +3378,6 @@ async function makeVideoThumbDataUrl(blob){
     v.onerror=()=>done(null);
     setTimeout(()=>done(null), 4000);
   });
-}
-async function resolveAssetDisplayUrl(a){
-  if(!a) return null;
-  if(a._objectUrl) return a._objectUrl;
-  if(a.blobKey){
-    try{
-      const b=await idbAssetGet(a.blobKey);
-      if(b){ a._objectUrl=URL.createObjectURL(b); return a._objectUrl; }
-    }catch(e){}
-  }
-  if(a.dataUrl) return a.dataUrl;
-  if(a.thumb && String(a.thumb).indexOf('data:')===0) return a.thumb;
-  return a.thumb||null;
-}
-async function downloadOneAsset(m, a){
-  if(!needLogin('다운로드하려면 로그인이 필요합니다.')) return;
-  try{
-    let blob=null;
-    if(a.blobKey){ try{ blob=await idbAssetGet(a.blobKey); }catch(e){} }
-    if(!blob && a.dataUrl){
-      if(String(a.dataUrl).startsWith('data:')) blob=await (await fetch(a.dataUrl)).blob();
-      else { try{ blob=await fetchAsBlob(a.dataUrl);}catch(e){} }
-    }
-    if(!blob){ toast('파일을 찾을 수 없습니다','err'); return; }
-    const base=(a.title||a.fileName||a.id||'work').replace(/[\\/:*?"<>|]+/g,'_').slice(0,48);
-    let ext='bin';
-    const mime=blob.type||a.mime||'';
-    if(a.type==='video') ext=(mime.includes('webm')?'webm':(mime.includes('quicktime')?'mov':'mp4'));
-    else if(mime.includes('png')) ext='png';
-    else if(mime.includes('webp')) ext='webp';
-    else if(mime.includes('gif')) ext='gif';
-    else ext='jpg';
-    const name=base+(base.endsWith('.'+ext)?'':('.'+ext));
-    if(_saveBlob) await _saveBlob(name, blob, mime||blob.type);
-    else { const u=URL.createObjectURL(blob); const link=document.createElement('a'); link.href=u; link.download=name; link.click(); setTimeout(()=>URL.revokeObjectURL(u),2000); }
-    toast('저장됨','ok');
-  }catch(e){
-    if(e&&e.name==='AbortError') toast('저장 취소');
-    else toast(friendlyIdbError(e, a&&a.fileName),'err');
-  }
-}
-function openAssetLightbox(m, a){
-  const host=$('modal'); if(!host) return;
-  host.textContent='';
-  const ov=document.createElement('div'); ov.className='media-lightbox';
-  ov.onclick=e=>{ if(e.target===ov){ host.textContent=''; } };
-  const cap=document.createElement('div'); cap.className='lb-cap';
-  cap.textContent=(a.title||a.fileName||a.prompt||'작품')+' · '+(a.source==='upload'?'업로드':'AI')+' · '+_dstr(a.at);
-  const acts=document.createElement('div'); acts.className='lb-acts';
-  const dl=document.createElement('button'); dl.className='btn'; dl.textContent='다운로드'; dl.onclick=()=>downloadOneAsset(m,a);
-  const cl=document.createElement('button'); cl.className='btn ghost'; cl.textContent='닫기'; cl.onclick=()=>{ host.textContent=''; };
-  acts.appendChild(dl); acts.appendChild(cl);
-  ov.appendChild(cap);
-  const ph=document.createElement('div'); ph.className='lb-cap'; ph.textContent='불러오는 중…'; ov.appendChild(ph);
-  ov.appendChild(acts);
-  host.appendChild(ov);
-  resolveAssetDisplayUrl(a).then(url=>{
-    if(!url){ ph.textContent='표시할 파일을 찾지 못했습니다.'; return; }
-    ph.remove();
-    let el;
-    if(a.type==='video'){ el=document.createElement('video'); el.controls=true; el.autoplay=true; el.playsInline=true; }
-    else { el=document.createElement('img'); el.alt=a.title||''; }
-    el.className='lb-media'; el.src=url;
-    ov.insertBefore(el, acts);
-  }).catch(()=>{ ph.textContent='불러오기 실패'; });
 }
 
 async function persistUploadedFileToModel(m, file, opts){
@@ -3807,81 +3618,52 @@ function openUploadWorksModal(modelId){
 }
 
 
-function renderModelAssetsSection(left, m){
-  ensureModelFields(m);
-  const s=document.createElement('div'); s.className='sec';
-  s.innerHTML='<h2>이 인물로 만든 작품</h2>';
-  const note=document.createElement('div'); note.className='sharebox'; note.textContent='AI로 만들거나, 내가 만든 이미지·동영상을 이 얼굴 아래에 올릴 수 있습니다. 파일은 이 브라우저 IndexedDB에만 저장됩니다(서버·기기 간 자동 동기화 없음). 공유는 공유 코드(로컬 팩)입니다.'; s.appendChild(note);
-  const row=document.createElement('div'); row.className='studio-actions'; row.style.marginTop='12px';
-  const isOwner=isModelOwner(m);
-  if(isOwner){
-    const bu=document.createElement('button'); bu.className='btn'; bu.textContent='이미지·동영상 업로드'; bu.onclick=()=>openUploadWorksModal(m.id); row.appendChild(bu);
-  }
-  if(canFaceLockGenerate(m)){
-    const b1=document.createElement('button'); b1.className='btn ghost'; b1.textContent='내 AI로 이미지 생성 (얼굴 유지)'; b1.onclick=()=>openStudioForModel(m,'add-image'); row.appendChild(b1);
-    const b2=document.createElement('button'); b2.className='btn ghost'; b2.textContent='내 AI로 영상 생성 (얼굴 유지)';
-    b2.onclick=()=>{
-      const cfg=loadStudioCfg();
-      const ready=firstReadyVideoConnection(cfg);
-      if(!ready){ toast('영상 생성에는 Fal·Replicate·Higgsfield 중 하나의 키와 영상 연결이 필요합니다','err'); return; }
-      openStudioForModel(m,'add-video');
-    }; row.appendChild(b2);
-  }
-  if(isOwner&&(m.aiStudio||m.faceId||(m.assets&&m.assets.length)||canFaceLockGenerate(m))){
-    const b3=document.createElement('button'); b3.className='btn ghost'; b3.textContent='공유 코드 만들기'; b3.onclick=()=>publishShareCode(m); row.appendChild(b3);
-    const b4=document.createElement('button'); b4.className='btn ghost'; b4.textContent='이 모델 전체 다운로드'; b4.onclick=()=>downloadAllModelAssets(m); row.appendChild(b4);
-  } else if(DB.user&&m.share&&m.share.code){ const b5=document.createElement('button'); b5.className='btn ghost'; b5.textContent='공유 요청'; b5.onclick=()=>requestShareAccess(m); row.appendChild(b5); }
-  s.appendChild(row);
-  if(isOwner&&(m.share.requests||[]).some(r=>r.status==='pending')){ const rl=document.createElement('div'); rl.className='reqlist'; m.share.requests.filter(r=>r.status==='pending').forEach(r=>{ const it=document.createElement('div'); it.className='reqitem'; const t=document.createElement('span'); t.textContent=r.from+' 님 요청 · '+_dstr(r.at); const ok=document.createElement('button'); ok.className='btn sm'; ok.textContent='수락'; ok.onclick=()=>respondShareRequest(m,r.fromKey,true); const no=document.createElement('button'); no.className='btn ghost sm'; no.textContent='거절'; no.onclick=()=>respondShareRequest(m,r.fromKey,false); it.appendChild(t); it.appendChild(ok); it.appendChild(no); rl.appendChild(it); }); s.appendChild(rl); }
-  if(m.share&&m.share.code){ const sc=document.createElement('div'); sc.className='sharebox'; sc.innerHTML='공유 코드 <b style="color:var(--tx)">'+m.share.code+'</b> — 상대가 코드를 입력하면 얼굴을 재생성하지 않고 가져옵니다.'; s.appendChild(sc); }
-  if(m.assets&&m.assets.length){
-    const g=document.createElement('div'); g.className='assetgrid';
-    m.assets.slice().reverse().forEach(a=>{
-      const cell=document.createElement('div'); cell.className='assetcell';
-      const badge=document.createElement('span'); badge.className='badge'+(a.source==='upload'?' upload':'');
-      badge.textContent=(a.source==='upload'?'업로드 · ':'')+(a.type==='video'?'영상':'이미지');
-      cell.appendChild(badge);
-      const dl=document.createElement('button'); dl.type='button'; dl.className='dl-one'; dl.textContent='↓'; dl.title='다운로드';
-      dl.onclick=e=>{ e.stopPropagation(); downloadOneAsset(m,a); };
-      cell.appendChild(dl);
-      const th=document.createElement('div'); th.className='thumb';
-      const title=(a.title||a.fileName||a.prompt||'').slice(0,40);
-      const open=()=>openAssetLightbox(m,a);
-      if(a.type==='video'){
-        th.style.cssText='display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:12px;font-weight:700;height:160px;background:#14171f';
-        th.textContent='▶ 불러오는 중…';
-        cell.onclick=open;
-        resolveAssetDisplayUrl(a).then(url=>{
-          if(!url){ th.textContent='▶ 영상'; return; }
-          th.textContent='';
-          const v=document.createElement('video'); v.className='thumbv'; v.src=url; v.muted=true; v.playsInline=true; v.preload='metadata'; v.setAttribute('playsinline','');
-          v.onmouseenter=()=>{ try{v.play();}catch(e){} }; v.onmouseleave=()=>{ try{v.pause();v.currentTime=0;}catch(e){} };
-          th.appendChild(v);
-        }).catch(()=>{ th.textContent='▶ 영상'; });
-      } else {
-        const src=a.thumb||a.dataUrl||'';
-        if(src) th.style.backgroundImage='url("'+String(src).replace(/"/g,'%22')+'")';
-        else {
-          th.style.cssText='display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:12px;font-weight:700;height:160px';
-          th.textContent='이미지';
-          resolveAssetDisplayUrl(a).then(url=>{ if(url){ th.style.cssText=''; th.className='thumb'; th.style.backgroundImage='url("'+String(url).replace(/"/g,'%22')+'")'; th.textContent=''; } });
-        }
-        cell.onclick=open;
-      }
-      cell.appendChild(th);
-      const meta=document.createElement('div'); meta.className='meta';
-      meta.textContent=(title?(title+' · '):'')+(a.provider||(a.source==='upload'?'upload':''))+' · '+(a.by||'')+' · '+_dstr(a.at);
-      cell.appendChild(meta); g.appendChild(cell);
-    });
-    s.appendChild(g);
-  } else {
-    const e=document.createElement('div'); e.style.cssText='margin-top:12px;font-size:13px;color:var(--dim)';
-    e.textContent='아직 작품이 없습니다. 「이미지·동영상 업로드」또는 AI 스튜디오로 추가하세요.'; s.appendChild(e);
-  }
-  left.appendChild(s);
+/* 상세 페이지 힉스필드 패널: 얼굴 키 + Higgsfield가 받을 수 있는 공개 URL
+   - 저장소(repo) 얼굴 faces/*.jpg → 키 r-<파일명>, URL https://lukemodel.com/faces/<파일>
+   - 브라우저에서 만든 얼굴(IndexedDB/data URL) → 처음 한 번 Supabase public-media에 파일만 올리고(갤러리 행 없음) 모델에 URL 캐시 */
+const HF_FACE_TYPES=['image/jpeg','image/png','image/webp'];
+async function hfFaceBlobToFile(blob){
+  if(HF_FACE_TYPES.includes(blob.type) && blob.size<=9.5*1048576) return new File([blob],'face.'+(blob.type.split('/')[1]==='jpeg'?'jpg':blob.type.split('/')[1]),{type:blob.type});
+  const bmp=await createImageBitmap(blob); const sc=Math.min(1,2048/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(bmp.width*sc)); c.height=Math.max(1,Math.round(bmp.height*sc));
+  c.getContext('2d').drawImage(bmp,0,0,c.width,c.height); try{ bmp.close&&bmp.close(); }catch(e){}
+  const out=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92)); if(!out) throw new Error('이미지 변환 실패');
+  return new File([out],'face.jpg',{type:'image/jpeg'});
 }
-
-
+function hfDataUrlToBlob(u){
+  const mm=String(u).match(/^data:([^;,]+)?((?:;[^,]*)*?),(.*)$/s); if(!mm) return null;
+  const type=mm[1]||'application/octet-stream', isB64=/;base64/i.test(mm[2]||'');
+  if(!isB64) return new Blob([decodeURIComponent(mm[3])],{type});
+  const bin=atob(mm[3]); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+  return new Blob([u8],{type});
+}
+function hfFaceInfo(m){
+  ensureModelFields(m);
+  const src=String(faceSrc(m,0,900,900)||'');
+  const rm=src.match(/^(?:https:\/\/lukemodel\.com)?\/?faces\/([A-Za-z0-9_-]+)\.(jpe?g|png|webp)$/i);
+  if(rm) return { key:'r-'+rm[1].toLowerCase(), name:m.name, preview:src, publicUrl:'https://lukemodel.com/faces/'+rm[1]+'.'+rm[2] };
+  const isHttp=/^https:\/\//i.test(src);
+  let key;
+  if(m.hfFaceKey) key=m.hfFaceKey;
+  else { key=isHttp?('x-'+hashCode(src).toString(36)):('u-'+String(window.LukeHF?LukeHF.uid():Date.now().toString(36)).replace(/-/g,'').slice(0,16)); m.hfFaceKey=key; save(); }
+  const srcHash=String(hashCode(src))+':'+src.length;
+  const cached=(m.hfFaceUrl&&m.hfFaceSrc===srcHash)?m.hfFaceUrl:null;
+  return { key, name:m.name, preview:src, publicUrl:cached, resolve:async()=>{
+    let blob=null;
+    try{ blob=await idbAssetGet('face-'+m.id); }catch(e){}
+    if(!blob && /^data:/i.test(src)) blob=hfDataUrlToBlob(src);   /* CSP상 data: fetch 불가 → 직접 디코드 */
+    if(!blob && src && !/^data:/i.test(src)){ try{ const r=await fetch(src,{mode:'cors'}); if(r.ok) blob=await r.blob(); }catch(e){} }
+    if(!blob){ if(isHttp) return src; throw new Error('얼굴 사진을 읽을 수 없습니다'); }
+    const url=await LukeHF.uploadInput(await hfFaceBlobToFile(blob));
+    m.hfFaceUrl=url; m.hfFaceSrc=srcHash; save();
+    return url;
+  }};
+}
+function renderFaceHfPanel(left, m){
+  if(!window.LukeFaceHF){ const e=document.createElement('div'); e.className='sec'; e.textContent='힉스필드 패널을 불러오지 못했습니다. 새로고침해 주세요.'; left.appendChild(e); return; }
+  const host=document.createElement('div'); left.appendChild(host);
+  try{ LukeFaceHF.mount(host, hfFaceInfo(m)); }catch(e){ console.warn(e); host.textContent='힉스필드 패널 오류: '+(e.message||e); }
+}
 
 
 function renderPrivacy(app){
