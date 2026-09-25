@@ -69,10 +69,14 @@ nav.top button.on{background:var(--panel);color:#fff}
 .seclabel{font-size:12px;font-weight:800;color:var(--dim);letter-spacing:.7px;margin:18px 0 12px;display:flex;align-items:center;gap:9px}
 .seclabel .ln{flex:1;height:1px;background:var(--line)}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px;padding-bottom:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px;padding-bottom:20px;align-items:start}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .13s,border-color .13s}
 .card:hover{transform:translateY(-3px);border-color:#3f4660}
-.cover{height:214px;position:relative;background:#14171f center/cover no-repeat;display:flex;align-items:flex-end;padding:9px}
+.cover{position:relative;background:#14171f}
+/* 얼굴 사진은 자르지 않음: 원본 비율 그대로 (불러오기 전에는 4:5 자리) */
+.cover-img{display:block;width:100%;height:auto;aspect-ratio:auto 4/5;object-fit:contain;background:#14171f}
+/* 태그는 사진 아래로 (얼굴·턱을 가리지 않게) */
+.cover .tags{padding:9px 12px 0;background:var(--panel)}
 .heart{position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:50%;background:rgba(8,10,16,.55);color:#fff;font-size:16px;z-index:2;line-height:1}
 .heart.on{color:#ff7a9a}
 .heart:hover{background:rgba(8,10,16,.75)}
@@ -97,7 +101,9 @@ nav.top button.on{background:var(--panel);color:#fff}
 .av{width:16px;height:16px;border-radius:50%}
 
 .detail{padding:20px 0 60px;display:grid;grid-template-columns:1fr 346px;gap:26px;align-items:start}
-.hero{height:520px;border-radius:12px;background:#14171f center 8%/cover no-repeat;margin-bottom:10px;overflow:hidden;position:relative}
+.hero{border-radius:12px;background:#14171f;margin-bottom:10px;overflow:hidden;position:relative}
+/* 대표 얼굴: 전체가 보이게 (세로로 긴 화면은 높이 제한 + 여백) */
+.hero img{display:block;width:100%;height:auto;aspect-ratio:auto 4/5;max-height:min(78vh,760px);object-fit:contain;background:#14171f}
 h1.tit{font-size:25px;font-weight:800;letter-spacing:-.5px;margin-bottom:9px;line-height:1.3}
 .byline{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--dim);margin-bottom:18px;flex-wrap:wrap}
 .sec{margin-bottom:26px}
@@ -186,7 +192,7 @@ textarea.inp{min-height:92px;resize:vertical;line-height:1.7}
 .copt .t{font-size:13px;font-weight:700;margin-bottom:4px}
 .copt .d{font-size:11.3px;color:var(--dim);line-height:1.55}
 .anglePrev{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:11px}
-.anglePrev div{height:66px;border-radius:7px;background:#14171f center/cover no-repeat;position:relative}
+.anglePrev div{aspect-ratio:4/5;border-radius:7px;background:#14171f center/contain no-repeat;position:relative}
 .anglePrev span{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);font-size:9px;font-weight:700;text-align:center;padding:2px 0}
 
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -241,7 +247,7 @@ body{overflow-x:hidden}
   .divider{display:none}
 
   .grid{grid-template-columns:repeat(2,1fr);gap:10px}
-  .cover{height:152px;padding:7px}
+  .cover .tags{padding:8px 10px 0}
   .tag{font-size:9.5px;padding:2.5px 6px}
   .cbody{padding:9px 10px 10px}
   .cbody h3{font-size:12.6px;min-height:34px;margin-bottom:4px}
@@ -251,7 +257,6 @@ body{overflow-x:hidden}
   .detail{grid-template-columns:1fr;gap:18px;padding:12px 0 50px}
   h1.tit{font-size:20px}
   .byline{font-size:12px;margin-bottom:14px}
-  .hero{height:380px}
   .facegrid{grid-template-columns:repeat(2,1fr)}
   .side{position:static}
   .desc{font-size:13.4px}
@@ -272,7 +277,6 @@ body{overflow-x:hidden}
   .consent{grid-template-columns:1fr}
   .copt{padding:12px}
   .anglePrev{grid-template-columns:repeat(3,1fr);gap:7px}
-  .anglePrev div{height:84px}
   .drop{padding:24px 16px}
   .inp{font-size:16px}
   .mbox{padding:22px}
@@ -294,10 +298,8 @@ body{overflow-x:hidden}
 }
 @media (max-width:340px){
   .grid{grid-template-columns:1fr;gap:12px}
-  .cover{height:200px}
   .anglePrev{grid-template-columns:repeat(2,1fr)}
   .facegrid{grid-template-columns:1fr}
-  .hero{height:320px}
 }
 
 /* AI 스튜디오 */
@@ -312,7 +314,7 @@ body{overflow-x:hidden}
 .studio-preview img,.studio-preview video{max-width:100%;max-height:560px;object-fit:contain;display:block}
 .studio-preview .ph{color:var(--dim);font-size:13.5px;font-weight:600;text-align:center;padding:24px;line-height:1.7;white-space:pre-line}
 .studio-hist{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px;-webkit-overflow-scrolling:touch}
-.studio-hist button{flex:0 0 auto;width:72px;height:96px;border-radius:8px;border:2px solid transparent;background:#14171f center/cover no-repeat;padding:0}
+.studio-hist button{flex:0 0 auto;width:72px;height:96px;border-radius:8px;border:2px solid transparent;background:#14171f center/contain no-repeat;padding:0}
 .studio-hist button.on{border-color:var(--acc)}
 .studio-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
 .studio-presets{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 4px}
@@ -428,12 +430,13 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 .hs-head h2{font-size:17px;font-weight:800;margin:0;color:#fff}
 .hs-head .hs-sub{font-size:12.5px;color:var(--dim);flex:1;min-width:180px}
 .hs-head a{text-decoration:none}
-.hs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
-.hs-card{position:relative;border-radius:12px;overflow:hidden;background:#14171f;border:1px solid var(--line);aspect-ratio:3/4}
-.hs-card video,.hs-card img{width:100%;height:100%;object-fit:cover;display:block;background:#14171f}
+.hs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;align-items:start}
+.hs-card{position:relative;border-radius:12px;overflow:hidden;background:var(--panel);border:1px solid var(--line)}
+/* 자르지 않음: 이미지·영상 원본 비율 (불러오기 전에는 3:4 자리, 영상은 메타데이터가 오면 실제 비율) */
+.hs-card video,.hs-card img{width:100%;height:auto;aspect-ratio:auto 3/4;object-fit:contain;display:block;background:#14171f;cursor:zoom-in}
 .hs-card .hs-tag{position:absolute;top:8px;left:8px;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:5px;background:rgba(0,0,0,.66);color:#fff}
-.hs-card .hs-cap{position:absolute;left:0;right:0;bottom:0;padding:26px 10px 9px;background:linear-gradient(transparent,rgba(0,0,0,.82));display:flex;align-items:flex-end;gap:8px}
-.hs-card .hs-cap span{flex:1;font-size:11.5px;color:#e3e6ee;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4}
+.hs-card .hs-cap{padding:8px 9px 9px;display:flex;align-items:flex-end;gap:8px}
+.hs-card .hs-cap span{flex:1;font-size:11.5px;color:#cdd2df;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4}
 .hs-dl{flex-shrink:0;background:#d1fe17;color:#111!important;font-weight:800;font-size:12px;border-radius:8px;padding:6px 10px;text-decoration:none;white-space:nowrap}
 .hs-dl:hover{filter:brightness(1.08)}
 .hs-more{display:flex;align-items:center;justify-content:center;gap:12px;margin:14px 0 4px;color:var(--dim);font-size:12.5px}
@@ -446,6 +449,7 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 .hs-local{font-size:12px}
 .hs-empty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--dim);font-size:13px}
 @media (max-width:640px){.hs-grid{grid-template-columns:repeat(2,1fr);gap:8px}.hs-card .hs-cap span{display:none}.hs-dl{margin-left:auto}.hs-face{display:none}}
+@media (max-width:400px){.hs-card .hs-cap{padding:7px 7px 8px}.hs-acts{gap:4px;flex-wrap:nowrap}.hs-use,.hs-dl{font-size:11px;padding:5px 7px}.hs-dl{margin-left:auto}}
 </style>
 </head>
 <body>
@@ -1758,7 +1762,7 @@ function gridOf(list){
     const c=document.createElement('div'); c.className='card'; c.dataset.id=String(m.id); c.onclick=()=>go('detail',m.id);
     if(window._highlightModelId!=null && window._highlightModelId===m.id) c.classList.add('flash-new');
     const cv=document.createElement('div'); cv.className='cover';
-    cv.style.backgroundImage='url("'+String(faceSrc(m,0,300,280)).replace(/"/g,'%22')+'")';
+    const ci=document.createElement('img'); ci.className='cover-img'; ci.loading='lazy'; ci.decoding='async'; ci.alt=m.name||''; ci.src=String(faceSrc(m,0,300,280)); cv.appendChild(ci);
     const tg=document.createElement('div'); tg.className='tags';
     const t1=document.createElement('span'); t1.className='tag'; t1.textContent=KINDS[m.kind]; tg.appendChild(t1);
     const cs=CONSENT[m.consent];
@@ -1809,7 +1813,7 @@ function renderDetail(app){
   by.appendChild(av); by.appendChild(nm); by.appendChild(rt); left.appendChild(by);
 
   const hero=document.createElement('div'); hero.className='hero';
-  hero.style.backgroundImage='url("'+String(faceSrc(m,0,900,900)).replace(/"/g,'%22')+'")';
+  const hi=document.createElement('img'); hi.alt=m.name||''; hi.decoding='async'; hi.src=String(faceSrc(m,0,900,900)); hero.appendChild(hi);
   left.appendChild(hero);
 
   /* 이 얼굴로 힉스필드 제작 (이미지·영상, 얼굴 유지) + 이 얼굴로 만든 작품 — /face-hf.js */
@@ -3261,7 +3265,7 @@ function renderStudio(app){
       banner.innerHTML='<b>얼굴 유지 생성</b><span> — 「'+am.name+'」 · faceId '+(am.faceId||'?')+' · '+(kind==='video'?'영상':'이미지')+' · '+lock+' · 내 연결 AI 사용 · 결과는 이 얼굴 아래 작품으로 자동 저장</span>';
       // face thumb
       const thumbs=document.createElement('div'); thumbs.style.cssText='display:flex;gap:10px;align-items:center;margin-top:10px';
-      const faceThumb=document.createElement('div'); faceThumb.style.cssText='width:56px;height:56px;border-radius:10px;background-size:cover;background-position:center;border:1px solid var(--line);flex-shrink:0';
+      const faceThumb=document.createElement('div'); faceThumb.style.cssText='width:56px;height:56px;border-radius:10px;background:#14171f center/contain no-repeat;border:1px solid var(--line);flex-shrink:0';
       faceThumb.style.backgroundImage='url("'+String(am.faceRef||faceSrc(am,0,120,120)).replace(/"/g,'%22')+'")';
       const tip=document.createElement('div'); tip.style.cssText='font-size:12.5px;color:var(--dim);line-height:1.5';
       tip.textContent='업로드·저장된 얼굴을 참조로 씁니다. Fal I2I/I2V·OpenAI edits·Pollinations(image URL)는 실제 이미지 참조, 그 외는 강한 동일인 프롬프트입니다.';

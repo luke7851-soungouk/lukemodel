@@ -267,7 +267,7 @@ const CSS=`.fhf{border:1px solid var(--acc);border-radius:14px;background:rgba(7
 .fhf-key{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.8px;color:var(--dim);line-height:1.6;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .fhf-key .ok{color:var(--ok)}.fhf-key .t{flex-basis:100%}.fhf-key .row{display:flex;gap:6px;flex:1;min-width:240px}.fhf-key .inp{margin:0;flex:1}
 .fhf-face,.fhf-start{display:flex;align-items:center;gap:10px;font-size:12.8px;color:var(--dim);margin-bottom:10px;flex-wrap:wrap}
-.fhf-face .th,.fhf-start .th{width:44px;height:44px;border-radius:9px;background:#14171f center 15%/cover no-repeat;flex:none;border:1px solid var(--line)}
+.fhf-face .th,.fhf-start .th{width:44px;height:44px;border-radius:9px;background:#14171f center/contain no-repeat;flex:none;border:1px solid var(--line)}
 .fhf-face .t,.fhf-start .t{flex:1;min-width:160px;line-height:1.5}.fhf-face .good{color:var(--ok)}.fhf-face .bad{color:var(--bad)}
 .fhf-start{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}.fhf-start b{color:var(--tx)}
 .fhf-tabs{display:flex;gap:6px;margin-bottom:10px}
@@ -282,9 +282,9 @@ const CSS=`.fhf{border:1px solid var(--acc);border-radius:14px;background:rgba(7
 .fhf-go{padding:9px 18px}
 .fhf-gal{margin-top:18px}
 .fhf-ghead{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}.fhf-ghead h3{font-size:14px;font-weight:800;margin:0}.fhf-ghead .cnt{font-size:12px;color:var(--dim)}
-.fhf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.fhf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;align-items:start}
 .fhf-tile{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden;display:flex;flex-direction:column}
-.fhf-tile img,.fhf-tile video{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:#14171f}
+.fhf-tile img,.fhf-tile video{display:block;width:100%;height:auto;aspect-ratio:auto 3/4;object-fit:contain;background:#14171f}
 .fhf-tile .bd{position:absolute;top:7px;left:7px;font-size:10px;font-weight:800;background:rgba(0,0,0,.7);color:#fff;padding:2px 7px;border-radius:5px}
 .fhf-tile .cap{padding:8px 9px;display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--dim)}
 .fhf-tile .cap .t{color:#cdd2df;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.45}
