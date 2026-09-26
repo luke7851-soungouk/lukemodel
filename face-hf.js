@@ -25,7 +25,7 @@ function setSetting(m,k,v){ prefs.settings[m.id]=Object.assign({},settingsFor(m)
 
 /* ── 생성 기록(이 기기): 새로고침해도 진행 중 작업을 이어서 확인 ── */
 let allRuns=loadJSON(LS_RUNS,[]); if(!Array.isArray(allRuns)) allRuns=[];
-function persistRuns(){ allRuns=allRuns.filter(r=>r.status!=='gone').slice(0,RUNS_CAP); saveJSON(LS_RUNS,allRuns.map(r=>{ const c=Object.assign({},r); delete c._el; return c; })); }
+function persistRuns(){ allRuns=allRuns.filter(r=>r.status!=='gone').slice(0,RUNS_CAP); saveJSON(LS_RUNS,allRuns.map(r=>{ const c=Object.assign({},r); delete c._el; delete c.blob; delete c._live; if(c.url&&/^blob:/.test(c.url)) delete c.url; return c; })); }
 const polling=new Set();
 
 /* ── 얼굴별 상태 ── */
@@ -104,6 +104,106 @@ function generate(st,kind){
   drawGallery(st);
   const g=st.root&&st.root.querySelector('.fhf-gal'); if(g&&g.scrollIntoView) try{ g.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(e){}
 }
+/* ── 캐릭터 시트 (턴어라운드): 원본을 참고 이미지로 Qwen Image 3 편집 → 한 장에 전신 앞/옆/뒤 + 머리 클로즈업 4방향 ──
+   누를 때만 생성(방문자 키 크레딧 사용). 결과는 다른 결과와 똑같이 저장·첨부(작품 모드: face_id='m-<원본 id>') */
+const SHEET_MODEL='qwen-image-3', SHEET_SETTINGS={ar:'16:9',res:'2k'}, SHEET_LABEL='캐릭터 시트';
+const SHEET_PROMPT='Create a professional character turnaround model sheet of the exact same character shown in the reference image. '
+ +'Keep the identical face and facial features, skin tone, hairstyle and hair color, body type, and the exact same outfit, accessories and colors. '
+ +'Keep the art style of the reference image: photorealistic if the reference is a photo, anime or illustration style if the reference is drawn. '
+ +'Pure white seamless background, even soft studio lighting, no scenery, no props. '
+ +'Layout on one wide landscape sheet. TOP ROW: three full-body standing views side by side, entire body from head to feet visible, neutral relaxed pose, '
+ +'labeled with bold black text above each: "FRONT VIEW", "SIDE VIEW", "BACK VIEW". '
+ +'BOTTOM ROW: a small heading "HEAD CLOSE-UP VIEWS" and four equal-size framed head-and-shoulders close-ups labeled "LEFT SIDE VIEW", "FRONT VIEW", "RIGHT SIDE VIEW", "BACK VIEW". '
+ +'Same character in every panel, consistent scale and proportions, evenly spaced, nothing cut off, no extra people, no watermark.';
+function makeSheetHiggsfield(st){
+  if(!H.getKey()){ toast('먼저 내 Higgsfield 키를 저장하세요','err'); const i=st.root&&st.root.querySelector('.fhf-key input'); if(i) i.focus(); return; }
+  if(st.faceState!=='ready'){
+    if(st.faceState==='uploading'){ toast('원본 이미지를 준비하는 중입니다. 잠시 후 다시 누르세요','err'); return; }
+    ensureFaceUrl(st).then(()=>makeSheet(st)).catch(e=>toast('원본 준비 실패: '+e.message,'err')); return;
+  }
+  const m=H.modelById(SHEET_MODEL);
+  if(!confirm('캐릭터 시트(전신 앞·옆·뒤 + 머리 4방향)를 1장 만듭니다.\n모델: '+m.label+' 편집 · 16:9 · 2K — 내 Higgsfield 키의 크레딧이 사용됩니다. 계속할까요?')) return;
+  let req; try{ req=H.buildRequest(m,SHEET_PROMPT,{ref:[{url:st.faceUrl}]},H.fixSettings(m,SHEET_SETTINGS)); }catch(e){ toast(e.message,'err'); return; }
+  const r={id:H.uid(),faceKey:st.key,createdAt:Date.now(),kind:'image',model:m.id,modelLabel:m.label,prompt:SHEET_LABEL,sheet:true,endpoint:req.path,input:st.faceUrl,status:'pending',ar:'16:9'};
+  allRuns.unshift(r); persistRuns(); submit(st,r,req.body); drawGallery(st); scrollGal(st);
+}
+function scrollGal(st){ const g=st.root&&st.root.querySelector('.fhf-gal'); if(g&&g.scrollIntoView) try{ g.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(e){} }
+
+/* ── 캐릭터 시트 엔진 (교체·추가 가능) ──────────────────────────────────────
+   engine = {id, label, badge:'무료'|'유료', note, start?(st) | run({src:Blob, prompt, onPhase})→Promise<Blob>}
+   - start: 자체 흐름(힉스필드: 요청ID·새로고침 후 이어받기)   - run: 결과 이미지 Blob 을 돌려주면 공용 저장(publish)·첨부는 여기서 처리
+   다른 엔진(예: 내 PC 로컬 AI / ComfyUI)은 window.LukeSheetEngines.register({...run}) 한 번으로 추가 — 아래 LOCAL 예시 참고 */
+const SHEET_ENGINES=[];
+function registerSheetEngine(e){ const i=SHEET_ENGINES.findIndex(x=>x.id===e.id); if(i>=0) SHEET_ENGINES[i]=e; else SHEET_ENGINES.push(e); states.forEach(st=>{ if(alive(st)) drawSheet(st); }); }
+const engineById=id=>SHEET_ENGINES.find(e=>e.id===id)||SHEET_ENGINES[0];
+
+/* 무료: 허깅페이스 ZeroGPU Space (Qwen-Image-Edit-2511, Apache-2.0) — 브라우저에서 @gradio/client 로 직접 호출.
+   익명은 방문자 IP 기준 하루 약 2분 GPU(시트 1장 ≈ 수십 초), 내 HF 토큰(무료 계정 하루 5분)을 넣으면 더 씀. 토큰은 허깅페이스로만 전송. */
+const LS_HF_TOKEN='lukehf.hftoken';
+const HF_SPACES=['linoyts/Qwen-Image-Edit-2511-Fast'];   /* 4단계 Lightning(빠름·GPU 적게). 공식 Qwen/Qwen-Image-Edit-2511 은 한 번에 360초를 요구해 익명(120초)·무료계정(300초) 한도로는 못 씀 → 넣지 않음. 다른 Space 는 여기에 추가 */
+const HF_SHEET_SIZE={width:1344,height:768};
+let gradioMod=null; const loadGradio=()=>gradioMod||(gradioMod=import('/vendor/gradio-client-2.7.0.js').catch(e=>{ gradioMod=null; throw e; }));
+function hfToken(){ try{ const t=localStorage.getItem(LS_HF_TOKEN)||''; return /^hf_[A-Za-z0-9]{20,}$/.test(t)?t:''; }catch(e){ return ''; } }
+function hfErrorText(e){
+  const m=String((e&&(e.message||e.title||e.detail))||e||'');
+  let wait=(m.match(/try again in ([0-9:]+)/i)||[])[1]; if(wait&&!/[1-9]/.test(wait)) wait='';
+  if(/quota|exceeded your (?:gpu|zerogpu)|gpu (?:time|limit)|zerogpu.*limit|runs limit/i.test(m)) return {kind:'quota',text:'오늘 무료 GPU 사용량(허깅페이스)이 다 찼습니다'+(wait?' — 약 '+wait+' 뒤 다시 가능':' — 첫 사용 24시간 뒤 다시 가능')+'. 허깅페이스 토큰(무료 계정 하루 5분)을 넣거나 힉스필드(유료)로 만드세요.'};
+  if(/queue.*full|too many|rate.?limit|429/i.test(m)) return {kind:'busy',text:'무료 서버 대기열이 가득 찼습니다. 잠시 뒤 다시 누르거나 힉스필드(유료)로 만드세요.'};
+  if(/paused|sleep|not found|404|503|502|could not (?:resolve|connect)|failed to fetch|connection|runtime error|building|space.*(?:down|error)|timed? ?out/i.test(m)) return {kind:'down',text:'무료 서버(허깅페이스 Space)가 지금 꺼져 있거나 응답하지 않습니다. 나중에 다시 누르거나 힉스필드(유료)로 만드세요.'};
+  return {kind:'error',text:'무료 생성 실패: '+m.slice(0,160)+' — 다시 누르거나 힉스필드(유료)로 만드세요.'};
+}
+async function hfSheetRun({src,prompt,onPhase}){
+  const {Client,handle_file}=await loadGradio(); const tok=hfToken(); let lastErr=null;
+  for(const space of HF_SPACES){
+    try{
+      onPhase&&onPhase('무료 서버 연결 중…');
+      const app=await Client.connect(space,Object.assign({events:['data','status']},tok?{hf_token:tok}:{}));   /* events 에 status 가 없으면 대기열·오류 메시지가 오지 않음 */
+      onPhase&&onPhase('무료 GPU 대기열…');
+      const job=app.submit('/infer',{images:[{image:handle_file(src),caption:null}],prompt,seed:0,randomize_seed:true,true_guidance_scale:1,num_inference_steps:4,height:HF_SHEET_SIZE.height,width:HF_SHEET_SIZE.width,rewrite_prompt:false});
+      let out=null;
+      for await(const msg of job){
+        if(msg.type==='status'){ if(msg.stage==='error') throw new Error([msg.title,msg.message].filter(Boolean).join(': ')||'error'); if(msg.stage==='pending') onPhase&&onPhase(msg.position!=null?'무료 GPU 대기 '+(msg.position+1)+'번째…':'무료 GPU 대기열…'); if(msg.stage==='generating') onPhase&&onPhase('생성 중… (무료 GPU)'); }
+        if(msg.type==='data'){ out=msg.data; break; } }
+      const first=out&&out[0]&&out[0][0]; const u=first&&(first.image?first.image.url:first.url);
+      if(!u) throw new Error(out?'결과 이미지가 없습니다':'무료 서버 응답이 끊겼습니다 (connection closed)');
+      const r=await fetch(u,tok?{headers:{Authorization:'Bearer '+tok}}:{}); if(!r.ok) throw new Error('결과 받기 실패 ('+r.status+')');
+      return await r.blob();
+    }catch(e){ lastErr=e; if(hfErrorText(e).kind!=='down') break; }   /* 꺼짐일 때만 다음 Space 로 */
+  }
+  throw lastErr||new Error('무료 서버를 찾을 수 없습니다');
+}
+registerSheetEngine({id:'hf',label:'무료 · 허깅페이스',badge:'무료',note:'Qwen-Image-Edit-2511 (허깅페이스 무료 GPU · 하루 사용량 제한)',run:hfSheetRun});
+registerSheetEngine({id:'higgsfield',label:'유료 · 힉스필드',badge:'유료',note:'Qwen Image 3 편집 · 2K (내 Higgsfield 키 크레딧)',start:makeSheetHiggsfield});
+/* LOCAL 예시 — 성욱님 PC 의 로컬 AI(ComfyUI 등)를 URL 로 연결할 때 (아직 등록 안 함):
+   window.LukeSheetEngines.register({id:'local',label:'내 PC · 로컬 AI',badge:'무료',note:'내 PC ComfyUI',
+     run:async({src,prompt,onPhase})=>{ const base=localStorage.getItem('lukehf.localurl');   // 예: https://my-pc.example/  (HTTPS·CORS 허용 필요)
+       onPhase('내 PC 로 보내는 중…'); const fd=new FormData(); fd.append('image',src,'ref.png'); fd.append('prompt',prompt);
+       const r=await fetch(base+'sheet',{method:'POST',body:fd}); if(!r.ok) throw new Error('내 PC 응답 '+r.status); return r.blob(); }}); */
+
+/* 공용 실행기: run 엔진 → Blob → 공개 저장(Supabase) + 원본 아래 첨부. 실패 시 힉스필드로 다시 만들기 버튼 */
+async function runSheetEngine(st,e){
+  if(st.faceState!=='ready'){
+    if(st.faceState==='uploading'){ toast('원본 이미지를 준비하는 중입니다. 잠시 후 다시 누르세요','err'); return; }
+    try{ await ensureFaceUrl(st); }catch(err){ toast('원본 준비 실패: '+err.message,'err'); return; } }
+  const r={id:H.uid(),faceKey:st.key,createdAt:Date.now(),kind:'image',model:'sheet-'+e.id,modelLabel:e.badge+' · '+(e.id==='hf'?'허깅페이스':e.label),engine:e.id,prompt:SHEET_LABEL,sheet:true,input:st.faceUrl,status:'pending',phase:'준비 중…',ar:'16:9'};
+  r._live=true; allRuns.unshift(r); persistRuns(); drawGallery(st); scrollGal(st);
+  try{
+    const src=await (await fetch(st.faceUrl)).blob();
+    const blob=await e.run({src,prompt:SHEET_PROMPT,onPhase:ph=>{ r.phase=ph; updatePhase(st,r); }});
+    r.status='done'; r.url=URL.createObjectURL(blob); r.blob=blob; r.share=H.shared?'pending':'off'; persistRuns(); redraw(st);
+    if(!H.shared) return;
+    try{ const f=new File([blob],'character-sheet.'+((blob.type||'').includes('jpeg')?'jpg':(blob.type||'').includes('webp')?'webp':'png'),{type:blob.type||'image/png'});
+      await H.publish(f,'['+r.modelLabel+'] '+SHEET_LABEL,'studio',st.key); r.status='gone'; persistRuns(); await loadNew(st);
+      toast('캐릭터 시트 완성! 원본 아래와 홈 공개 갤러리에 저장했습니다 — 누구나 무료로 내려받을 수 있습니다','ok'); }
+    catch(err){ r.share='failed'; r.shareErr=err.message; persistRuns(); toast('갤러리 저장 실패: '+err.message+' — 아래 결과에서 바로 내려받으세요','err'); }
+  }catch(err){ const t=e.id==='hf'?hfErrorText(err).text:('생성 실패: '+(err.message||err)); r.status='failed'; r.error=t; persistRuns(); toast(t,'err'); }
+  redraw(st);
+}
+function makeSheet(st,engineId){
+  const e=engineById(engineId||prefs.sheetEngine||'hf'); if(!e) return;
+  if(e.start) return e.start(st);
+  return runSheetEngine(st,e);
+}
 async function submit(st,r,body){
   try{ const q=await H.hfSubmit(r.endpoint,body); r.requestId=q.request_id; r.submittedAt=Date.now(); persistRuns(); await follow(st,r); }
   catch(e){ fail(st,r,e.message); }
@@ -131,7 +231,9 @@ async function share(st,r,title){
 function fail(st,r,msg){ r.status='failed'; r.error=msg; persistRuns(); redraw(st); }
 function resume(st){
   runsOf(st).forEach(r=>{
-    if(r.status==='pending'&&!polling.has(r.id)){
+    if(r.status==='pending'&&r.engine&&r.engine!=='higgsfield'){ if(!r._live) fail(st,r,'페이지를 떠나 무료 생성이 중단되었습니다. 다시 누르세요'); }
+    else if(r.status==='done'&&r.engine&&r.engine!=='higgsfield'&&!r.blob){ r.status='gone'; persistRuns(); }
+    else if(r.status==='pending'&&!polling.has(r.id)){
       if(r.requestId&&H.getKey()&&Date.now()-(r.submittedAt||r.createdAt)<H.DEADLINE_MS) follow(st,r);
       else fail(st,r,'페이지를 떠나 확인이 중단됨 (Higgsfield 기록에서 확인하세요)');
     } else if(r.status==='done'&&r.share==='pending'&&!polling.has(r.id)){ polling.add(r.id); share(st,r,'['+r.modelLabel+'] '+r.prompt).finally(()=>polling.delete(r.id)); }
@@ -189,6 +291,23 @@ function drawStatus(st){
     :(st.faceState==='ready'?'얼굴 사진 준비됨 — 모든 생성에 자동으로 함께 보냅니다':st.faceState==='uploading'?'얼굴 사진을 공개 저장소에 올리는 중… (한 번만)':st.faceState==='error'?'얼굴 사진 준비 실패: '+(st.faceErr||''):'얼굴 사진 준비 전');
   box.append(thumbEl(st.face.preview,st.face.previewKind),el('span',{class:'t '+(st.faceState==='error'?'bad':st.faceState==='ready'?'good':'')},txt));
   if(st.faceState==='error') box.append(el('button',{class:'btn ghost sm',type:'button',text:'다시 시도',onclick:()=>ensureFaceUrl(st).catch(()=>{})}));
+  drawSheet(st);
+}
+function drawSheet(st){
+  if(!alive(st)) return; const box=st.root.querySelector('.fhf-sheet'); if(!box) return; box.textContent='';
+  const vid=st.mode==='media'&&st.item&&st.item.kind==='video';
+  const cur=engineById(prefs.sheetEngine||'hf');
+  box.append(el('span',{class:'ic',text:'🧍'}),el('span',{class:'t'},el('b',{text:'캐릭터 시트 만들기'}),el('br'),
+    el('small',{text:(st.mode==='media'?(vid?'이 영상의 첫 장면':'이 이미지'):'이 얼굴 사진')+'의 인물·옷을 그대로 유지해 전신 앞·옆·뒤 + 머리 클로즈업 4방향을 흰 배경 한 장(16:9)에 그립니다. 누를 때만 생성되며, 완성본은 이 페이지에 계속 남고 누구나 무료로 내려받을 수 있습니다.'})));
+  box.append(el('div',{class:'fhf-eng',role:'radiogroup','aria-label':'캐릭터 시트 엔진'},...SHEET_ENGINES.map(e=>el('button',{type:'button',role:'radio','aria-checked':String(e===cur),class:'fhf-eng-'+e.id+(e===cur?' on':''),title:e.note||'',onclick:()=>{ prefs.sheetEngine=e.id; savePrefs(); drawSheet(st); }},el('b',{text:e.badge}),' '+e.label.replace(/^(무료|유료) · /,'')))));
+  box.append(el('div',{class:'fhf-eng-note',text:cur.id==='hf'?'허깅페이스 무료 GPU(Qwen-Image-Edit-2511)로 만듭니다. 키가 필요 없고, 방문자마다 하루 약 2분 GPU(시트 1~2장, 허깅페이스 사정에 따라 더 적을 수 있음). 대기열에 따라 30초~몇 분 걸리고, 한도가 차면 힉스필드(유료)로 바꿀 수 있습니다.':cur.id==='higgsfield'?'내 Higgsfield 키로 Qwen Image 3 편집(2K)을 씁니다. 키 주인 계정의 크레딧이 차감됩니다.':(cur.note||'')}));
+  if(cur.id==='hf'){ const tok=hfToken(); const open=st.hfTok||false;
+    if(!open) box.append(el('button',{class:'lnk fhf-hftok-open',type:'button',text:tok?'✓ 내 허깅페이스 토큰 사용 중 (변경)':'+ 내 허깅페이스 토큰 넣기 (선택 · 무료 계정 하루 5분)',onclick:()=>{ st.hfTok=true; drawSheet(st); }}));
+    else { const inp=el('input',{class:'inp',type:'password',placeholder:'hf_… (읽기/Inference 전용 토큰)',autocomplete:'off',spellcheck:'false','aria-label':'허깅페이스 토큰'}); inp.value=tok;
+      const save=()=>{ const v=inp.value.trim(); if(v&&!/^hf_[A-Za-z0-9]{20,}$/.test(v)){ toast('hf_ 로 시작하는 토큰을 넣으세요','err'); return; } try{ if(v) localStorage.setItem(LS_HF_TOKEN,v); else localStorage.removeItem(LS_HF_TOKEN); }catch(e){} st.hfTok=false; drawSheet(st); toast(v?'허깅페이스 토큰을 저장했습니다 (이 브라우저에만, 허깅페이스로만 전송)':'토큰을 지웠습니다','ok'); };
+      box.append(el('div',{class:'fhf-hftok'},inp,el('button',{class:'btn sm',type:'button',text:'저장',onclick:save}),el('button',{class:'btn ghost sm',type:'button',text:'취소',onclick:()=>{ st.hfTok=false; drawSheet(st); }}),
+        el('a',{class:'lnk',href:'https://huggingface.co/settings/tokens',target:'_blank',rel:'noopener',text:'토큰 만들기 ↗'}))); } }
+  box.append(el('button',{class:'btn sm fhf-sheet-go',type:'button',disabled:st.faceState==='uploading'?true:null,text:'캐릭터 시트 만들기 ('+cur.badge+')',onclick:()=>makeSheet(st)}));
 }
 /* 작은 미리보기: 이미지는 배경, 영상은 첫 장면 */
 function thumbEl(url,kind){ if(kind==='video'){ const v=el('video',{class:'th',src:String(url||'')+'#t=0.1',muted:true,playsinline:true,preload:'metadata'}); v.muted=true; return v; }
@@ -231,13 +350,17 @@ function mediaEl(url,kind,alt){
   return el('img',{src:url,alt:alt||'',loading:'lazy',decoding:'async',referrerpolicy:'no-referrer'});
 }
 function tileRun(st,r){
-  const t=el('div',{class:'fhf-tile','data-run':r.id});
-  if(r.status==='pending'){ t.append(el('div',{class:'ph'},el('b',{text:r.modelLabel}),el('span',{class:'phase',text:r.phase==='in_progress'?'생성 중…':r.requestId?'대기열…':'요청 보내는 중…'}),el('small',{text:r.prompt.slice(0,80)}))); return t; }
-  if(r.status==='failed'){ t.append(el('div',{class:'fl'},el('b',{text:'실패 · '+r.modelLabel}),el('span',{text:r.error||''}),el('small',{text:r.prompt.slice(0,100)}),
-    el('div',{class:'acts'},el('button',{class:'btn ghost sm',type:'button',text:'지우기',onclick:()=>{ r.status='gone'; persistRuns(); redraw(st); }})))); return t; }
+  const t=el('div',{class:'fhf-tile'+(r.sheet?' wide':''),'data-run':r.id});
+  if(r.status==='pending'){ t.append(el('div',{class:'ph',style:r.sheet?'aspect-ratio:16/9':null},el('b',{text:r.modelLabel}),el('span',{class:'phase',text:phaseText(r)}),el('small',{text:r.prompt.slice(0,80)}))); return t; }
+  if(r.status==='failed'){ const gone=()=>{ r.status='gone'; persistRuns(); redraw(st); };
+    t.append(el('div',{class:'fl'},el('b',{text:'실패 · '+r.modelLabel}),el('span',{text:r.error||''}),el('small',{text:r.prompt.slice(0,100)}),
+    el('div',{class:'acts'},
+      r.sheet&&r.engine&&r.engine!=='higgsfield'?el('button',{class:'btn sm fhf-sheet-retry',type:'button',text:'다시 (무료)',onclick:()=>{ gone(); makeSheet(st,r.engine); }}):null,
+      r.sheet&&r.engine&&r.engine!=='higgsfield'?el('button',{class:'btn ghost sm fhf-sheet-paid',type:'button',text:'힉스필드로 만들기 (유료)',onclick:()=>{ gone(); makeSheet(st,'higgsfield'); }}):null,
+      el('button',{class:'btn ghost sm',type:'button',text:'지우기',onclick:gone})))); return t; }
   /* 완성됐지만 아직 갤러리 저장 전/실패 */
   t.appendChild(mediaEl(r.url,r.kind,r.prompt));
-  t.appendChild(el('span',{class:'bd',text:r.kind==='video'?'VIDEO':'IMAGE'}));
+  t.appendChild(el('span',{class:'bd',text:r.kind==='video'?'VIDEO':r.sheet?'캐릭터 시트':'IMAGE'}));
   const note=r.share==='pending'?'갤러리에 저장하는 중…':r.share==='failed'?'갤러리 저장 실패 — 지금 내려받으세요 (원본은 약 7일 보관)':'이 기기에서만 보임';
   t.appendChild(el('div',{class:'cap'},el('span',{class:'t',text:note}),el('div',{class:'acts'},
     el('button',{class:'btn sm',type:'button',text:'⤓ 다운로드',onclick:()=>H.download({url:r.url,kind:r.kind,model:r.model,createdAt:r.createdAt})}),
@@ -246,11 +369,11 @@ function tileRun(st,r){
   return t;
 }
 function tileItem(st,x){
-  const t=el('div',{class:'fhf-tile','data-id':x.id});
+  const t=el('div',{class:'fhf-tile'+(/캐릭터 시트/.test(x.title||'')?' wide':''),'data-id':x.id});
   const open=window.LukeOpenMedia;
   const m=mediaEl(x.url,x.kind,H.displayTitle(x.title)); if(x.kind!=='video'){ m.style.cursor='zoom-in'; m.addEventListener('click',()=>open?open(x):window.open(x.url,'_blank','noopener')); }
   t.appendChild(m);
-  t.appendChild(el('span',{class:'bd',text:x.kind==='video'?'VIDEO':'IMAGE'}));
+  t.appendChild(el('span',{class:'bd',text:x.kind==='video'?'VIDEO':/캐릭터 시트/.test(x.title||'')?'캐릭터 시트':'IMAGE'}));
   const depth=st.mode==='media'&&x._depth?el('small',{class:'dep',text:x._depth===1?'↳ 이 작품에서 바로':'↳ 파생의 파생 · '+x._depth+'단계'}):null;
   t.appendChild(el('div',{class:'cap'},el('span',{class:'t',text:H.displayTitle(x.title)||'힉스필드 결과'}),depth,el('small',{text:new Date(x.created_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}),
     el('div',{class:'acts'},el('button',{class:'btn sm fhf-dl',type:'button',text:'⤓ 다운로드',onclick:()=>H.download(Object.assign({},x,{model:'face-'+st.key}))}),
@@ -279,7 +402,8 @@ function drawGallery(st){
     /* 끝까지 스크롤하면 자동으로 다음 페이지 (버튼은 백업) */
     if('IntersectionObserver' in window&&!st.err){ if(st.moreIO) st.moreIO.disconnect(); st.moreIO=new IntersectionObserver(es=>{ if(es.some(e=>e.isIntersecting)&&!st.loading&&!st.done) loadMore(st); },{rootMargin:'400px 0px'}); st.moreIO.observe(mb); } }
 }
-function updatePhase(st,r){ if(!alive(st)) return; const p=st.root.querySelector('.fhf-tile[data-run="'+r.id+'"] .phase'); if(p) p.textContent=r.phase==='in_progress'?'생성 중…':'대기열…'; }
+function phaseText(r){ if(r.engine&&r.engine!=='higgsfield') return r.phase||'준비 중…'; return r.phase==='in_progress'?'생성 중…':r.requestId?'대기열…':'요청 보내는 중…'; }
+function updatePhase(st,r){ if(!alive(st)) return; const p=st.root.querySelector('.fhf-tile[data-run="'+r.id+'"] .phase'); if(p) p.textContent=phaseText(r); }
 
 const CSS=`.fhf{border:1px solid var(--acc);border-radius:14px;background:rgba(79,124,255,.06);padding:16px;margin:4px 0 26px}
 .fhf h2{font-size:16px;font-weight:800;color:var(--tx);margin:0 0 4px;letter-spacing:0}
@@ -290,6 +414,14 @@ const CSS=`.fhf{border:1px solid var(--acc);border-radius:14px;background:rgba(7
 .fhf-face,.fhf-start{display:flex;align-items:center;gap:10px;font-size:12.8px;color:var(--dim);margin-bottom:10px;flex-wrap:wrap}
 .fhf-face .th,.fhf-start .th{width:44px;height:44px;border-radius:9px;background:#14171f center/contain no-repeat;flex:none;border:1px solid var(--line);object-fit:contain}
 .fhf-tile .dep{color:#9fb4ff}
+.fhf-tile.wide{grid-column:1/-1}.fhf-tile.wide img{aspect-ratio:auto 16/9}.fhf-tile.wide .ph,.fhf-tile.wide .fl{aspect-ratio:auto;min-height:190px}
+.fhf-sheet{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel2);border:1px dashed #5b6bd6;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.8px;color:var(--dim)}
+.fhf-sheet .ic{font-size:22px}
+.fhf-eng{display:flex;gap:6px;flex-basis:100%;flex-wrap:wrap}.fhf-eng button{padding:6px 11px;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--dim);background:var(--panel);border:1px solid var(--line);cursor:pointer}
+.fhf-eng button b{font-weight:900;margin-right:2px}.fhf-eng button.on{border-color:var(--acc);color:#fff;background:rgba(79,124,255,.18)}.fhf-eng .fhf-eng-hf b{color:#7de2a8}.fhf-eng .fhf-eng-higgsfield b{color:#d1fe17}
+.fhf-eng-note{flex-basis:100%;font-size:11.5px;line-height:1.5}.fhf-sheet .lnk{flex-basis:100%;text-align:left}
+.fhf-hftok{display:flex;gap:6px;flex-basis:100%;flex-wrap:wrap;align-items:center}.fhf-hftok .inp{flex:1;min-width:180px;margin:0}.fhf-sheet .t{flex:1;min-width:180px;line-height:1.5}.fhf-sheet b{color:var(--tx)}.fhf-sheet small{font-size:11.5px}
+@media(max-width:640px){.fhf-sheet-go{width:100%}}
 .fhf-face .t,.fhf-start .t{flex:1;min-width:160px;line-height:1.5}.fhf-face .good{color:var(--ok)}.fhf-face .bad{color:var(--bad)}
 .fhf-start{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}.fhf-start b{color:var(--tx)}
 .fhf-tabs{display:flex;gap:6px;margin-bottom:10px}
@@ -329,7 +461,7 @@ function mount(container,face,opts){
   const root=el('section',{class:'fhf',id:med?'mediaHf':'faceHf','aria-label':med?'이 작품으로 이어서 만들기':'이 얼굴로 힉스필드 제작','data-face':st.key},
     el('h2',{text:med?'이 작품으로 이어서 만들기':'이 얼굴로 힉스필드 제작'}),
     el('div',{class:'sub',text:med?(st.item&&st.item.kind==='video'?'이 영상의 첫 장면(또는 마지막 장면)을 시작 프레임으로 넣어 이어지는 영상을 만들거나, 참고 이미지로 넣어 같은 인물의 다른 장면·포즈 이미지를 만듭니다.':'이 이미지를 매번 참고 이미지로 함께 보내 같은 인물의 다른 포즈·장면 이미지를 만들거나, 시작 프레임으로 넣어 영상을 만듭니다.')+' 내 Higgsfield 키를 쓰며, 완성된 결과는 아래 「이 작품에서 이어진 작품」(최신순)과 홈 공개 갤러리에 저장되어 누구나 보고 내려받을 수 있습니다. 결과에서 또 만든 작품도 여기에 함께 붙습니다.':'이 얼굴 사진을 매번 자동으로 함께 보내 같은 사람으로 이미지와 영상을 만듭니다. 완성된 결과와 직접 올린 파일은 아래 「이 얼굴의 작품」과 홈 공개 갤러리에 저장되어 누구나 보고 내려받을 수 있습니다. 다른 사람 작품도 「참고로 사용」으로 시작 프레임에 넣어 토큰을 아낄 수 있습니다. 공개되면 안 되는 내용은 만들지 마세요.'}),
-    el('div',{class:'fhf-key'}),el('div',{class:'fhf-face'}),el('div',{class:'fhf-form'}),el('div',{class:'fhf-gal'}));
+    el('div',{class:'fhf-key'}),el('div',{class:'fhf-face'}),el('div',{class:'fhf-sheet'}),el('div',{class:'fhf-form'}),el('div',{class:'fhf-gal'}));
   container.appendChild(root); st.root=root; root._fresh=true; setTimeout(()=>{ root._fresh=false; },0);
   drawKey(st); drawStatus(st); drawForm(st); drawGallery(st);
   if(st.faceState==='idle'&&!face.lazy) ensureFaceUrl(st).catch(()=>{});   /* 작품(영상) 모드: 장면 추출·업로드는 생성할 때만 */
@@ -342,4 +474,5 @@ function mount(container,face,opts){
 if(window.LukeAuth&&window.LukeAuth.onChange) window.LukeAuth.onChange(()=>states.forEach(st=>redraw(st)));
 window.addEventListener('lukemedia:deleted',e=>{ const id=e.detail&&e.detail.id; states.forEach(st=>{ if(st.ids.has(id)){ st.items=st.items.filter(y=>y.id!==id); st.ids.delete(id); redraw(st); } }); });
 window.LukeFaceHF={mount,IMG_MODELS,VID_MODELS,_states:states};
+window.LukeSheetEngines={register:registerSheetEngine,list:()=>SHEET_ENGINES.slice(),prompt:SHEET_PROMPT};
 })();
