@@ -37,7 +37,9 @@ const MODELS=[
   /* Qwen Image 3: 참고 이미지가 있으면 alibaba/qwen-image-3/edit (image_urls 1–3) */
   {id:'qwen-image-3',label:'Qwen Image 3',kind:'image',t:'alibaba/qwen-image-3/text-to-image',r:'alibaba/qwen-image-3/edit',roles:{ref:3},s:{ar:['1:1','4:3','3:4','16:9','9:16','3:2','2:3','21:9'],res:['1k','2k']},
     body:(p,s)=>{ const b={prompt:p.prompt,resolution:s.res,aspect_ratio:s.ar}; if(p.refs.length) b.image_urls=p.refs.slice(0,3); return b; }},
-  img('grok-imagine-2','Grok Imagine 2.0','xai/grok-imagine-image-2.0'),
+  /* Grok Imagine 2.0: image_urls(선택) — Higgsfield 문서엔 최대 개수 표기 없음, xAI 문서 기준 최대 3장으로 제한 */
+  {id:'grok-imagine-2',label:'Grok Imagine 2.0',kind:'image',t:'xai/grok-imagine-image-2.0',roles:{ref:3},s:{ar:['1:1','3:4','4:3','9:16','16:9','2:3','3:2'],res:['1k','2k']},
+    body:(p,s)=>{ const b={prompt:p.prompt,resolution:s.res,aspect_ratio:s.ar}; if(p.refs.length) b.image_urls=p.refs.slice(0,3); return b; }},
   seed('seedance-2.5','Seedance 2.5','bytedance/seedance-2.5',['480p','720p']),
   seed('seedance-2','Seedance 2.0','bytedance/seedance-2.0',['480p','720p','1080p']),
   seed('seedance-2-fast','Seedance 2.0 Fast','bytedance/seedance-2.0/fast',['480p','720p']),
@@ -165,6 +167,8 @@ async function insertRow(row){
   if(schemaV2()){ const f=faceOf(row.title); if(f&&!row.face_id) row.face_id=f; } else delete row.face_id;   /* 구 스키마엔 face_id 열이 없음 */
   const r=await fetch(SB+'/rest/v1/'+TABLE,{method:'POST',headers:sbHeaders({'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify(row)});
   if(!r.ok){ let t=''; try{t=(await r.json()).message||'';}catch(e){} const e=new Error('목록 등록 실패 ('+r.status+') '+t); e.status=r.status; throw e; }
+  /* 새 작품 알림 → angle-auto.js 가 올린 사람 브라우저에서 정면·왼쪽·오른쪽·뒷모습 참고 이미지 자동 생성(각도 이미지 자체는 제외) */
+  try{ window.dispatchEvent(new CustomEvent('lukemedia:inserted',{detail:{path:row.path||null,external_url:row.external_url||null,kind:row.kind,title:row.title||'',source:row.source||'',face_id:row.face_id||null}})); }catch(e){}
 }
 /* ── 얼굴 태그: 제목(최대 80자) 끝에 ' #face:<key>' ── */
 const FACE_TAG_RE=/\s*#face:[a-z0-9-]{1,40}$/;

@@ -108,7 +108,7 @@ async function loadPublic(reset){
   if(P.done) return; P.loading=true;
   try{
     if(!shared){ const all=(await idbAll('localpub')).sort((a,b)=>b.created_at<a.created_at?-1:1); P.items=all.map(x=>Object.assign({},x,{url:URL.createObjectURL(x.blob),local:true})); P.done=true; }
-    else{ const r=await fetch(SB+'/rest/v1/'+CFG.table+'?select=*&hidden=eq.false&order=created_at.desc&limit=40&offset='+P.offset,{headers:sbHeaders()});
+    else{ const r=await fetch(SB+'/rest/v1/'+CFG.table+'?select=*&hidden=eq.false&or='+encodeURIComponent('(title.is.null,title.not.like.*[각도·*)')+'&order=created_at.desc&limit=40&offset='+P.offset,{headers:sbHeaders()});
       if(!r.ok) throw new Error('목록 불러오기 실패 ('+r.status+')'); const rows=await r.json();
       rows.forEach(x=>{ x.url=x.path?pubUrl(x.path):x.external_url; if(x.url) P.items.push(x); }); P.offset+=rows.length; if(rows.length<40) P.done=true; }
   }catch(e){ P.err=e.message; }

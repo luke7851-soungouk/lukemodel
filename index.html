@@ -499,6 +499,7 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 <script src="/shared-config.js"></script>
 <script src="/lm-auth.js"></script>
 <script src="/hf-core.js"></script>
+<script src="/angle-auto.js"></script>
 <script src="/face-hf.js"></script>
 <script>
 'use strict';
@@ -1464,7 +1465,9 @@ const HS_PAGE=24;
 let homeShared={rows:[],ids:new Set(),loading:false,done:false,err:null,started:false,lastPoll:0};
 function sharedCfg(){ const c=window.LUKE_SHARED||{}; const url=String(c.url||'').replace(/\/$/,''); return (url&&c.anonKey&&/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url))?Object.assign({},c,{url}):null; }
 function hsHeaders(c){ const h={apikey:c.anonKey}; if(/^eyJ/.test(c.anonKey)) h.Authorization='Bearer '+c.anonKey; return h; }
-function hsQuery(c,extra){ return c.url+'/rest/v1/'+(c.table||'shared_media')+'?select=*&hidden=eq.false&order=created_at.desc,id.desc'+extra; }
+/* 일관성 참고 이미지(제목 「[각도·…]」)는 작품 페이지의 4칸에서만 보여 주고 홈 목록·개수에서는 뺌 (읽기 필터, 스키마 변경 없음) */
+const HS_HIDE_ANGLES='&or='+encodeURIComponent('(title.is.null,title.not.like.*[각도·*)');
+function hsQuery(c,extra){ return c.url+'/rest/v1/'+(c.table||'shared_media')+'?select=*&hidden=eq.false'+HS_HIDE_ANGLES+'&order=created_at.desc,id.desc'+extra; }
 /* 다음 페이지: 마지막 항목의 created_at 이전(키셋 페이지네이션 → 새 항목이 들어와도 중복·누락 없음) */
 function loadHomeMore(){
   const c=sharedCfg(); if(!c||homeShared.loading||homeShared.done) return;
