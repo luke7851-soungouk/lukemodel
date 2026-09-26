@@ -500,6 +500,7 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 <script src="/lm-auth.js"></script>
 <script src="/hf-core.js"></script>
 <script src="/angle-auto.js"></script>
+<script src="/sheet-split.js"></script>
 <script src="/face-hf.js"></script>
 <script>
 'use strict';
@@ -3779,6 +3780,8 @@ function drawMedia(wrap,x){
       catch(e){ del.disabled=false; toast(e.message,'err'); } };
     acts.appendChild(del); }
   wrap.appendChild(acts);
+  /* 캐릭터 시트 → 칸마다 한 장씩 (무료 · 브라우저에서 자르기, 못 찾으면 아무것도 안 보임) */
+  if(x.kind!=='video'&&window.LukeSplit&&LukeSplit.isSheet(x)){ const sh=document.createElement('div'); sh.className='md-split'; wrap.appendChild(sh); LukeSplit.mount(sh,x).catch(()=>{}); }
   const host=document.createElement('div'); wrap.appendChild(host);
   if(!window.LukeFaceHF){ host.className='md-msg'; host.textContent='힉스필드 패널을 불러오지 못했습니다. 새로고침해 주세요.'; return; }
   const face={key:'m-'+x.id,name:ttl,preview:x.url,previewKind:x.kind};

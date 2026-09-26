@@ -122,6 +122,10 @@ async function ensureRoot(st){
   return st.rootInfo;
 }
 const rootKey=st=>st.rootInfo?st.rootInfo.key:st.key;
+/* 각도 이미지 파일 이름: <원본 제목>-정면.jpg (한 장씩 받기) */
+function angleFileName(st,a,v){ const ri=st.rootInfo||{}, base=(ri.item?H.displayTitle(ri.item.title):st.face&&st.face.name)||'lukemodel';
+  const mime=(v.item&&v.item.mime)||(v.blob&&v.blob.type)||'image/png', ext=/jpe?g/.test(mime)?'jpg':/webp/.test(mime)?'webp':'png';
+  return String(base).replace(/[\\/:*?"<>|#]+/g,' ').replace(/\s+/g,' ').trim().slice(0,60)+'-'+a.ko+'.'+ext; }
 const angleFound=st=>(A&&(A.stateOf(rootKey(st))||{}).found)||{};
 /* 자동 대상: 뿌리가 공개(작품 m- 또는 저장소 얼굴 r-)이고, 뿌리가 각도·시트 이미지가 아님. 얼굴 뿌리는 그 얼굴 페이지에서만 */
 function angleAuto(st){ if(!A||!H.shared) return false; const r=st.rootInfo; if(!r||!A.publicRoot(r.key)) return false;
@@ -277,7 +281,7 @@ function drawAngles(st){
     const stTxt=src?(v.state==='local'?'저장 실패':'완료'):v.state==='running'?'생성 중':v.state==='loading'?'':'대기';
     t.appendChild(el('div',{class:'lb'},el('b',{text:a.ko}),stTxt?el('span',{class:'s',text:stTxt}):null));
     if(src) t.appendChild(el('div',{class:'ab'},
-      el('button',{class:'fhf-ang-dl',type:'button',title:'다운로드','aria-label':a.ko+' 다운로드',text:'⤓',onclick:()=>H.download(v.item?Object.assign({},v.item,{model:'angle-'+a.id}):{blob:v.blob,kind:'image',model:'angle-'+a.id})}),
+      el('button',{class:'fhf-ang-dl',type:'button',title:'다운로드','aria-label':a.ko+' 다운로드',text:'⤓',onclick:()=>{ const nm=angleFileName(st,a,v); H.download(v.item?Object.assign({},v.item,{model:'angle-'+a.id,fileName:nm}):{blob:v.blob,kind:'image',model:'angle-'+a.id,fileName:nm}); }}),
       v.item&&open?el('button',{class:'fhf-ang-open',type:'button',title:'크게 보기','aria-label':a.ko+' 크게 보기',text:'⤢',onclick:()=>open(v.item)}):null));
     grid.appendChild(t); });
   box.appendChild(grid);

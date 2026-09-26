@@ -281,7 +281,7 @@ function fname(it,i){ const ext=(it.mime&&OK_MIME[it.mime])||(it.kind==='video'?
 function saveBlob(b,name){ const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000); }
 /* Supabase 파일은 ?download= (서버가 attachment로 응답) → 새 탭 없이 파일 저장. 그 외는 blob으로 받아 저장, 실패 시 새 탭 */
 async function download(it,i){
-  const name=fname(it,i);
+  const name=it.fileName||fname(it,i);
   if(it.blob){ saveBlob(it.blob,name); return true; }
   if(it.path&&shared){ const a=document.createElement('a'); a.href=pubUrl(it.path)+'?download='+encodeURIComponent(name); a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); return true; }
   try{ const r=await fetch(it.url,{mode:'cors'}); if(!r.ok) throw new Error(r.status); saveBlob(await r.blob(),name); return true; }
