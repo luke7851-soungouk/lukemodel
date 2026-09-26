@@ -16,8 +16,11 @@ const toast=(m,k)=>{ try{ (window.toast||function(){})(m,k); }catch(e){} };
 /* ── 저장된 선택값 ── */
 function loadJSON(k,d){ try{ const v=JSON.parse(localStorage.getItem(k)||'null'); return v==null?d:v; }catch(e){ return d; } }
 function saveJSON(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
-const prefs=Object.assign({img:'soul-2',vid:'seedance-2.5',settings:{}},loadJSON(LS_PREFS,{}));
-if(!IMG_MODELS.some(m=>m.id===prefs.img)) prefs.img='soul-2';
+/* 기본 이미지 모델 = 얼굴 유지가 되는 편집 모델(Qwen Image 3 edit, 참고 최대 3장). Soul 은 참고 이미지가 1장뿐이고 얼굴 유지가 약해
+   직접 고른 경우(imgPicked)에만 유지 — 예전 기본값(soul-2)이 저장된 브라우저도 Qwen Image 3 으로 바뀜 */
+const DEF_IMG='qwen-image-3';
+const prefs=Object.assign({img:DEF_IMG,vid:'seedance-2.5',settings:{}},loadJSON(LS_PREFS,{}));
+if(!prefs.imgPicked||!IMG_MODELS.some(m=>m.id===prefs.img)) prefs.img=IMG_MODELS.some(m=>m.id===DEF_IMG)?DEF_IMG:'soul-2';
 if(!VID_MODELS.some(m=>m.id===prefs.vid)) prefs.vid='seedance-2.5';
 const savePrefs=()=>saveJSON(LS_PREFS,prefs);
 const settingsFor=m=>H.fixSettings(m,prefs.settings[m.id]);
@@ -311,6 +314,8 @@ function drawCons(st){
   if(kind==='video'&&plan.custom){ box.append(el('div',{class:'ln'},el('b',{text:'일관성 참고: '}),'시작 프레임 = '+cur.label,el('small',{text:' · 영상 모델은 참고 이미지를 추가로 받지 않아요'}))); return; }
   box.append(el('div',{class:'ln'},el('b',{text:kind==='image'?'일관성 참고: ':'시작 프레임: '}),cur.label+(kind==='image'?' 1장 자동 첨부':''),
     el('small',{text:kind==='image'?' · 이 모델('+m.label+')은 참고 이미지 1장만 받아요 — 여러 장은 Qwen Image 3 / Grok Imagine 2.0':' · 영상 모델은 시작 프레임 1장만 받아요'})));
+  if(kind==='image'&&/^soul/.test(m.id)) box.append(el('div',{class:'fhf-soul-warn',role:'note'},'⚠ Soul은 얼굴 유지가 약해요 — 같은 사람이 필요하면 ',
+    el('button',{type:'button',class:'lnk fhf-soul-switch',text:'Qwen Image 3로 바꾸기',onclick:()=>{ prefs.img='qwen-image-3'; prefs.imgPicked=true; savePrefs(); drawForm(st); }})));
   if(plan.avail.length) box.append(el('div',{class:'chips',role:'radiogroup'},chip('orig','원본',cur.id==='orig','',()=>{ st.angPick=Object.assign({},st.angPick,{[k]:'orig'}); drawCons(st); }),
     ...plan.avail.map(a=>chip(a.id,a.ko,cur.id===a.id,'',()=>{ st.angPick=Object.assign({},st.angPick,{[k]:a.id}); drawCons(st); }))));
 }
@@ -340,7 +345,7 @@ function drawForm(st){
   box.appendChild(ta);
   const row=el('div',{class:'fhf-row'});
   const list=kind==='image'?IMG_MODELS:VID_MODELS;
-  row.appendChild(selChip('모델',list.map(x=>x.id),m.id,id=>H.modelById(id).label,v=>{ if(kind==='image') prefs.img=v; else prefs.vid=v; savePrefs(); drawForm(st); }));
+  row.appendChild(selChip('모델',list.map(x=>x.id),m.id,id=>H.modelById(id).label,v=>{ if(kind==='image'){ prefs.img=v; prefs.imgPicked=true; } else prefs.vid=v; savePrefs(); drawForm(st); }));
   if(kind==='image'&&m.s.ar) row.appendChild(selChip('화면비',m.s.ar,s.ar,null,v=>setSetting(m,'ar',v)));
   if(kind==='video'&&m.s.dur) row.appendChild(selChip('길이',m.s.dur,s.dur,v=>v+'초',v=>setSetting(m,'dur',v)));
   if(m.s.res) row.appendChild(selChip('해상도',m.s.res,s.res,null,v=>setSetting(m,'res',v)));
@@ -432,6 +437,7 @@ const CSS=`.fhf{border:1px solid var(--acc);border-radius:14px;background:rgba(7
 .fhf-ang-t .ab{display:flex;gap:3px;padding:3px 4px 4px}.fhf-ang-t .ab button{flex:1;min-width:0;padding:3px 0;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--tx);font-size:12px;cursor:pointer}
 .fhf-angles small{font-size:11.5px;line-height:1.5}
 .fhf-angles .more{display:flex;flex-wrap:wrap;gap:4px 14px}.fhf-angles .more .lnk{font-size:11.5px;color:#8b93a7}.fhf-angles .more .lnk:disabled{opacity:.45;cursor:default}
+.fhf-soul-warn{margin:6px 0 2px;padding:6px 9px;border-radius:8px;background:rgba(255,176,32,.12);border:1px solid rgba(255,176,32,.35);color:#ffcf7a;font-size:12.5px;line-height:1.45}.fhf-soul-warn .lnk{color:#ffe2a8;font-size:12.5px}
 .fhf-cons{margin:-2px 0 8px;font-size:12px;color:var(--dim);display:flex;flex-direction:column;gap:5px}.fhf-cons[hidden]{display:none}.fhf-cons b{color:var(--tx)}.fhf-cons small{color:#8b93a7}
 .fhf-cons .chips{display:flex;flex-wrap:wrap;gap:5px}.fhf-cons-chip{padding:4px 9px;border-radius:8px;font-size:11.5px;font-weight:700;color:var(--dim);background:var(--panel2);border:1px solid var(--line);cursor:pointer}
 .fhf-cons-chip.on{border-color:#7de2a8;color:#fff;background:rgba(125,226,168,.14)}.fhf-cons-chip.over{opacity:.55}.fhf-cons-chip:disabled{cursor:default}

@@ -3772,7 +3772,7 @@ function drawMedia(wrap,x){
   const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'})[x.mime]||(x.kind==='video'?'mp4':'png');
   const name='lukemodel-'+String(x.id||'').slice(0,8)+'.'+ext;
   const dl=document.createElement('a'); dl.className='btn sm md-dl'; dl.textContent='\u2913 다운로드'; dl.download=name; dl.rel='noopener'; dl.href=x.path?x.url+'?download='+encodeURIComponent(name):x.url; if(!x.path&&!/^https:\/\/lukemodel\.com\//.test(x.url)) dl.target='_blank'; acts.appendChild(dl);
-  const use=document.createElement('a'); use.className='btn ghost sm'; use.textContent='스튜디오에서 참고로 사용'; use.href='/higgsfield/?use='+encodeURIComponent(x.url)+'&kind='+(x.kind==='video'?'video':'image'); acts.appendChild(use);
+  const use=document.createElement('a'); use.className='btn ghost sm'; use.textContent='스튜디오에서 참고로 사용'; use.href=x.kind==='video'?'/higgsfield/?use='+encodeURIComponent(x.url)+'&kind=video':'/higgsfield/?m='+encodeURIComponent(x.id); acts.appendChild(use);   /* 이미지: 원본을 참고 이미지로 바로 넣고 얼굴 유지 모델(Qwen Image 3)로 */
   if(H&&H.canDelete&&H.canDelete(x)){ const del=document.createElement('button'); del.type='button'; del.className='btn ghost sm md-del'; del.textContent='삭제';
     del.onclick=async()=>{ if(!confirm('이 작품을 삭제할까요?\n목록과 저장된 파일이 완전히 지워지며 되돌릴 수 없습니다.')) return; del.disabled=true;
       try{ const r=await H.deleteItem(x); mediaCache.delete(String(x.id)); toast(r.fileOk?'삭제했습니다':'목록에서 삭제했습니다 (파일 정리는 운영자가 합니다)',r.fileOk?'ok':'err'); if(pid) openMedia(pid); else go('browse'); }

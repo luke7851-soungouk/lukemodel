@@ -33,9 +33,27 @@ const lsGet=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } 
 const lsSet=(k,v)=>{ try{ v==null?localStorage.removeItem(k):localStorage.setItem(k,String(v)); }catch(e){} };
 const TABLE=()=>(H.CFG.table||'shared_media');
 
-/* ── 허깅페이스 무료 엔진 (Qwen-Image-Edit-2511 + Lightning 4단계 · Apache-2.0 · ZeroGPU, @spaces.GPU 기본 60초 예약) ──
-   익명: 방문자 IP 기준 하루 약 2분(120초), 무료 계정 토큰 5분. 1장 예약 60초 → 남은 한도가 60초 이상일 때만 시작됨 */
-const HF_SPACES=['linoyts/Qwen-Image-Edit-2511-Fast'];
+/* ── 허깅페이스 무료 엔진: Space 여러 개를 차례로 시도 (앞 Space 가 고장 → 다음 Space) ──────────────────
+   ZeroGPU 한도는 사람(IP/토큰) 기준이라 Space 를 바꿔도 공유됨 → 한도 초과는 다음 Space 로 넘기지 않고 멈춤.
+   고장(ZeroGPU worker error·GPU task aborted·꺼짐)은 그 Space 를 3시간 건너뜀 → 다음 방문엔 바로 다음 Space 로.
+   · qwen-fast : Qwen-Image-Edit-2511 + Lightning 4단계 (Apache-2.0) · 1장 예약 60초 · 결과 768×1024
+   · kontext   : FLUX.1 Kontext [dev] 공식 Space (비상업 가중치 라이선스 — 결과물 사용은 BFL 라이선스 확인) · 1장 예약 90초 · 24단계 ≈ 25초
+                 결과 크기는 원본 비율을 따름 (9:16 원본 → 768×1360) */
+const KEEP='Keep the exact same face, facial features, skin tone, hairstyle, hair color and the same outfit unchanged. Plain light grey studio background, soft even lighting, photorealistic unless the reference is a drawing. ';
+const KONTEXT_PROMPT={
+  front:'Show the same person standing and facing the camera directly, front view, looking straight at the camera, arms relaxed at the sides. '+KEEP+'Framed from the top of the head to the knees.',
+  left:'Show the same person from their left side in a full side profile view, body and head turned 90 degrees so they face the left edge of the image. '+KEEP+'Framed from the top of the head to the knees.',
+  right:'Show the same person from their right side in a full side profile view, body and head turned 90 degrees so they face the right edge of the image. '+KEEP+'Framed from the top of the head to the knees.',
+  back:'Show the same person seen from directly behind, facing away from the camera, so we see the back of their head, their hair from behind and the back of the outfit; the face is not visible. Keep the same hairstyle, hair color and outfit unchanged. Plain light grey studio background, soft even lighting. Framed from the top of the head to the knees.'};
+const HF_SPACES=[
+  {id:'qwen-fast',space:'linoyts/Qwen-Image-Edit-2511-Fast',gpu:60,label:'Qwen-Image-Edit-2511',
+    args:(hf,{src,prompt,width,height})=>({images:[{image:hf(src),caption:null}],prompt,seed:0,randomize_seed:true,true_guidance_scale:1,num_inference_steps:4,height:height||SIZE.height,width:width||SIZE.width,rewrite_prompt:false}),
+    pick:out=>{ const f=out&&out[0]&&out[0][0]; return f&&(f.image?f.image.url:f.url); }},
+  {id:'kontext',space:'black-forest-labs/FLUX.1-Kontext-Dev',gpu:90,label:'FLUX.1 Kontext',
+    args:(hf,{src,prompt,angle})=>({input_image:hf(src),prompt:(angle&&KONTEXT_PROMPT[angle])||prompt,seed:0,randomize_seed:true,guidance_scale:2.5,steps:24}),
+    pick:out=>{ const f=out&&out[0]; return f&&(f.url||(f.image&&f.image.url)); }}];
+const LS_BAD='lukeangle.bad.', BAD_MS=3*HOUR;
+const spaceBad=sp=>{ const t=+(lsGet(LS_BAD+sp.id)||0); return t&&Date.now()<t; };
 let gradioMod=null; const loadGradio=()=>gradioMod||(gradioMod=import('/vendor/gradio-client-2.7.0.js').catch(e=>{ gradioMod=null; throw e; }));
 function hfToken(){ const t=lsGet(LS_TOKEN)||''; return /^hf_[A-Za-z0-9]{20,}$/.test(t)?t:''; }
 function setHfToken(v){ lsSet(LS_TOKEN,v||null); }
@@ -45,26 +63,30 @@ function hfErrorText(e){
   const wait=ms?(ms>=HOUR?Math.floor(ms/HOUR)+'시간 '+Math.round(ms%HOUR/60000)+'분':Math.max(1,Math.round(ms/60000))+'분'):'';
   if(/quota|exceeded your (?:gpu|zerogpu)|gpu (?:time|limit)|zerogpu.*limit|runs limit/i.test(m)) return {kind:'quota',wait:ms,text:'오늘 무료 GPU 사용량(허깅페이스)이 다 찼습니다'+(wait?' — 약 '+wait+' 뒤 다시 가능':'')+'. 허깅페이스 토큰(무료 계정 하루 5분)을 넣거나 힉스필드(유료)로 만드세요.'};
   if(/queue.*full|too many|rate.?limit|429/i.test(m)) return {kind:'busy',text:'무료 서버 대기열이 가득 찼습니다. 잠시 뒤 다시 하거나 힉스필드(유료)로 만드세요.'};
+  if(/zerogpu worker error|gpu task aborted|illegal duration|larger than the maximum allowed|^runtimeerror|: runtimeerror/i.test(m)) return {kind:'broken',text:'무료 서버(허깅페이스 Space)가 지금 고장 나 있습니다 (ZeroGPU worker error). 다른 무료 서버로 다시 해 보고, 안 되면 나중에 하거나 힉스필드(유료)로 만드세요.'};
   if(/paused|sleep|not found|404|503|502|could not (?:resolve|connect)|failed to fetch|connection|runtime error|building|space.*(?:down|error)|timed? ?out/i.test(m)) return {kind:'down',text:'무료 서버(허깅페이스 Space)가 지금 꺼져 있거나 응답하지 않습니다. 나중에 다시 하거나 힉스필드(유료)로 만드세요.'};
   return {kind:'error',text:'무료 생성 실패: '+m.slice(0,160)};
 }
-async function hfRun({src,prompt,width,height,onPhase}){
+async function hfRun(job){
   const {Client,handle_file}=await loadGradio(); const tok=hfToken(); let lastErr=null;
-  for(const space of HF_SPACES){
+  const list=HF_SPACES.filter(sp=>!spaceBad(sp)); if(!list.length) list.push(...HF_SPACES);   /* 전부 고장 표시면 그래도 다시 시도 */
+  for(const sp of list){
     try{
-      onPhase&&onPhase('무료 서버 연결 중…');
-      const app=await Client.connect(space,Object.assign({events:['data','status']},tok?{hf_token:tok}:{}));   /* events 에 status 가 없으면 대기열·오류 메시지가 안 옴 */
-      onPhase&&onPhase('무료 GPU 대기열…');
-      const job=app.submit('/infer',{images:[{image:handle_file(src),caption:null}],prompt,seed:0,randomize_seed:true,true_guidance_scale:1,num_inference_steps:4,height:height||SIZE.height,width:width||SIZE.width,rewrite_prompt:false});
+      job.onPhase&&job.onPhase('무료 서버 연결 중…'+(sp!==HF_SPACES[0]?' ('+sp.label+')':''));
+      const app=await Client.connect(sp.space,Object.assign({events:['data','status']},tok?{hf_token:tok}:{}));   /* events 에 status 가 없으면 대기열·오류 메시지가 안 옴 */
+      job.onPhase&&job.onPhase('무료 GPU 대기열…');
+      const sub=app.submit('/infer',sp.args(handle_file,job));
       let out=null;
-      for await(const msg of job){
-        if(msg.type==='status'){ if(msg.stage==='error') throw new Error([msg.title,msg.message].filter(Boolean).join(': ')||'error'); if(msg.stage==='pending') onPhase&&onPhase(msg.position!=null?'대기 '+(msg.position+1)+'번째…':'대기열…'); if(msg.stage==='generating') onPhase&&onPhase('그리는 중…'); }
+      for await(const msg of sub){
+        if(msg.type==='status'){ if(msg.stage==='error') throw new Error([msg.title,msg.message].filter(Boolean).join(': ')||'error'); if(msg.stage==='pending') job.onPhase&&job.onPhase(msg.position!=null?'대기 '+(msg.position+1)+'번째…':'대기열…'); if(msg.stage==='generating') job.onPhase&&job.onPhase('그리는 중…'); }
         if(msg.type==='data'){ out=msg.data; break; } }
-      const first=out&&out[0]&&out[0][0]; const u=first&&(first.image?first.image.url:first.url);
+      const u=sp.pick(out);
       if(!u) throw new Error(out?'결과 이미지가 없습니다':'무료 서버 응답이 끊겼습니다 (connection closed)');
       const r=await fetch(u,tok?{headers:{Authorization:'Bearer '+tok}}:{}); if(!r.ok) throw new Error('결과 받기 실패 ('+r.status+')');
-      return await r.blob();
-    }catch(e){ lastErr=e; if(hfErrorText(e).kind!=='down') break; }
+      const blob=await r.blob(); try{ blob.engine=sp.id; }catch(e){} lsSet(LS_BAD+sp.id,null); return blob;
+    }catch(e){ lastErr=e; const k=hfErrorText(e).kind;
+      if(k==='broken'||k==='down'){ lsSet(LS_BAD+sp.id,Date.now()+BAD_MS); continue; }   /* 고장 → 다음 Space */
+      break; }   /* 한도·대기열·기타 → 멈춤 (한도는 Space 를 바꿔도 같음) */
   }
   throw lastErr||new Error('무료 서버를 찾을 수 없습니다');
 }
@@ -79,7 +101,7 @@ const engines=[];
 function register(e){ const i=engines.findIndex(x=>x.id===e.id); if(i>=0) engines[i]=e; else engines.push(e); }
 const engineById=id=>engines.find(e=>e.id===id)||null;
 function autoEngine(){ const free=engines.filter(e=>e.free&&e.run); return free.find(e=>e.id===lsGet('lukeangle.engine'))||free[0]||null; }
-register({id:'hf',label:'무료 · 허깅페이스',badge:'무료',free:true,note:'Qwen-Image-Edit-2511 (허깅페이스 무료 GPU · 하루 사용량 제한)',run:hfRun});
+register({id:'hf',label:'무료 · 허깅페이스',badge:'무료',free:true,note:'Qwen-Image-Edit-2511 → 고장 시 FLUX.1 Kontext (허깅페이스 무료 GPU · 하루 사용량 제한)',run:hfRun});
 
 /* ── 읽기 전용 조회 ── */
 async function detect(){ const A=window.LukeAuth; if(A&&A.detect){ try{ await A.detect(); }catch(e){} } }
@@ -125,7 +147,7 @@ const lockKey=(k,a)=>LS_LOCK+k+'.'+a;
 const lockedByOther=(k,a)=>{ const t=+lsGet(lockKey(k,a))||0; return t&&Date.now()-t<LOCK_MS&&!mine.has(k+'.'+a); };
 const failedRecently=k=>{ const t=+lsGet(LS_FAIL+k)||0; return t&&Date.now()-t<FAIL_MS; };
 function botLike(){ const n=navigator; return /bot|crawl|spider|slurp|facebookexternalhit|lighthouse|preview/i.test(n.userAgent||'')||!!(n.connection&&n.connection.saveData); }
-const QUIET={quota:'무료 한도가 차서 나머지는 나중에 자동으로 만들어요',busy:'무료 서버가 붐벼서 나중에 자동으로 만들어요',down:'무료 서버가 쉬는 중이라 나중에 자동으로 만들어요',error:'자동 생성이 잘 안 됐어요 — 나중에 다시 시도해요'};
+const QUIET={quota:'무료 한도가 차서 나머지는 나중에 자동으로 만들어요',busy:'무료 서버가 붐벼서 나중에 자동으로 만들어요',down:'무료 서버가 쉬는 중이라 나중에 자동으로 만들어요',broken:'무료 서버가 고장이라 나중에 자동으로 만들어요',error:'자동 생성이 잘 안 됐어요 — 나중에 다시 시도해요'};
 
 /* ── 상태 (뿌리 키별): {state, angles:{front:{state:'done'|'running'|'wait'|'failed', item?, phase?}}, quiet?, text?} ── */
 const status=new Map();
@@ -172,7 +194,7 @@ async function exec(job){
     try{
       setState(key,{state:'running',current:a.id,from:job.from}); setAngle(key,a.id,{state:'running',phase:'원본 준비 중…'});
       if(!src) src=await job.getSrc();
-      let phase=''; const blob=await eng.run({src,prompt:promptFor(a.id),width:SIZE.width,height:SIZE.height,onPhase:ph=>{ if(ph!==phase){ phase=ph; setAngle(key,a.id,{state:'running',phase:ph}); } }});
+      let phase=''; const blob=await eng.run({src,prompt:promptFor(a.id),angle:a.id,width:SIZE.width,height:SIZE.height,onPhase:ph=>{ if(ph!==phase){ phase=ph; setAngle(key,a.id,{state:'running',phase:ph}); } }});
       if(!job.force){ const again=await findAngles(key).catch(()=>({})); if(again[a.id]){ setAngle(key,a.id,{state:'done',item:again[a.id]}); found=again; continue; } }   /* 저장 직전 재확인 */
       setAngle(key,a.id,{state:'running',phase:'저장 중…'});
       const ext=(blob.type||'').includes('jpeg')?'jpg':(blob.type||'').includes('webp')?'webp':'png';
@@ -183,7 +205,7 @@ async function exec(job){
       const x=eng.id==='hf'?hfErrorText(e):{kind:'error',text:'생성 실패: '+(e.message||e)};
       if(x.kind==='quota'){ lsSet(LS_COOL,Date.now()+(x.wait||HOUR)); lsSet(LS_COOL+'.kind','quota'); }
       else if(x.kind==='busy'){ lsSet(LS_COOL,Date.now()+BUSY_MS); lsSet(LS_COOL+'.kind','busy'); }
-      else if(x.kind==='down'){ lsSet(LS_COOL,Date.now()+HOUR); lsSet(LS_COOL+'.kind','down'); }
+      else if(x.kind==='down'||x.kind==='broken'){ lsSet(LS_COOL,Date.now()+HOUR); lsSet(LS_COOL+'.kind',x.kind); }
       else lsSet(LS_FAIL+key,Date.now());
       setAngle(key,a.id,{state:'wait'});
       return setState(key,{state:'failed',current:null,kind:x.kind,quiet:QUIET[x.kind]||QUIET.error,text:x.text,manual,from:job.from});   /* 남은 각도는 다음 방문 때 이어서 */

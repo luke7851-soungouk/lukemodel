@@ -19,7 +19,15 @@ const {MODELS,modelById,defaultsFor,REF_MODELS,buildRequest}=H;
 /* ───────── State ───────── */
 const saved=(()=>{ try{return JSON.parse(localStorage.getItem(LS_STATE)||'{}');}catch(e){return {};} })();
 const state={scope:saved.scope||'video',surface:saved.surface||'video',model:{image:saved.mImage||'soul-2',video:saved.mVideo||'seedance-2.5'},settings:saved.settings||{},media:{start:null,end:null,ref:[]},runs:[],selected:new Set(),selecting:false,lastSel:null,undo:null,pub:{items:[],offset:0,done:false,loading:false,err:null}};
-function persist(){ try{ localStorage.setItem(LS_STATE,JSON.stringify({scope:state.scope,surface:state.surface,mImage:state.model.image,mVideo:state.model.video,settings:state.settings})); }catch(e){} }
+function persist(){ try{ localStorage.setItem(LS_STATE,JSON.stringify({scope:state.scope,surface:state.surface,mImage:state.model.image,mImagePicked:!!state.mImagePicked,mVideo:state.model.video,settings:state.settings})); }catch(e){} }
+state.mImagePicked=!!saved.mImagePicked;
+/* 참고 이미지를 넣을 때 쓸 모델: 얼굴 유지가 되는 편집 모델(Qwen Image 3, 최대 3장).
+   사용자가 직접 고른 참고 지원 모델이면 그대로, 그 외(기본값 Soul 2·참고 미지원)는 Qwen Image 3 로 */
+const REF_DEFAULT='qwen-image-3';
+function pickRefModel(){ const cur=modelById(state.model.image);
+  if(!cur.roles.ref||(!state.mImagePicked&&/^soul/.test(cur.id))) state.model.image=modelById(REF_DEFAULT)?REF_DEFAULT:'soul-2';
+  return modelById(state.model.image); }
+function addRef(u){ const m=pickRefModel(); if(!state.media.ref.some(x=>x.url===u)){ if(state.media.ref.length>=m.roles.ref) state.media.ref.splice(0,1); state.media.ref.push({url:u}); } return m; }
 const curModel=()=>modelById(state.model[state.surface]);
 function curSettings(){ const m=curModel(); return H.fixSettings(m,state.settings[m.id]); }
 const getKey=H.getKey;
@@ -129,8 +137,7 @@ async function deletePublic(it){
   catch(e){ toast(e.message,'err'); }
 }
 /* 「참고로 사용」: 이미지 → 참고 이미지 / 시작 프레임, 영상 → 장면 추출(마지막 = 이어서, 첫 장면 = 참고) */
-function useAsRef(url){ state.surface='image'; if(!modelById(state.model.image).roles.ref) state.model.image='soul-2'; const m=modelById(state.model.image);
-  if(!state.media.ref.some(x=>x.url===url)){ if(state.media.ref.length>=m.roles.ref) state.media.ref.splice(0,1); state.media.ref.push({url}); }
+function useAsRef(url){ state.surface='image'; const m=addRef(url);
   if(state.scope==='video') state.scope='image'; persist(); closeModal(); renderAll(); $('prompt').focus(); toast(m.label+' 참고 이미지로 추가했습니다','ok'); }
 function useAsStartFrame(url){ state.surface='video'; if(!modelById(state.model.video).roles.start) state.model.video='seedance-2.5'; state.media={start:{url},end:null,ref:[]};
   persist(); closeModal(); if(state.scope==='image') state.scope='video'; renderAll(); $('prompt').focus(); toast('시작 프레임으로 넣었습니다 — 영상 프롬프트를 쓰고 생성을 누르세요','ok'); }
@@ -235,6 +242,8 @@ function renderComposer(){
     const tip=cap?('참고 이미지 '+Math.min(n,cap)+'/'+cap+(n>cap?' (초과분은 무시됨)':'')+' — 파일 끌어놓기·붙여넣기(Ctrl+V)·클릭, 내 결과, 공개 갤러리에서 추가'):('이 모델은 참고 이미지를 지원하지 않습니다. 지원 모델: '+REF_MODELS());
     const b=el('button',{class:'chip ref-btn'+(n?' on':''),title:tip,'aria-label':tip,'aria-disabled':cap?null:'true',onclick:()=>{ if(!cap){ toast(tip,'err'); return; } if(n>=cap){ toast('이 모델은 참고 이미지를 최대 '+cap+'장까지 씁니다','err'); return; } openAssetPicker('ref','참고 이미지'); }},'🖼 참고 이미지',cap?el('span',{class:'cnt',text:' '+Math.min(n,cap)+'/'+cap+(n>cap?' (+'+(n-cap)+' 미사용)':'')}):el('span',{class:'cnt',text:n?' 미지원 · '+n+'장 무시됨':' 미지원'}));
     c.appendChild(b);
+    if(/^soul/.test(m.id)) c.appendChild(el('div',{class:'soul-warn',role:'note'},n?'⚠ Soul은 얼굴 유지가 약해요 — 같은 사람이 필요하면 ':'⚠ 참고 이미지가 없어서 Soul은 매번 다른 얼굴을 만들어요 — 같은 사람은 참고 이미지 + ',
+      el('button',{class:'lnk soul-switch',type:'button',text:'Qwen Image 3로 바꾸기',onclick:()=>{ state.model.image=REF_DEFAULT; state.mImagePicked=true; persist(); renderAll(); }})));
     if(m.s.weight&&n) c.appendChild(sel('참고 강도',m.s.weight,s.weight,v=>'강도 '+v,v=>setSetting('weight',v))); }
   if(m.s.audio){ const cb=el('input',{type:'checkbox'}); cb.checked=!!s.audio; cb.onchange=()=>setSetting('audio',cb.checked); c.appendChild(el('label',{class:'chip',title:'오디오 생성'},cb,'오디오')); }
   c.appendChild(sel('개수',m.s.batchNative?[1,4]:[1,2,3,4],s.batch,v=>v+'개',v=>setSetting('batch',+v)));
@@ -312,7 +321,7 @@ function openModelPicker(){
   const q=el('input',{class:'inp',placeholder:'모델 검색…',type:'search'}); const list=el('div',{class:'mlist'});
   const draw=()=>{ list.textContent=''; const s=q.value.trim().toLowerCase();
     [['image','이미지'],['video','영상']].forEach(([k,l])=>{ const ms=MODELS.filter(m=>m.kind===k&&(!s||m.label.toLowerCase().includes(s)||m.id.includes(s))); if(!ms.length) return; list.appendChild(el('div',{class:'mhead',text:l+' · '+ms.length}));
-      ms.forEach(m=>list.appendChild(el('button',{class:state.model[m.kind]===m.id&&state.surface===m.kind?'on':'',onclick:()=>{ state.surface=m.kind; state.model[m.kind]=m.id; if(state.scope==='image'||state.scope==='video') state.scope=m.kind; persist(); closeModal(); renderAll(); }},
+      ms.forEach(m=>list.appendChild(el('button',{class:state.model[m.kind]===m.id&&state.surface===m.kind?'on':'',onclick:()=>{ state.surface=m.kind; state.model[m.kind]=m.id; if(m.kind==='image') state.mImagePicked=true; if(state.scope==='image'||state.scope==='video') state.scope=m.kind; persist(); closeModal(); renderAll(); }},
         el('span',{text:m.label}),el('small',{text:[m.roles.ref?'참고 이미지 '+m.roles.ref+'장':'',m.roles.start?'이미지→':'' ,m.s.dur?m.s.dur[0]+'–'+m.s.dur[m.s.dur.length-1]+'s':'',m.s.audio?'오디오':''].filter(Boolean).join(' · ')})))); }); };
   q.oninput=draw; draw();
   openModal(el('div',{class:'box'},el('h3',{text:'모델 선택 · '+MODELS.length+'개'}),q,list));
@@ -332,7 +341,7 @@ function openViewer(it){
   if(!isRun&&!it.local&&/^[0-9a-f-]{36}$/i.test(String(it.id||''))) acts.appendChild(el('a',{class:'btn ghost v-page',href:'/?m='+it.id,text:'작품 페이지 · 이어서 만들기 ›',title:'이 이미지/영상을 원본으로 이어서 만들고, 이어진 작품을 모아 보는 페이지'}));
   if(isRun){ acts.append(el('button',{class:'btn ghost',text:it.fav?'★ 즐겨찾기 해제':'☆ 즐겨찾기',onclick:()=>{ toggleFav(it); openViewer(it); }}),
     el('button',{class:'btn ghost',text:'다시 만들기 (설정 재사용)',onclick:()=>reuse(it)}),
-    it.kind==='image'?el('button',{class:'btn ghost',text:'참고 이미지로 사용',onclick:()=>{ state.surface='image'; if(!modelById(state.model.image).roles.ref) state.model.image='soul-2'; const m=modelById(state.model.image); const u=it.shared&&shared?pubUrl(it.shared):it.url; if(!state.media.ref.some(x=>x.url===u)){ if(state.media.ref.length>=m.roles.ref) state.media.ref.splice(0,1); state.media.ref.push({url:u}); } if(state.scope==='video') state.scope='image'; persist(); closeModal(); renderAll(); $('prompt').focus(); toast(m.label+' 참고 이미지로 추가했습니다','ok'); }}):null,
+    it.kind==='image'?el('button',{class:'btn ghost',text:'참고 이미지로 사용',onclick:()=>{ state.surface='image'; const u=it.shared&&shared?pubUrl(it.shared):it.url; const m=addRef(u); if(state.scope==='video') state.scope='image'; persist(); closeModal(); renderAll(); $('prompt').focus(); toast(m.label+' 참고 이미지로 추가했습니다','ok'); }}):null,
     it.kind==='image'?el('button',{class:'btn ghost',text:'이 이미지로 영상 만들기',onclick:()=>{ state.surface='video'; if(!modelById(state.model.video).roles.start) state.model.video='seedance-2.5'; state.media={start:{url:it.url},end:null,ref:[]}; persist(); closeModal(); if(state.scope==='image') state.scope='video'; renderAll(); $('prompt').focus(); }}):null,
     (it.share==='done'||it.share==='external')?el('div',{class:'kv'},el('span',{class:'k',text:'공개 갤러리'}),el('span',{text:it.share==='done'?'자동 등록됨 ✓':'링크로 등록됨'})):el('button',{class:'btn ghost',text:it.share==='pending'?'공개 갤러리 등록 중…':'공개 갤러리에 공유',onclick:()=>shareRun(it)})); }
   else if(!it.local){ acts.append(...useButtons(it.url,it.kind));
@@ -418,6 +427,9 @@ async function boot(){
   { const use=q.get('use'), kind=q.get('kind')==='video'?'video':'image';
     if(use){ try{ const u=new URL(location.href); u.searchParams.delete('use'); u.searchParams.delete('kind'); history.replaceState(null,'',u.pathname+(u.search||'')); }catch(e){}
       if(H.okMediaUrl(use)) openUseChooser(use,kind); else toast('참고로 쓸 수 없는 주소입니다','err'); } }
+  /* 작품 페이지 → /higgsfield/?m=<id> : 그 작품 이미지를 참고 이미지로 넣고 얼굴 유지 모델(Qwen Image 3)로 */
+  { const mid=q.get('m'); if(mid&&/^[0-9a-f-]{36}$/i.test(mid)&&H.getItem){ H.getItem(mid).then(x=>{ if(!x||x.kind!=='image'){ if(x&&x.kind==='video') openUseChooser(x.url,'video'); return; }
+      state.surface='image'; if(state.scope==='video') state.scope='image'; state.media.ref=[]; const m=addRef(x.url); persist(); renderAll(); toast(m.label+' 참고 이미지로 넣었습니다 (같은 얼굴 유지)','ok'); }).catch(e=>toast(e.message,'err')); } }
   state.runs.filter(r=>r.status==='done'&&r.share==='pending').forEach(r=>autoShare(r));
   state.runs.filter(r=>r.status==='pending').forEach(r=>{ if(r.requestId&&getKey()&&Date.now()-(r.submittedAt||r.createdAt)<DEADLINE_MS){ inflight++; setLamp(); pollRun(r).finally(()=>{ inflight--; setLamp(); }); } else failRun(r,'페이지를 떠나 확인이 중단됨'); });
 }
