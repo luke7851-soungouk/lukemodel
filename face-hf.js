@@ -30,11 +30,12 @@ const polling=new Set();
 
 /* ── 얼굴별 상태 ── */
 const states=new Map();
-function stateFor(face){
-  let st=states.get(face.key);
+function stateFor(face,opts){
+  opts=opts||{}; let st=states.get(face.key);
   if(!st){ st={key:face.key,tab:'image',prompt:{image:'',video:''},start:null,items:[],ids:new Set(),loading:false,done:false,err:null,loadedAt:0,
     faceUrl:face.publicUrl||null,faceState:face.publicUrl?'ready':'idle',faceErr:null}; states.set(face.key,st); }
-  st.face=face;
+  st.face=face; st.mode=opts.mode||'face'; st.item=opts.item||null;
+  if(!st._tabSet&&st.mode==='media'&&st.item&&st.item.kind==='video'){ st.tab='video'; } st._tabSet=true;
   if(face.publicUrl&&st.faceUrl!==face.publicUrl){ st.faceUrl=face.publicUrl; st.faceState='ready'; }
   return st;
 }
@@ -55,7 +56,14 @@ async function ensureFaceUrl(st){
 }
 
 /* ── Supabase에서 이 얼굴 작품 목록 ── */
+async function loadTree(st,quiet){
+  if(st.loading) return; st.loading=true; st.err=null; if(!quiet) drawGallery(st);
+  try{ const rows=await H.listTree(st.item.id); st.items=rows; st.ids=new Set(rows.map(x=>x.id)); st.done=true; st.loadedAt=Date.now(); }
+  catch(e){ st.err=e.message; }
+  st.loading=false; drawGallery(st);
+}
 async function loadFirst(st){
+  if(st.mode==='media') return loadTree(st);
   if(st.loading) return; st.loading=true; st.err=null; drawGallery(st);
   try{ const rows=await H.listByFace(st.key,{limit:PAGE}); st.items=rows; st.ids=new Set(rows.map(x=>x.id)); st.done=rows.length<PAGE; st.loadedAt=Date.now(); }
   catch(e){ st.err=e.message; }
@@ -69,6 +77,7 @@ async function loadMore(st){
   st.loading=false; drawGallery(st);
 }
 async function loadNew(st){
+  if(st.mode==='media') return loadTree(st,true);
   const first=st.items[0]; if(!first){ st.loading=false; return loadFirst(st); }
   try{ const rows=await H.listByFace(st.key,{limit:50,after:first.created_at}); const add=rows.filter(x=>!st.ids.has(x.id)); if(add.length){ add.forEach(x=>st.ids.add(x.id)); st.items.unshift(...add); } st.loadedAt=Date.now(); drawGallery(st); }
   catch(e){}
@@ -115,7 +124,7 @@ async function share(st,r,title){
   if(!H.shared){ r.share='off'; persistRuns(); redraw(st); return; }
   try{ const res=await H.shareResult({url:r.url,kind:r.kind,title,faceKey:st.key});
     r.share=res.share; await loadNew(st); r.status='gone'; persistRuns();
-    toast(res.share==='done'?'완성! 「이 얼굴로 만든 작품」과 홈 공개 갤러리에 저장했습니다':'파일 복사 실패('+res.why+') — 원본 링크로 저장했습니다(약 7일 후 만료)',res.share==='done'?'ok':'err'); }
+    toast(res.share==='done'?(st.mode==='media'?'완성! 원본 아래 「이 작품에서 이어진 작품」과 홈 공개 갤러리에 저장했습니다':'완성! 「이 얼굴로 만든 작품」과 홈 공개 갤러리에 저장했습니다'):'파일 복사 실패('+res.why+') — 원본 링크로 저장했습니다(약 7일 후 만료)',res.share==='done'?'ok':'err'); }
   catch(e){ r.share='failed'; r.shareErr=e.why||e.message; persistRuns(); toast('갤러리 저장 실패: '+r.shareErr+' — 아래 결과에서 바로 내려받으세요','err'); }
   redraw(st);
 }
@@ -174,10 +183,16 @@ function drawKey(st){
 }
 function drawStatus(st){
   if(!alive(st)) return; const box=st.root.querySelector('.fhf-face'); box.textContent='';
-  const txt=st.faceState==='ready'?'얼굴 사진 준비됨 — 모든 생성에 자동으로 함께 보냅니다':st.faceState==='uploading'?'얼굴 사진을 공개 저장소에 올리는 중… (한 번만)':st.faceState==='error'?'얼굴 사진 준비 실패: '+(st.faceErr||''):'얼굴 사진 준비 전';
-  box.append(el('span',{class:'th',style:'background-image:url("'+String(st.face.preview||'').replace(/"/g,'%22')+'")'}),el('span',{class:'t '+(st.faceState==='error'?'bad':st.faceState==='ready'?'good':'')},txt));
+  const vid=st.mode==='media'&&st.item&&st.item.kind==='video';
+  const txt=st.mode==='media'
+    ?(st.faceState==='ready'?(vid?'영상의 첫 장면 준비됨 — 생성할 때 자동으로 함께 보냅니다':'원본 이미지 준비됨 — 모든 생성에 자동으로 함께 보냅니다 (같은 인물·스타일 유지)'):st.faceState==='uploading'?'영상의 첫 장면을 뽑아 올리는 중… (한 번만)':st.faceState==='error'?'원본 준비 실패: '+(st.faceErr||''):'영상의 첫 장면을 생성할 때 한 번 뽑아 시작 프레임·참고 이미지로 씁니다')
+    :(st.faceState==='ready'?'얼굴 사진 준비됨 — 모든 생성에 자동으로 함께 보냅니다':st.faceState==='uploading'?'얼굴 사진을 공개 저장소에 올리는 중… (한 번만)':st.faceState==='error'?'얼굴 사진 준비 실패: '+(st.faceErr||''):'얼굴 사진 준비 전');
+  box.append(thumbEl(st.face.preview,st.face.previewKind),el('span',{class:'t '+(st.faceState==='error'?'bad':st.faceState==='ready'?'good':'')},txt));
   if(st.faceState==='error') box.append(el('button',{class:'btn ghost sm',type:'button',text:'다시 시도',onclick:()=>ensureFaceUrl(st).catch(()=>{})}));
 }
+/* 작은 미리보기: 이미지는 배경, 영상은 첫 장면 */
+function thumbEl(url,kind){ if(kind==='video'){ const v=el('video',{class:'th',src:String(url||'')+'#t=0.1',muted:true,playsinline:true,preload:'metadata'}); v.muted=true; return v; }
+  return el('span',{class:'th',style:'background-image:url("'+String(url||'').replace(/"/g,'%22')+'")'}); }
 function selChip(label,values,cur,fmt,on){ const s=el('select',{'aria-label':label}); values.forEach(v=>{ const o=el('option',{value:String(v),text:fmt?fmt(v):String(v)}); if(String(v)===String(cur)) o.selected=true; s.appendChild(o); }); s.onchange=()=>on(s.value); return el('label',{class:'fhf-chip'},el('span',{text:label}),s); }
 function drawForm(st){
   if(!alive(st)) return; const box=st.root.querySelector('.fhf-form'); box.textContent='';
@@ -185,12 +200,14 @@ function drawForm(st){
   box.appendChild(el('div',{class:'fhf-tabs',role:'tablist'},...[['image','이미지 만들기'],['video','영상 만들기']].map(([k,l])=>el('button',{type:'button',role:'tab','aria-selected':String(kind===k),class:kind===k?'on':'',text:l,onclick:()=>{ st.tab=k; drawForm(st); }}))));
   const m=H.modelById(kind==='image'?prefs.img:prefs.vid), s=settingsFor(m);
   if(kind==='video'){
-    const src=st.start?st.start.url:st.face.preview;
-    box.appendChild(el('div',{class:'fhf-start'},el('span',{class:'th',style:'background-image:url("'+String(src||'').replace(/"/g,'%22')+'")'}),
-      el('span',{class:'t'},el('b',{text:'시작 프레임: '}),st.start?(st.start.label||'이 페이지에서 만든 이미지'):'이 얼굴 사진',el('br'),el('small',{text:'첫 장면을 이 이미지로 고정해 같은 사람이 움직이게 합니다.'})),
-      st.start?el('button',{class:'btn ghost sm',type:'button',text:'얼굴 사진으로 되돌리기',onclick:()=>{ st.start=null; drawForm(st); }}):null));
+    const med=st.mode==='media', vsrc=med&&st.item&&st.item.kind==='video';
+    const baseLabel=med?(vsrc?'이 영상의 첫 장면':'이 이미지'):'이 얼굴 사진';
+    box.appendChild(el('div',{class:'fhf-start'},st.start?thumbEl(st.start.url,'image'):thumbEl(st.face.preview,st.face.previewKind),
+      el('span',{class:'t'},el('b',{text:'시작 프레임: '}),st.start?(st.start.label||'이 페이지에서 만든 이미지'):baseLabel,el('br'),el('small',{text:med?'첫 장면을 이 이미지로 고정해 같은 인물·장면이 이어서 움직이게 합니다.':'첫 장면을 이 이미지로 고정해 같은 사람이 움직이게 합니다.'})),
+      vsrc&&!st.start?el('button',{class:'btn ghost sm fhf-last',type:'button',text:'마지막 장면에서 이어서',onclick:e=>useItem(st,st.item,e.currentTarget)}):null,
+      st.start?el('button',{class:'btn ghost sm',type:'button',text:baseLabel+'(으)로 되돌리기',onclick:()=>{ st.start=null; drawForm(st); }}):null));
   } else {
-    box.appendChild(el('div',{class:'fhf-hint',text:'이 얼굴 사진을 참고 이미지로 자동 첨부합니다 ('+(m.id.startsWith('soul')?'Soul Reference: image_reference_url':m.id==='ideogram-4'?'Ideogram: image_url + 참고 강도':'Qwen 편집: image_urls')+').'}));
+    box.appendChild(el('div',{class:'fhf-hint',text:(st.mode==='media'?(st.item&&st.item.kind==='video'?'이 영상의 첫 장면을':'이 이미지를'):'이 얼굴 사진을')+' 참고 이미지로 자동 첨부합니다 ('+(m.id.startsWith('soul')?'Soul Reference: image_reference_url':m.id==='ideogram-4'?'Ideogram: image_url + 참고 강도':'Qwen 편집: image_urls')+').'}));
   }
   const ta=el('textarea',{class:'inp',rows:'3',placeholder:kind==='image'?'예) 한강 공원 벤치에 앉아 웃고 있는 모습, 오후 햇살, 필름 사진 느낌':'예) 카메라를 보며 천천히 미소 짓고 고개를 살짝 돌린다, 부드러운 바람, 시네마틱','aria-label':kind==='image'?'이미지 프롬프트':'영상 프롬프트'});
   ta.value=st.prompt[kind]||''; ta.addEventListener('input',()=>{ st.prompt[kind]=ta.value; });
@@ -206,7 +223,7 @@ function drawForm(st){
   if(kind==='image') row.appendChild(selChip('개수',m.s.batchNative?[1,4]:[1,2,3,4],s.batch,v=>v+'장',v=>setSetting(m,'batch',+v)));
   if(m.s.audio){ const cb=el('input',{type:'checkbox'}); cb.checked=!!s.audio; cb.onchange=()=>setSetting(m,'audio',cb.checked); row.appendChild(el('label',{class:'fhf-chip'},cb,el('span',{text:'소리'}))); }
   row.appendChild(el('span',{class:'sp'}));
-  row.appendChild(el('button',{class:'btn fhf-go',type:'button',disabled:busy&&(kind==='image'||!st.start)?true:null,text:busy&&(kind==='image'||!st.start)?'얼굴 사진 올리는 중…':(kind==='image'?'이미지 만들기':'영상 만들기'),onclick:()=>generate(st,kind)}));
+  row.appendChild(el('button',{class:'btn fhf-go',type:'button',disabled:busy&&(kind==='image'||!st.start)?true:null,text:busy&&(kind==='image'||!st.start)?(st.mode==='media'?'원본 준비 중…':'얼굴 사진 올리는 중…'):(kind==='image'?'이미지 만들기':'영상 만들기'),onclick:()=>generate(st,kind)}));
   box.appendChild(row);
 }
 function mediaEl(url,kind,alt){
@@ -230,12 +247,15 @@ function tileRun(st,r){
 }
 function tileItem(st,x){
   const t=el('div',{class:'fhf-tile','data-id':x.id});
-  const m=mediaEl(x.url,x.kind,H.displayTitle(x.title)); if(x.kind!=='video'){ m.style.cursor='zoom-in'; m.addEventListener('click',()=>window.open(x.url,'_blank','noopener')); }
+  const open=window.LukeOpenMedia;
+  const m=mediaEl(x.url,x.kind,H.displayTitle(x.title)); if(x.kind!=='video'){ m.style.cursor='zoom-in'; m.addEventListener('click',()=>open?open(x):window.open(x.url,'_blank','noopener')); }
   t.appendChild(m);
   t.appendChild(el('span',{class:'bd',text:x.kind==='video'?'VIDEO':'IMAGE'}));
-  t.appendChild(el('div',{class:'cap'},el('span',{class:'t',text:H.displayTitle(x.title)||'힉스필드 결과'}),el('small',{text:new Date(x.created_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}),
+  const depth=st.mode==='media'&&x._depth?el('small',{class:'dep',text:x._depth===1?'↳ 이 작품에서 바로':'↳ 파생의 파생 · '+x._depth+'단계'}):null;
+  t.appendChild(el('div',{class:'cap'},el('span',{class:'t',text:H.displayTitle(x.title)||'힉스필드 결과'}),depth,el('small',{text:new Date(x.created_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}),
     el('div',{class:'acts'},el('button',{class:'btn sm fhf-dl',type:'button',text:'⤓ 다운로드',onclick:()=>H.download(Object.assign({},x,{model:'face-'+st.key}))}),
       el('button',{class:'btn ghost sm fhf-use',type:'button',text:'참고로 사용',title:x.kind==='video'?'이 영상의 마지막 장면을 시작 프레임으로 넣어 이어서 영상 만들기':'이 이미지를 시작 프레임으로 넣어 영상 만들기',onclick:e=>useItem(st,x,e.currentTarget)}),
+      open?el('button',{class:'btn ghost sm fhf-open',type:'button',text:'이어서 만들기 ›',title:'이 작품 페이지에서 이 작품을 원본으로 이미지·영상 만들기',onclick:()=>open(x)}):null,
       H.canDelete&&H.canDelete(x)?el('button',{class:'btn ghost sm fhf-del',type:'button',text:'삭제',title:'내가 올리거나 만든 작품 삭제',onclick:e=>removeItem(st,x,e.currentTarget)}):null)));
   return t;
 }
@@ -245,14 +265,15 @@ function drawGallery(st){
   const fin=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime',multiple:true,hidden:true,class:'fhf-file','aria-label':'이 얼굴에 올릴 파일'});
   fin.addEventListener('change',()=>{ const fs=[...fin.files]; fin.value=''; uploadFiles(st,fs); });
   const chip=window.LukeAuth&&window.LukeAuth.chip?window.LukeAuth.chip():null;
-  box.appendChild(el('div',{class:'fhf-ghead'},el('h3',{text:'이 얼굴의 작품 · 최신순'}),el('span',{class:'cnt',text:st.items.length?(st.items.length+(st.done?'개':'개+')):''}),el('span',{class:'sp'}),chip,
-    H.shared?el('button',{class:'btn sm fhf-up',type:'button',disabled:st.uploading?true:null,text:st.uploading?('올리는 중 '+st.uploading.i+'/'+st.uploading.n+'…'):'+ 이 얼굴에 올리기',title:'이미지(≤'+Math.round(H.MAX_IMG/1048576)+'MB)·영상(≤'+Math.round(H.MAX_VID/1048576)+'MB)을 이 얼굴 작품으로 공개 등록',onclick:()=>fin.click()}):null,fin,
+  const med=st.mode==='media';
+  box.appendChild(el('div',{class:'fhf-ghead'},el('h3',{text:med?'이 작품에서 이어진 작품 · 최신순':'이 얼굴의 작품 · 최신순'}),el('span',{class:'cnt',text:st.items.length?(st.items.length+(st.done?'개':'개+')):''}),el('span',{class:'sp'}),chip,
+    H.shared?el('button',{class:'btn sm fhf-up',type:'button',disabled:st.uploading?true:null,text:st.uploading?('올리는 중 '+st.uploading.i+'/'+st.uploading.n+'…'):(med?'+ 여기에 이어 올리기':'+ 이 얼굴에 올리기'),title:'이미지(≤'+Math.round(H.MAX_IMG/1048576)+'MB)·영상(≤'+Math.round(H.MAX_VID/1048576)+'MB)을 '+(med?'이 작품에서 이어진 작품':'이 얼굴 작품')+'으로 공개 등록',onclick:()=>fin.click()}):null,fin,
     el('button',{class:'btn ghost sm',type:'button',text:st.loading?'불러오는 중…':'새로고침',disabled:st.loading?true:null,onclick:()=>loadFirst(st)})));
   const grid=el('div',{class:'fhf-grid'});
   runs.forEach(r=>grid.appendChild(tileRun(st,r)));
   st.items.forEach(x=>grid.appendChild(tileItem(st,x)));
   box.appendChild(grid);
-  if(!runs.length&&!st.items.length) box.appendChild(el('div',{class:'fhf-empty',text:st.loading?'불러오는 중…':st.err?('불러오지 못했습니다: '+st.err):'아직 이 얼굴로 만든 작품이 없습니다. 위에서 첫 이미지나 영상을 만들어 보세요.'}));
+  if(!runs.length&&!st.items.length) box.appendChild(el('div',{class:'fhf-empty',text:st.loading?'불러오는 중…':st.err?('불러오지 못했습니다: '+st.err):(med?'아직 이 작품에서 이어 만든 작품이 없습니다. 위에서 첫 이미지나 영상을 만들어 보세요 — 결과가 여기 최신순으로 붙습니다.':'아직 이 얼굴로 만든 작품이 없습니다. 위에서 첫 이미지나 영상을 만들어 보세요.')}));
   else if(st.err) box.appendChild(el('div',{class:'fhf-empty',text:'불러오지 못했습니다: '+st.err}));
   if(st.items.length&&!st.done){ const mb=el('div',{class:'fhf-more',style:'text-align:center;margin-top:10px'},el('button',{class:'btn ghost sm',type:'button',text:st.loading?'불러오는 중…':'더 보기',disabled:st.loading?true:null,onclick:()=>loadMore(st)})); box.appendChild(mb);
     /* 끝까지 스크롤하면 자동으로 다음 페이지 (버튼은 백업) */
@@ -267,7 +288,8 @@ const CSS=`.fhf{border:1px solid var(--acc);border-radius:14px;background:rgba(7
 .fhf-key{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.8px;color:var(--dim);line-height:1.6;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .fhf-key .ok{color:var(--ok)}.fhf-key .t{flex-basis:100%}.fhf-key .row{display:flex;gap:6px;flex:1;min-width:240px}.fhf-key .inp{margin:0;flex:1}
 .fhf-face,.fhf-start{display:flex;align-items:center;gap:10px;font-size:12.8px;color:var(--dim);margin-bottom:10px;flex-wrap:wrap}
-.fhf-face .th,.fhf-start .th{width:44px;height:44px;border-radius:9px;background:#14171f center/contain no-repeat;flex:none;border:1px solid var(--line)}
+.fhf-face .th,.fhf-start .th{width:44px;height:44px;border-radius:9px;background:#14171f center/contain no-repeat;flex:none;border:1px solid var(--line);object-fit:contain}
+.fhf-tile .dep{color:#9fb4ff}
 .fhf-face .t,.fhf-start .t{flex:1;min-width:160px;line-height:1.5}.fhf-face .good{color:var(--ok)}.fhf-face .bad{color:var(--bad)}
 .fhf-start{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}.fhf-start b{color:var(--tx)}
 .fhf-tabs{display:flex;gap:6px;margin-bottom:10px}
@@ -299,17 +321,18 @@ const CSS=`.fhf{border:1px solid var(--acc);border-radius:14px;background:rgba(7
 function ensureCss(){ if(document.getElementById('fhf-css')) return; const s=document.createElement('style'); s.id='fhf-css'; s.textContent=CSS; document.head.appendChild(s); }
 
 /* face: {key, name, preview, publicUrl?, resolve?:async()=>url} */
-function mount(container,face){
-  ensureCss();
+/* opts: {mode:'media', item:<shared_media 행>} → 작품 페이지 모드 (그 이미지/영상을 원본으로, 결과는 face_id='m-<id>' 로 그 아래에) */
+function mount(container,face,opts){
+  ensureCss(); opts=opts||{};
   face=Object.assign({},face,{key:H.cleanKey(face.key)});
-  const st=stateFor(face);
-  const root=el('section',{class:'fhf',id:'faceHf','aria-label':'이 얼굴로 힉스필드 제작','data-face':st.key},
-    el('h2',{text:'이 얼굴로 힉스필드 제작'}),
-    el('div',{class:'sub',text:'이 얼굴 사진을 매번 자동으로 함께 보내 같은 사람으로 이미지와 영상을 만듭니다. 완성된 결과와 직접 올린 파일은 아래 「이 얼굴의 작품」과 홈 공개 갤러리에 저장되어 누구나 보고 내려받을 수 있습니다. 다른 사람 작품도 「참고로 사용」으로 시작 프레임에 넣어 토큰을 아낄 수 있습니다. 공개되면 안 되는 내용은 만들지 마세요.'}),
+  const st=stateFor(face,opts), med=st.mode==='media';
+  const root=el('section',{class:'fhf',id:med?'mediaHf':'faceHf','aria-label':med?'이 작품으로 이어서 만들기':'이 얼굴로 힉스필드 제작','data-face':st.key},
+    el('h2',{text:med?'이 작품으로 이어서 만들기':'이 얼굴로 힉스필드 제작'}),
+    el('div',{class:'sub',text:med?(st.item&&st.item.kind==='video'?'이 영상의 첫 장면(또는 마지막 장면)을 시작 프레임으로 넣어 이어지는 영상을 만들거나, 참고 이미지로 넣어 같은 인물의 다른 장면·포즈 이미지를 만듭니다.':'이 이미지를 매번 참고 이미지로 함께 보내 같은 인물의 다른 포즈·장면 이미지를 만들거나, 시작 프레임으로 넣어 영상을 만듭니다.')+' 내 Higgsfield 키를 쓰며, 완성된 결과는 아래 「이 작품에서 이어진 작품」(최신순)과 홈 공개 갤러리에 저장되어 누구나 보고 내려받을 수 있습니다. 결과에서 또 만든 작품도 여기에 함께 붙습니다.':'이 얼굴 사진을 매번 자동으로 함께 보내 같은 사람으로 이미지와 영상을 만듭니다. 완성된 결과와 직접 올린 파일은 아래 「이 얼굴의 작품」과 홈 공개 갤러리에 저장되어 누구나 보고 내려받을 수 있습니다. 다른 사람 작품도 「참고로 사용」으로 시작 프레임에 넣어 토큰을 아낄 수 있습니다. 공개되면 안 되는 내용은 만들지 마세요.'}),
     el('div',{class:'fhf-key'}),el('div',{class:'fhf-face'}),el('div',{class:'fhf-form'}),el('div',{class:'fhf-gal'}));
   container.appendChild(root); st.root=root; root._fresh=true; setTimeout(()=>{ root._fresh=false; },0);
   drawKey(st); drawStatus(st); drawForm(st); drawGallery(st);
-  if(st.faceState==='idle') ensureFaceUrl(st).catch(()=>{});
+  if(st.faceState==='idle'&&!face.lazy) ensureFaceUrl(st).catch(()=>{});   /* 작품(영상) 모드: 장면 추출·업로드는 생성할 때만 */
   if(!st.loadedAt||Date.now()-st.loadedAt>15000){ if(st.items.length) loadNew(st); else loadFirst(st); }
   resume(st);
   if(!st.timer) st.timer=setInterval(()=>{ if(!alive(st)){ clearInterval(st.timer); st.timer=null; return; } if(!document.hidden) loadNew(st); },REFRESH_MS);

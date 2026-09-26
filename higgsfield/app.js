@@ -329,6 +329,7 @@ function openViewer(it){
     el('div',{class:'kv'},el('span',{class:'k',text:'올린 시각'}),el('span',{text:new Date(it.created_at).toLocaleString('ko-KR')}))); }
   const acts=el('div',{style:'display:flex;flex-direction:column;gap:8px;margin-top:auto'});
   acts.appendChild(el('button',{class:'btn',text:'다운로드',onclick:()=>download(it)}));
+  if(!isRun&&!it.local&&/^[0-9a-f-]{36}$/i.test(String(it.id||''))) acts.appendChild(el('a',{class:'btn ghost v-page',href:'/?m='+it.id,text:'작품 페이지 · 이어서 만들기 ›',title:'이 이미지/영상을 원본으로 이어서 만들고, 이어진 작품을 모아 보는 페이지'}));
   if(isRun){ acts.append(el('button',{class:'btn ghost',text:it.fav?'★ 즐겨찾기 해제':'☆ 즐겨찾기',onclick:()=>{ toggleFav(it); openViewer(it); }}),
     el('button',{class:'btn ghost',text:'다시 만들기 (설정 재사용)',onclick:()=>reuse(it)}),
     it.kind==='image'?el('button',{class:'btn ghost',text:'참고 이미지로 사용',onclick:()=>{ state.surface='image'; if(!modelById(state.model.image).roles.ref) state.model.image='soul-2'; const m=modelById(state.model.image); const u=it.shared&&shared?pubUrl(it.shared):it.url; if(!state.media.ref.some(x=>x.url===u)){ if(state.media.ref.length>=m.roles.ref) state.media.ref.splice(0,1); state.media.ref.push({url:u}); } if(state.scope==='video') state.scope='image'; persist(); closeModal(); renderAll(); $('prompt').focus(); toast(m.label+' 참고 이미지로 추가했습니다','ok'); }}):null,

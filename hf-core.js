@@ -215,6 +215,29 @@ async function listByFace(faceKey,opts){
   const rows=await r.json(); rows.forEach(x=>{ x.url=itemUrl(x); }); return rows.filter(x=>x.url);
 }
 
+/* 한 작품(shared_media 행) 가져오기 */
+async function getItem(id){
+  if(!shared) return null; const A=AUTH(); if(A&&A.detect){ try{ await A.detect(); }catch(e){} }
+  const r=await fetch(SB+'/rest/v1/'+TABLE+'?select=*&hidden=eq.false&id=eq.'+encodeURIComponent(String(id||'')),{headers:sbHeaders()});
+  if(!r.ok) throw new Error('작품 불러오기 실패 ('+r.status+')'); const rows=await r.json(); const x=rows[0]; if(!x) return null; x.url=itemUrl(x); return x.url?x:null;
+}
+/* 파생 작품 트리: 부모 연결은 스키마 변경 없이 face_id = 'm-<부모 행 id>' (제목 태그 #face:m-<id> 로도 남음).
+   id 의 모든 후손(자식 → 손자 …)을 단계별로 한 번씩 조회해 최신순으로 반환. x._depth = 1(직접) / 2+ (파생의 파생), x._parent = 부모 id */
+const parentOf=x=>{ const k=(x&&(x.face_id||faceOf(x.title)))||''; return k.indexOf('m-')===0?k.slice(2):null; };
+async function listTree(id,opts){
+  opts=opts||{}; const max=opts.max||200, depthMax=opts.depth||8; if(!shared) return [];
+  const A=AUTH(); if(A&&A.detect){ try{ await A.detect(); }catch(e){} }
+  const out=[], seen=new Set([String(id)]); let level=[String(id)], d=0;
+  while(level.length&&d<depthMax&&out.length<max){ d++;
+    const keys=level.slice(0,100).map(x=>'m-'+cleanKey(x)); let rows=[];
+    if(schemaV2()){ const q=SB+'/rest/v1/'+TABLE+'?select=*&hidden=eq.false&face_id=in.('+keys.map(encodeURIComponent).join(',')+')&order=created_at.desc,id.desc&limit='+(max-out.length);
+      const r=await fetch(q,{headers:sbHeaders()}); if(!r.ok) throw new Error('목록 불러오기 실패 ('+r.status+')'); rows=await r.json(); }
+    else { for(const k of keys) rows.push(...await listByFace(k,{limit:max})); }
+    const next=[]; rows.forEach(x=>{ if(seen.has(x.id)) return; seen.add(x.id); x.url=itemUrl(x); if(!x.url) return; x._depth=d; x._parent=parentOf(x); out.push(x); next.push(x.id); });
+    level=next; }
+  return out.sort((a,b)=>a.created_at<b.created_at?1:a.created_at>b.created_at?-1:(a.id<b.id?1:-1));
+}
+
 /* ───────── 소유자 삭제: 목록 행 삭제(RLS: owner_id = auth.uid()) → 성공 시 저장소 파일 삭제(RLS: storage owner_id) ───────── */
 const canDelete=x=>{ const A=AUTH(); return !!(A&&A.isMine&&A.isMine(x)); };
 async function deleteItem(x){
@@ -264,6 +287,6 @@ async function download(it,i){
 window.LukeHF={API,LS_KEY,POLL_MS,DEADLINE_MS,uid,MODELS,modelById,defaultsFor,fixSettings,REF_MODELS,buildRequest,
   getKey,setKey,validKey,hfFetch,hfSubmit,hfStatus,hfUpload,readStatus,waitForResult,
   CFG,shared,SB,MAX_IMG,MAX_VID,OK_MIME,sbHeaders,pubUrl,itemUrl,sniff,validateUpload,insertRow,publish,uploadInput,shareResult,listByFace,
-  prepWrite,schemaV2,canDelete,deleteItem,okMediaUrl,videoFrame,frameUrl,
+  prepWrite,schemaV2,canDelete,deleteItem,okMediaUrl,videoFrame,frameUrl,getItem,listTree,parentOf,
   faceTag,makeTitle,displayTitle,faceOf,cleanKey,fname,saveBlob,download};
 })();

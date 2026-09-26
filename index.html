@@ -215,6 +215,17 @@ textarea.inp{min-height:92px;resize:vertical;line-height:1.7}
 .toast.show{transform:translateX(-50%) translateY(0)}
 .toast.ok{border-color:#2a5a42}.toast.err{border-color:#5a2a2a}
 .back{font-size:13px;color:var(--dim);font-weight:600;padding:16px 0 0;display:inline-block}
+/* 작품 페이지 */
+.md-page{max-width:920px;margin:0 auto;padding:12px 0 60px}
+.md-hero{border-radius:12px;background:#0b0d12;border:1px solid var(--line);overflow:hidden;display:flex;justify-content:center}
+.md-hero img,.md-hero video{display:block;max-width:100%;width:auto;height:auto;max-height:min(80vh,820px);object-fit:contain}
+.md-tit{margin:14px 0 6px}
+.md-meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:var(--dim);margin-bottom:10px}
+.md-kind{font-weight:800;color:#fff;background:rgba(255,255,255,.08);padding:1px 7px;border-radius:5px}
+.md-acts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.md-acts .md-dl{background:#d1fe17;color:#111;font-weight:800;text-decoration:none}
+.md-msg{padding:40px 10px;text-align:center;color:var(--dim)}
+@media (max-width:640px){.md-hero img,.md-hero video{max-height:70vh}.md-page{padding-top:8px}}
 @media(max-width:900px){.detail{grid-template-columns:1fr}.side{position:static}.facegrid{grid-template-columns:repeat(2,1fr)}}
 
 /* ===== 모바일 대응 =====================================================
@@ -1360,7 +1371,7 @@ function requireLogin(reason){
 /* ── 라우팅 ──────────────────────────────────────────────────────────── */
 let view='browse', curId=null, mineTab='fav';
 let filt={ kind:'', gender:'', age:'', style:'', sort:'new', q:'' };
-function go(v,id){ view=v; if(id!=null) curId=id; window.scrollTo(0,0); render(); }
+function go(v,id){ if(v!=='media') mediaUrlClear(); view=v; if(id!=null) curId=id; window.scrollTo(0,0); render(); }
 function toast(msg,kind){ const t=$('toast'); t.textContent=msg; t.className='toast show '+(kind||'');
   clearTimeout(t._h); const ms=String(msg||'').length>40?4200:2400; t._h=setTimeout(()=>{t.className='toast '+(kind||'');},ms); }
 function copy(text,label){ const ta=document.createElement('textarea'); ta.value=text;
@@ -1432,6 +1443,7 @@ function render(){
   else if(view==='mine') renderMine(app);
   else if(view==='privacy') renderPrivacy(app);
   else if(view==='terms') renderTerms(app);
+  else if(view==='media') renderMedia(app);
   try{ syncAiAsideChrome(); }catch(e){}
 }
 
@@ -1498,7 +1510,8 @@ function hsCard(c,x){
   if(x.kind==='video'){ m=document.createElement('video'); m.muted=true; m.defaultMuted=true; m.loop=true; m.playsInline=true; m.setAttribute('playsinline',''); m.setAttribute('muted',''); m.preload='none';
     const io=hsVideoObserver(); if(io){ m.dataset.src=url+'#t=0.1'; io.observe(m); } else { m.src=url+'#t=0.1'; m.autoplay=true; } }
   else { m=document.createElement('img'); m.loading='lazy'; m.decoding='async'; m.alt=String(x.title||'').replace(/\s*#face:[a-z0-9-]+$/,''); m.src=url; }
-  m.addEventListener('click',()=>window.open(url,'_blank','noopener'));
+  /* 클릭 → 작품 페이지 (그 이미지/영상 하나 + 이어서 만들기 패널 + 이어진 작품) */
+  m.addEventListener('click',()=>openMedia(Object.assign({url},x)));
   /* 삭제된(404) 파일은 카드째 숨김 */
   m.addEventListener('error',()=>{ if(x.path) card.remove(); });
   card.appendChild(m); card._row=x;
@@ -3703,6 +3716,72 @@ function hfFaceInfo(m){
     return url;
   }};
 }
+/* ── 작품 페이지 (?m=<shared_media id>) ─────────────────────────────────
+   그 이미지/영상 하나를 크게(자르지 않음) + 「이 작품으로 이어서 만들기」(face-hf.js 작품 모드) + 이어진 작품 트리(최신순).
+   부모 연결: 결과 행 face_id = 'm-<원본 id>' — DB 스키마 변경 없음 */
+let curMediaId=null; const mediaCache=new Map();
+const MEDIA_ID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function mediaUrlClear(){ try{ const u=new URL(location.href); if(u.searchParams.has('m')){ u.searchParams.delete('m'); history.pushState(null,'',u.pathname+(u.search||'')+(u.hash||'')); } }catch(e){} }
+function openMedia(x){
+  const id=typeof x==='string'?x:(x&&x.id); if(!id||!MEDIA_ID_RE.test(String(id))) return;
+  if(x&&typeof x==='object'){ const row=Object.assign({},x); if(!row.url&&window.LukeHF) row.url=LukeHF.itemUrl(row); mediaCache.set(String(id),row); }
+  curMediaId=String(id);
+  try{ const u=new URL(location.href); if(u.searchParams.get('m')!==curMediaId){ u.searchParams.set('m',curMediaId); history.pushState({m:curMediaId},'',u.pathname+u.search+(u.hash||'')); } }catch(e){}
+  view='media'; window.scrollTo(0,0); render();
+}
+window.LukeOpenMedia=openMedia;
+window.addEventListener('popstate',()=>{ let id=null; try{ id=new URL(location.href).searchParams.get('m'); }catch(e){}
+  if(id&&MEDIA_ID_RE.test(id)){ curMediaId=id; view='media'; render(); } else if(view==='media'){ view='browse'; render(); } });
+function renderMedia(app){
+  const back=document.createElement('button'); back.className='back'; back.textContent='\u2190 공개 갤러리로';
+  back.onclick=()=>{ go('browse'); requestAnimationFrame(()=>{ const c=document.querySelector('#homeSharedGrid .hs-card[data-id="'+curMediaId+'"]'); if(c) try{ c.scrollIntoView({block:'center'}); }catch(e){} }); };
+  app.appendChild(back);
+  const wrap=document.createElement('div'); wrap.className='md-page'; app.appendChild(wrap);
+  const id=curMediaId, cached=mediaCache.get(id);
+  if(cached&&cached.url){ drawMedia(wrap,cached); return; }
+  wrap.innerHTML='<div class="md-msg">불러오는 중…</div>';
+  if(!window.LukeHF||!LukeHF.getItem){ wrap.innerHTML='<div class="md-msg">공개 갤러리를 불러올 수 없습니다.</div>'; return; }
+  LukeHF.getItem(id).then(x=>{ if(view!=='media'||curMediaId!==id) return; wrap.textContent='';
+    if(!x){ const d=document.createElement('div'); d.className='md-msg'; d.textContent='이 작품을 찾을 수 없습니다 (삭제되었거나 숨겨진 작품일 수 있습니다).'; wrap.appendChild(d); return; }
+    mediaCache.set(id,x); drawMedia(wrap,x); })
+   .catch(e=>{ if(view==='media'&&curMediaId===id){ wrap.textContent=''; const d=document.createElement('div'); d.className='md-msg'; d.textContent='불러오지 못했습니다: '+e.message; wrap.appendChild(d); } });
+}
+function drawMedia(wrap,x){
+  const H=window.LukeHF, ttl=(H?H.displayTitle(x.title):String(x.title||''))||(x.kind==='video'?'공개 갤러리 영상':'공개 갤러리 이미지');
+  try{ document.title=ttl+' · 페이스루크'; }catch(e){}
+  const hero=document.createElement('div'); hero.className='md-hero';
+  let me;
+  if(x.kind==='video'){ me=document.createElement('video'); me.src=x.url; me.controls=true; me.muted=true; me.defaultMuted=true; me.loop=true; me.autoplay=true; me.playsInline=true; me.setAttribute('playsinline',''); me.setAttribute('muted',''); me.preload='metadata'; }
+  else { me=document.createElement('img'); me.src=x.url; me.alt=ttl; me.decoding='async'; }
+  hero.appendChild(me); wrap.appendChild(hero);
+  const h1=document.createElement('h1'); h1.className='tit md-tit'; h1.textContent=ttl; wrap.appendChild(h1);
+  const meta=document.createElement('div'); meta.className='md-meta';
+  const add=(t,cls)=>{ const s=document.createElement('span'); if(cls) s.className=cls; s.textContent=t; meta.appendChild(s); return s; };
+  add(x.kind==='video'?'VIDEO':'IMAGE','md-kind');
+  add(new Date(x.created_at).toLocaleString('ko-KR',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}));
+  add(x.source==='studio'?'힉스필드 결과':x.source==='repo'?'사이트 얼굴 사진':'업로드');
+  wrap.appendChild(meta);
+  const acts=document.createElement('div'); acts.className='md-acts';
+  const pid=H&&H.parentOf?H.parentOf(x):null;
+  if(pid&&MEDIA_ID_RE.test(pid)){ const pb=document.createElement('button'); pb.type='button'; pb.className='btn ghost sm md-parent'; pb.textContent='\u2191 원본 작품 보기'; pb.onclick=()=>openMedia(pid); acts.appendChild(pb); }
+  const fk=x.face_id||(H?H.faceOf(x.title):null); const fm=fk&&fk.indexOf('m-')!==0?faceModelFor(fk):null;
+  if(fm){ const fb=document.createElement('button'); fb.type='button'; fb.className='btn ghost sm'; fb.textContent='얼굴 보기'; fb.onclick=()=>go('detail',fm.id); acts.appendChild(fb); }
+  const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'})[x.mime]||(x.kind==='video'?'mp4':'png');
+  const name='lukemodel-'+String(x.id||'').slice(0,8)+'.'+ext;
+  const dl=document.createElement('a'); dl.className='btn sm md-dl'; dl.textContent='\u2913 다운로드'; dl.download=name; dl.rel='noopener'; dl.href=x.path?x.url+'?download='+encodeURIComponent(name):x.url; if(!x.path&&!/^https:\/\/lukemodel\.com\//.test(x.url)) dl.target='_blank'; acts.appendChild(dl);
+  const use=document.createElement('a'); use.className='btn ghost sm'; use.textContent='스튜디오에서 참고로 사용'; use.href='/higgsfield/?use='+encodeURIComponent(x.url)+'&kind='+(x.kind==='video'?'video':'image'); acts.appendChild(use);
+  if(H&&H.canDelete&&H.canDelete(x)){ const del=document.createElement('button'); del.type='button'; del.className='btn ghost sm md-del'; del.textContent='삭제';
+    del.onclick=async()=>{ if(!confirm('이 작품을 삭제할까요?\n목록과 저장된 파일이 완전히 지워지며 되돌릴 수 없습니다.')) return; del.disabled=true;
+      try{ const r=await H.deleteItem(x); mediaCache.delete(String(x.id)); toast(r.fileOk?'삭제했습니다':'목록에서 삭제했습니다 (파일 정리는 운영자가 합니다)',r.fileOk?'ok':'err'); if(pid) openMedia(pid); else go('browse'); }
+      catch(e){ del.disabled=false; toast(e.message,'err'); } };
+    acts.appendChild(del); }
+  wrap.appendChild(acts);
+  const host=document.createElement('div'); wrap.appendChild(host);
+  if(!window.LukeFaceHF){ host.className='md-msg'; host.textContent='힉스필드 패널을 불러오지 못했습니다. 새로고침해 주세요.'; return; }
+  const face={key:'m-'+x.id,name:ttl,preview:x.url,previewKind:x.kind};
+  if(x.kind==='video'){ face.lazy=true; face.resolve=()=>H.frameUrl(x.url,'first'); } else face.publicUrl=x.url;
+  try{ LukeFaceHF.mount(host,face,{mode:'media',item:x}); }catch(e){ console.warn(e); host.textContent='힉스필드 패널 오류: '+(e.message||e); }
+}
 function renderFaceHfPanel(left, m){
   if(!window.LukeFaceHF){ const e=document.createElement('div'); e.className='sec'; e.textContent='힉스필드 패널을 불러오지 못했습니다. 새로고침해 주세요.'; left.appendChild(e); return; }
   const host=document.createElement('div'); left.appendChild(host);
@@ -3737,6 +3816,8 @@ let pendingShareCode=null;
     const u=new URL(location.href);
     const raw=(u.searchParams.get('share')||'').trim();
     if(raw){ pendingShareCode=raw.toUpperCase(); view='browse'; }
+    const mid=(u.searchParams.get('m')||'').trim();
+    if(!raw&&MEDIA_ID_RE.test(mid)){ curMediaId=mid.toLowerCase(); view='media'; }
   }catch(e){}
 })();
 
