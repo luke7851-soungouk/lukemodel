@@ -428,7 +428,9 @@ async function boot(){
     if(use){ try{ const u=new URL(location.href); u.searchParams.delete('use'); u.searchParams.delete('kind'); history.replaceState(null,'',u.pathname+(u.search||'')); }catch(e){}
       if(H.okMediaUrl(use)) openUseChooser(use,kind); else toast('참고로 쓸 수 없는 주소입니다','err'); } }
   /* 작품 페이지 → /higgsfield/?m=<id> : 그 작품 이미지를 참고 이미지로 넣고 얼굴 유지 모델(Qwen Image 3)로 */
+  /* 모델 캐스팅의 「이 모델로 영상 만들기」 → ?m=<id>&as=video : 그 이미지를 영상의 시작 프레임으로 */
   { const mid=q.get('m'); if(mid&&/^[0-9a-f-]{36}$/i.test(mid)&&H.getItem){ H.getItem(mid).then(x=>{ if(!x||x.kind!=='image'){ if(x&&x.kind==='video') openUseChooser(x.url,'video'); return; }
+      if(q.get('as')==='video'){ useAsStartFrame(x.url); return; }
       state.surface='image'; if(state.scope==='video') state.scope='image'; state.media.ref=[]; const m=addRef(x.url); persist(); renderAll(); toast(m.label+' 참고 이미지로 넣었습니다 (같은 얼굴 유지)','ok'); }).catch(e=>toast(e.message,'err')); } }
   state.runs.filter(r=>r.status==='done'&&r.share==='pending').forEach(r=>autoShare(r));
   state.runs.filter(r=>r.status==='pending').forEach(r=>{ if(r.requestId&&getKey()&&Date.now()-(r.submittedAt||r.createdAt)<DEADLINE_MS){ inflight++; setLamp(); pollRun(r).finally(()=>{ inflight--; setLamp(); }); } else failRun(r,'페이지를 떠나 확인이 중단됨'); });

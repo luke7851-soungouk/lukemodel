@@ -485,6 +485,7 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
   <div class="wrap foot-row">
     <div>FaceLook / 페이스루크 · BYOK · browser-local</div>
     <nav>
+      <a href="/casting/" onclick="go('casting');return false;">모델 캐스팅</a>
       <a href="/higgsfield/">힉스필드 스튜디오</a>
       <a href="/higgsfield/?tab=public">공개 갤러리</a>
       <a href="/en/">English</a>
@@ -504,6 +505,7 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 <script src="/angle-auto.js"></script>
 <script src="/sheet-split.js"></script>
 <script src="/face-hf.js"></script>
+<script src="/casting.js"></script>
 <script>
 'use strict';
 /* ===========================================================================
@@ -1375,7 +1377,11 @@ function requireLogin(reason){
 /* ── 라우팅 ──────────────────────────────────────────────────────────── */
 let view='browse', curId=null, mineTab='fav';
 let filt={ kind:'', gender:'', age:'', style:'', sort:'new', q:'' };
-function go(v,id){ if(v!=='media') mediaUrlClear(); view=v; if(id!=null) curId=id; window.scrollTo(0,0); render(); }
+function go(v,id){ if(v!=='media') mediaUrlClear(); if(v!=='detail'&&v!=='media') window._lmFromCasting=false; castUrlSync(v); view=v; if(id!=null) curId=id; window.scrollTo(0,0); render(); }
+/* 모델 캐스팅: 주소 /?view=casting (/casting/ 은 여기로 넘김) — 뒤로 가기로 돌아올 수 있게 */
+function castUrlSync(v){ try{ const u=new URL(location.href), on=u.searchParams.get('view')==='casting';
+  if(v==='casting'&&!on){ u.searchParams.set('view','casting'); history.pushState({view:'casting'},'',u.pathname+u.search+(u.hash||'')); }
+  else if(v!=='casting'&&on){ u.searchParams.delete('view'); history.pushState(null,'',u.pathname+(u.search||'')+(u.hash||'')); } }catch(e){} }
 function toast(msg,kind){ const t=$('toast'); t.textContent=msg; t.className='toast show '+(kind||'');
   clearTimeout(t._h); const ms=String(msg||'').length>40?4200:2400; t._h=setTimeout(()=>{t.className='toast '+(kind||'');},ms); }
 function copy(text,label){ const ta=document.createElement('textarea'); ta.value=text;
@@ -1417,7 +1423,7 @@ function openLogin(reason){
 /* ── 렌더 ────────────────────────────────────────────────────────────── */
 function render(){
   const nav=$('nav'); nav.textContent='';
-  [['browse','모델 탐색'],['studio','AI 스튜디오'],['mine','내 페이지']].forEach(([k,l])=>{
+  [['browse','모델 탐색'],['casting','모델 캐스팅'],['studio','AI 스튜디오'],['mine','내 페이지']].forEach(([k,l])=>{
     const b=document.createElement('button'); b.textContent=l; if(view===k)b.className='on';
     b.onclick=()=>go(k); nav.appendChild(b); });
   { const hf=document.createElement('a'); hf.href='/higgsfield/'; hf.className='nav-hf'; hf.textContent='힉스필드 스튜디오'; hf.title='Higgsfield 모델로 이미지·영상 생성 + 공개 갤러리 (lukemodel.com/higgsfield/)'; nav.appendChild(hf);
@@ -1449,6 +1455,7 @@ function render(){
   else if(view==='privacy') renderPrivacy(app);
   else if(view==='terms') renderTerms(app);
   else if(view==='media') renderMedia(app);
+  else if(view==='casting'){ if(window.LukeCasting) LukeCasting.render(app); else { view='browse'; renderBrowse(app); } }
   try{ syncAiAsideChrome(); }catch(e){}
 }
 
@@ -1622,6 +1629,7 @@ function renderHomeShared(app){
   else if(Date.now()-homeShared.lastPoll>60000) pollHomeNew();
 }
 function renderBrowse(app){
+  try{ if(window.LukeCasting) LukeCasting.homeEntry(app); }catch(e){ console.warn(e); }   /* 첫 화면 짧은 입구: 모델 캐스팅 */
   renderHomeShared(app);
   /* ?share=CODE public-ish instruction card (no backend — local pack may still be required) */
   if(pendingShareCode){
@@ -1799,7 +1807,7 @@ function gridOf(list){
 /* ── 상세 ───────────────────────────────────────────────────────────── */
 function renderDetail(app){
   const m=DB.models.find(x=>x.id===curId); if(!m){ go('browse'); return; }
-  const back=document.createElement('button'); back.className='back'; back.textContent='\u2190 모델 탐색으로'; back.onclick=()=>go('browse'); app.appendChild(back);
+  const back=document.createElement('button'); back.className='back'; const fromCast=!!window._lmFromCasting; back.textContent=fromCast?'\u2190 모델 캐스팅으로':'\u2190 모델 탐색으로'; back.onclick=()=>go(fromCast?'casting':'browse'); app.appendChild(back);
 
   const wrap=document.createElement('div'); wrap.className='detail';
   const left=document.createElement('div');
@@ -3737,11 +3745,11 @@ function openMedia(x){
   view='media'; window.scrollTo(0,0); render();
 }
 window.LukeOpenMedia=openMedia;
-window.addEventListener('popstate',()=>{ let id=null; try{ id=new URL(location.href).searchParams.get('m'); }catch(e){}
-  if(id&&MEDIA_ID_RE.test(id)){ curMediaId=id; view='media'; render(); } else if(view==='media'){ view='browse'; render(); } });
+window.addEventListener('popstate',()=>{ let id=null, vw=null; try{ const u=new URL(location.href); id=u.searchParams.get('m'); vw=u.searchParams.get('view'); }catch(e){}
+  if(id&&MEDIA_ID_RE.test(id)){ curMediaId=id; view='media'; render(); } else if(vw==='casting'){ if(view!=='casting'){ closeModal(); view='casting'; render(); } } else if(view==='media'||view==='casting'){ closeModal(); view='browse'; render(); } });
 function renderMedia(app){
-  const back=document.createElement('button'); back.className='back'; back.textContent='\u2190 공개 갤러리로';
-  back.onclick=()=>{ go('browse'); requestAnimationFrame(()=>{ const c=document.querySelector('#homeSharedGrid .hs-card[data-id="'+curMediaId+'"]'); if(c) try{ c.scrollIntoView({block:'center'}); }catch(e){} }); };
+  const back=document.createElement('button'); back.className='back'; back.textContent=window._lmFromCasting?'\u2190 모델 캐스팅으로':'\u2190 공개 갤러리로';
+  if(window._lmFromCasting) back.onclick=()=>go('casting'); else back.onclick=()=>{ go('browse'); requestAnimationFrame(()=>{ const c=document.querySelector('#homeSharedGrid .hs-card[data-id="'+curMediaId+'"]'); if(c) try{ c.scrollIntoView({block:'center'}); }catch(e){} }); };
   app.appendChild(back);
   const wrap=document.createElement('div'); wrap.className='md-page'; app.appendChild(wrap);
   const id=curMediaId, cached=mediaCache.get(id);
@@ -3827,6 +3835,7 @@ let pendingShareCode=null;
     if(raw){ pendingShareCode=raw.toUpperCase(); view='browse'; }
     const mid=(u.searchParams.get('m')||'').trim();
     if(!raw&&MEDIA_ID_RE.test(mid)){ curMediaId=mid.toLowerCase(); view='media'; }
+    else if(!raw&&u.searchParams.get('view')==='casting') view='casting';
   }catch(e){}
 })();
 
