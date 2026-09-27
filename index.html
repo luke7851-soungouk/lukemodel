@@ -2286,7 +2286,7 @@ function defaultStudioConnections(){
     {id:'c_fal_kling_i2v', name:'Fal Kling 얼굴참조(I2V)', provider:'fal', kind:'video', model:'fal-ai/kling-video/v1/standard/image-to-video', enabled:true},
     {id:'c_rep_img', name:'Replicate 이미지', provider:'replicate', kind:'image', model:'black-forest-labs/flux-schnell', enabled:true},
     {id:'c_rep_vid', name:'Replicate 영상', provider:'replicate', kind:'video', model:'', enabled:true},
-    {id:'c_higgs_img', name:'Higgsfield 이미지', provider:'higgsfield', kind:'image', model:'z-image/turbo', enabled:true},
+    {id:'c_higgs_img', name:'Higgsfield 이미지', provider:'higgsfield', kind:'image', model:'higgsfield-ai/soul/v2/standard', enabled:true},
     {id:'c_higgs_vid', name:'Higgsfield 영상', provider:'higgsfield', kind:'video', model:'seedance/standard', enabled:true},
     {id:'c_poll_flux', name:'Pollinations Flux (무료)', provider:'pollinations', kind:'image', model:'flux', enabled:true},
     {id:'c_demo', name:'데모(오프라인)', provider:'demo', kind:'image', model:'demo', enabled:true}
@@ -2730,7 +2730,7 @@ async function studioGenHiggs(prompt, seed, asVideo, opts){
   const imageUrl=opts.refImage||opts.refUrl||null;
   const endpoints=asVideo
     ?[{url:'https://platform.higgsfield.ai/higgsfield-ai/seedance/standard',body:{prompt:p,aspect_ratio:'9:16',duration:2}}]
-    :[{url:'https://api.higgsfield.ai/z-image/turbo',body:{prompt:p,resolution:'1k',aspect_ratio:'2:3',seed:seed%2147483647}},{url:'https://platform.higgsfield.ai/higgsfield-ai/soul/standard',body:{prompt:p,aspect_ratio:'2:3',resolution:'720p'}}];
+    :[{url:'https://api.higgsfield.ai/higgsfield-ai/soul/v2/standard',body:{prompt:p}},{url:'https://api.higgsfield.ai/z-image/turbo',body:{prompt:p,resolution:'1k',aspect_ratio:'2:3',seed:seed%2147483647}}];
   if(imageUrl){
     endpoints.forEach(ep=>{
       ep.body=Object.assign({}, ep.body, {image_url:imageUrl, input_image:imageUrl, image:imageUrl});
