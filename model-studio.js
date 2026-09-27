@@ -1,6 +1,6 @@
 'use strict';
 (() => {
-  let panel, panelOwner, busy=false, stop=false, controller=null, selected=null, product=null, items=[];
+  let panel, panelOwner, busy=false, stop=false, controller=null, selected=null, product=null, items=[], higgsUploadApproved=false;
   const $=id=>document.getElementById('ms-'+id);
   const el=(tag,text,cls)=>{const n=document.createElement(tag); if(text)n.textContent=text;if(cls)n.className=cls;return n;};
   const status=t=>{$('status').textContent=t;};
@@ -26,12 +26,43 @@
     const image=new Image();await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('이미지를 읽지 못했어요.'));image.src=raw;});
     const canvas=document.createElement('canvas'),scale=Math.min(1,1536/Math.max(image.width,image.height));canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/png');}
   function fileInput(parent,label,fn){const l=el('label',label),input=el('input');input.type='file';input.accept='image/png,image/jpeg,image/webp';input.onchange=async()=>{if(busy)return;try{const url=await readImage(input.files[0]);await fn(url);}catch(e){status(e.message);}input.value='';};l.append(input);parent.append(l);}
-  function connections(){const cfg=loadStudioCfg();return (cfg.connections||[]).filter(c=>c.enabled!==false&&c.kind==='image'&&((c.provider==='google'&&/^gemini-[\w.-]+image[\w.-]*$/.test(c.model))||(c.provider==='openai'&&/^gpt-image-[\w.-]+$/.test(c.model))));}
-  function refresh(){const s=$('connection'),previous=s.value;s.replaceChildren();connections().forEach(c=>s.add(new Option(c.name+' · '+c.model,c.id)));if(!s.options.length)s.add(new Option('AI 연결 설정에서 Gemini Image 또는 GPT Image를 추가하세요',''));if([...s.options].some(o=>o.value===previous))s.value=previous;}
+  function connections(){const cfg=loadStudioCfg();return (cfg.connections||[]).filter(c=>c.enabled!==false&&c.kind==='image'&&((c.provider==='google'&&/^gemini-[\w.-]+image[\w.-]*$/.test(c.model))||(c.provider==='openai'&&/^gpt-image-[\w.-]+$/.test(c.model))||c.provider==='higgsfield'));}
+  function refresh(){const s=$('connection'),previous=s.value;s.replaceChildren();connections().forEach(c=>s.add(new Option(c.name+' · '+(c.provider==='higgsfield'?'SOUL V2 / Z-Image':c.model),c.id)));if(!s.options.length)s.add(new Option('AI 연결 설정에서 Gemini Image, GPT Image 또는 Higgsfield를 추가하세요',''));if([...s.options].some(o=>o.value===previous))s.value=previous;}
+  async function higgsRefs(refs){
+    if(!refs.length)return [];
+    if(!higgsUploadApproved){
+      const ok=confirm('Higgsfield가 참고 사진을 사용하려면 사진을 lukemodel의 공개 미디어 저장소에 올린 뒤 Higgsfield로 전달해야 해요. 얼굴·제품 사진의 사용 권한이 있고 전송에 동의하면 확인을 눌러 주세요.');
+      if(!ok)throw new Error('참고 사진 전송을 취소했어요.');
+      higgsUploadApproved=true;
+    }
+    if(!window.LukeHF||typeof LukeHF.uploadInput!=='function')throw new Error('Higgsfield 참고 사진 업로드 기능을 불러오지 못했어요. 새로고침해 주세요.');
+    const urls=[];
+    for(let i=0;i<refs.length;i++){
+      if(!safeImage(refs[i]))throw new Error('참고 이미지가 손상됐어요. 다시 불러와 주세요.');
+      const blob=await (await fetch(refs[i])).blob();
+      const ext=blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png';
+      urls.push(await LukeHF.uploadInput(new File([blob],'model-studio-reference-'+(i+1)+'.'+ext,{type:blob.type||'image/png'})));
+    }
+    return urls;
+  }
+  async function keepResult(url){
+    if(safeImage(url))return url;
+    if(!/^https:\/\//i.test(String(url||'')))throw new Error('Higgsfield 응답에 이미지가 없어요.');
+    try{
+      const blob=typeof fetchAsBlob==='function'?await fetchAsBlob(url):await (await fetch(url,{credentials:'omit',referrerPolicy:'no-referrer'})).blob();
+      if(!/^image\/(png|jpeg|webp)$/i.test(blob.type))throw new Error('not-image');
+      return typeof blobToDataUrl==='function'?await blobToDataUrl(blob):await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob);});
+    }catch{throw new Error('Higgsfield 생성은 완료됐지만 결과를 기기에 보관하지 못했어요. Higgsfield 결과 페이지에서 바로 다운로드해 주세요.');}
+  }
   async function generate(prompt,refs,connection,cfg){
     controller=new AbortController();const timer=setTimeout(()=>controller.abort(),150000);
     try{let url,body,headers;
-      if(connection.provider==='google'){
+      if(connection.provider==='higgsfield'){
+        if(typeof studioGenHiggs!=='function')throw new Error('Higgsfield 생성 모듈을 불러오지 못했어요. 새로고침해 주세요.');
+        const publicRefs=await higgsRefs(refs);
+        const result=await studioGenHiggs(prompt,Date.now()%2147483647,false,{raw:true,refImage:publicRefs[0]||null,refUrl:publicRefs[0]||null});
+        return await keepResult(result&&result.url);
+      }else if(connection.provider==='google'){
         url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(connection.model)+':generateContent';headers={'Content-Type':'application/json','x-goog-api-key':cfg.googleGeminiKey};
         const parts=[{text:prompt},...refs.map(r=>{if(!safeImage(r))throw new Error('참고 이미지가 손상됐어요. 다시 불러와 주세요.');const m=r.match(/^data:([^;]+);base64,(.+)$/);return {inline_data:{mime_type:m[1],data:m[2]}};})];body=JSON.stringify({contents:[{role:'user',parts}],generationConfig:{responseModalities:['TEXT','IMAGE']}});
       }else{headers={Authorization:'Bearer '+cfg.openaiKey};url='https://api.openai.com/v1/images/'+(refs.length?'edits':'generations');
@@ -57,7 +88,7 @@
       const prompt=[identity,'Natural editorial photograph, realistic skin texture, subtle asymmetry, no plastic skin, no beauty filter, one adult person, no collage.',kind==='candidate'?JSON.stringify({gender:f.gender,age:f.age,height:f.height,hair:f.hair,mood:f.mood}):'', 'Campaign brief: '+f.brief, direction,kind==='candidate'||kind==='angles'?'Plain white T-shirt and blue jeans, neutral gray studio background.':'', 'One image, no captions.'].filter(Boolean).join('\n');
       const result=await generate(prompt,refs,c,cfg);const item={id:crypto.randomUUID(),name:(f.name.trim()||'LUKE')+' · '+label,kind:kind==='candidate'?'모델 후보':label,url:result,prompt,parentId:original?.id||null,createdAt:new Date().toISOString()};items.push(item);done++;draw();if(!await save())break;}
       status((stop?'중지했어요.':'작업을 마쳤어요.')+' '+done+'장 생성 · 확정 모델과 얼굴 일관성을 직접 비교해 주세요.');
-    }catch(e){status((e.name==='AbortError'?'요청이 중지되었거나 시간이 초과됐어요. 서버에서 이미 처리 중이면 비용이 발생할 수 있어요.':e.message)+' 완료된 '+done+'장은 유지돼요.');}finally{lock(false);}}
+    }catch(e){const raw=String(e&&e.message||e);const friendly=raw==='no-higgs'?'Higgsfield 자격증명(key-id:key-secret)을 AI 연결 설정에 입력해 주세요.':raw;status((e.name==='AbortError'?'요청이 중지되었거나 시간이 초과됐어요. 서버에서 이미 처리 중이면 비용이 발생할 수 있어요.':friendly)+' 완료된 '+done+'장은 유지돼요.');}finally{lock(false);}}
   function downloadProject(){const data=JSON.stringify({version:1,items,selected:selected?.id||null,product,fields:fields()},null,2);const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=el('a');a.href=url;a.download='luke-model-studio.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   async function open(){if(panel && panelOwner!==owner()){panel.remove();panel=null;items=[];selected=null;product=null;}panelOwner=owner();if(panel){panel.hidden=false;refresh();return;}panel=el('section');panel.id='model-studio-panel';panel.setAttribute('aria-label','모델 스튜디오');
     const style=el('style');style.textContent=`#model-studio-panel{position:fixed;inset:0;z-index:90;overflow:auto;background:#0c0e14;color:#f1f2f7;padding:24px;font:15px system-ui,sans-serif}#model-studio-panel *{box-sizing:border-box}#model-studio-panel [hidden]{display:none!important}.ms-shell{max-width:1280px;margin:auto}.ms-head,.ms-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.ms-head{justify-content:space-between}.ms-kicker{color:#c9fb68;letter-spacing:3px;font-size:12px}.ms-layout{display:grid;grid-template-columns:310px 1fr;gap:24px;margin-top:25px}#model-studio-panel h1{font-size:36px;margin:14px 0}#model-studio-panel h2{font-size:19px;margin:20px 0 12px}#model-studio-panel p{line-height:1.7;color:#b4bacd}#model-studio-panel label{display:block;margin:12px 0;color:#c4c9d8;font-size:13px}#model-studio-panel input,#model-studio-panel select,#model-studio-panel textarea{display:block;width:100%;margin-top:6px;padding:11px;background:#141824;color:#fff;border:1px solid #394055;border-radius:9px;font:16px system-ui}#model-studio-panel textarea{min-height:90px}#model-studio-panel button,#model-studio-panel a{background:#252b3c;border:1px solid #424b65;color:#fff;border-radius:9px;padding:11px 14px;cursor:pointer;font:14px system-ui;text-decoration:none}#model-studio-panel button:disabled{opacity:.45;cursor:default}#model-studio-panel :focus-visible{outline:3px solid #c9fb68;outline-offset:2px}#ms-generate{background:#c9fb68;color:#142008;font-weight:800;width:100%}.ms-box{padding:20px;background:#141722;border:1px solid #2c3243;border-radius:16px}.ms-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}.ms-card{background:#191e2c;border:2px solid transparent;border-radius:13px;overflow:hidden}.ms-card.chosen{border-color:#c9fb68}.ms-card img{width:100%;aspect-ratio:3/4;object-fit:contain;background:#10121a;display:block}.ms-card h3,.ms-card p,.ms-card .ms-actions{margin:12px;font-size:13px}.ms-card .ms-actions{gap:6px}.ms-card button,.ms-card a{font-size:12px!important;padding:8px!important}.ms-empty{grid-column:1/-1;padding:50px 15px;text-align:center;border:1px dashed #46516a;border-radius:16px}#ms-status{position:sticky;bottom:0;padding:14px;background:#273124;color:#dfffad;border-radius:10px;z-index:2}#ms-product-preview{max-height:100px;max-width:100%;margin-top:10px}@media(max-width:800px){.ms-layout{grid-template-columns:1fr}.ms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#model-studio-panel{padding:15px}#model-studio-panel h1{font-size:29px}}`;
@@ -65,7 +96,7 @@
     const layout=el('div',null,'ms-layout'),left=el('div',null,'ms-box'),right=el('div');
     left.append(el('h2','01 / 모델 캐스팅'));field(left,'프로젝트 이름','name').value='새 캠페인';field(left,'성별 표현','gender',['여성','남성','중성']);field(left,'성인 나이','age',['20대 성인','30대','40대','50대','60대 이상']);field(left,'키','height',['160cm','165cm','170cm','175cm','180cm','185cm']);field(left,'헤어스타일','hair',['자연스러운 긴 머리','단발','짧은 머리','웨이브','직접 설명은 브리프에']);field(left,'분위기','mood',['자연스럽고 친근함','차분하고 고급스러움','밝고 활기참','도시적이고 세련됨']);field(left,'캠페인·제품 설명','brief','textarea');
     fileInput(left,'제품 사진 (선택 · 8MB 이하)',async url=>{product=url;$('product-preview').src=url;$('product-preview').hidden=false;await save();});const pp=el('img');pp.id='ms-product-preview';pp.alt='선택한 제품 참고 사진';pp.hidden=true;left.append(pp,button('제품 사진 제거',async()=>{product=null;pp.removeAttribute('src');pp.hidden=true;await save();}));
-    field(left,'이미지 생성 연결','connection',[]);left.append(button('AI 연결 설정',()=>{panel.hidden=true;openStudioSettings();}),button('연결 새로고침',refresh));field(left,'후보 생성 수','count',['1','4']);const gen=button('후보 생성하기',()=>run('candidate'));gen.id='ms-generate';left.append(gen,el('p','생성 버튼을 누르면 선택한 API로 전송돼요. 4명은 4회, 각도 세트는 5회 요청하며 제공자 요금이 적용돼요.'));
+    field(left,'이미지 생성 연결','connection',[]);left.append(button('AI 연결 설정',()=>{panel.hidden=true;openStudioSettings();}),button('연결 새로고침',refresh));field(left,'후보 생성 수','count',['1','4']);const gen=button('후보 생성하기',()=>run('candidate'));gen.id='ms-generate';left.append(gen,el('p','Gemini·OpenAI·Higgsfield를 선택할 수 있어요. 4명은 4회, 각도 세트는 5회 요청하며 선택한 제공자의 요금이 적용돼요. Higgsfield 참고 사진은 동의 후 공개 미디어 저장소를 거쳐 전달돼요.'));
     fileInput(left,'내 모델 사진으로 시작',async url=>{if(items.length>=40)throw new Error('프로젝트당 최대 40장이에요.');const item={id:crypto.randomUUID(),name:fields().name+' · 내 모델',kind:'불러온 모델',url};items.push(item);selected=item;draw();await save();});
     right.append(el('h2','02 / 모델 후보 & 결과'));const chosen=el('p');chosen.id='ms-chosen';right.append(chosen);const work=el('div',null,'ms-box');work.append(el('h2','03 / 확정 모델로 제작'));const actions=el('div',null,'ms-actions');actions.append(button('5개 각도 생성',()=>run('angles')),button('3가지 의상 비교',()=>run('outfits')));work.append(actions);field(work,'원하는 의상','outfit').value='현대적인 한국 전통 한복';field(work,'장면·배경','background').value='따뜻한 오후 햇살의 서울 한옥';const more=el('div',null,'ms-actions');more.append(button('의상 적용 · 1장',()=>run('outfit')),button('배경·제품 적용 · 1장',()=>run('background')));work.append(more,el('p','확정 사진을 매번 참조해요. 생성 AI의 얼굴 일관성은 결과를 보고 확인해 주세요.'));right.append(work);
     const grid=el('div',null,'ms-grid');grid.id='ms-gallery';right.append(grid);const footer=el('div',null,'ms-actions');footer.append(button('프로젝트 저장',async()=>{if(await save())status('이 기기에 저장했어요.');}),button('프로젝트 내보내기',downloadProject),button('새 프로젝트',async()=>{if(!confirm('현재 작업을 비울까요? 보관하려면 먼저 프로젝트를 내보내세요.'))return;items=[];selected=null;product=null;pp.hidden=true;pp.removeAttribute('src');draw();await save();}));right.append(footer);
