@@ -1421,6 +1421,7 @@ function render(){
     const b=document.createElement('button'); b.textContent=l; if(view===k)b.className='on';
     b.onclick=()=>go(k); nav.appendChild(b); });
   { const hf=document.createElement('a'); hf.href='/higgsfield/'; hf.className='nav-hf'; hf.textContent='힉스필드 스튜디오'; hf.title='Higgsfield 모델로 이미지·영상 생성 + 공개 갤러리 (lukemodel.com/higgsfield/)'; nav.appendChild(hf);
+    const fashion=document.createElement('a'); fashion.href='/fashion/'; fashion.className='nav-pub'; fashion.textContent='가상 피팅'; fashion.title='가상 피팅·대량 룩북 Make 자동화'; nav.appendChild(fashion);
     const pg=document.createElement('a'); pg.href='/higgsfield/?tab=public'; pg.className='nav-pub'; pg.textContent='공개 갤러리'; pg.title='누구나 업로드·다운로드'; nav.appendChild(pg); }
 
   const au=$('auth'); au.textContent='';
