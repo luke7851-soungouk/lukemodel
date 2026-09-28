@@ -129,6 +129,26 @@ async function reportItem(it){
     if(!r.ok) throw new Error(r.status); toast('신고가 접수되었습니다. 누적 신고 시 자동으로 숨겨집니다','ok'); }catch(e){ toast('신고 실패: '+e.message,'err'); }
 }
 
+/* 방문자 AI 도우미가 준비한 내용으로 입력창 채우기. h.go 는 도우미 채팅에서 「생성하기」를 누른 경우에만 true → 키가 있으면 1회 생성 */
+const ASSIST_LS='lukeassist.handoff';
+function applyAssist(h){
+  if(!h||h.v!==1) return false;
+  if(h.keyOnly){ if(!getKey()) openKeyModal(); else toast('키가 이미 저장되어 있습니다','ok'); return true; }
+  const video=h.surface==='video', ok=u=>typeof u==='string'&&H.okMediaUrl(u);
+  state.surface=video?'video':'image'; state.scope=state.surface;
+  if(video){ const want=MODELS.some(x=>x.id===h.model&&x.kind==='video')?h.model:state.model.video; state.model.video=modelById(want).roles.start?want:'seedance-2.5';
+    state.media={start:ok(h.start)?{url:h.start}:null,end:null,ref:[]}; }
+  else { const want=MODELS.some(x=>x.id===h.model&&x.kind==='image'&&x.roles.ref)?h.model:REF_DEFAULT; state.model.image=want;
+    state.media={start:null,end:null,ref:(h.refs||[]).filter(ok).slice(0,modelById(want).roles.ref).map(url=>({url}))}; }
+  const m=curModel(), patch={}; if(h.ar) patch.ar=h.ar; if(h.dur) patch.dur=String(h.dur);
+  state.settings[m.id]=H.fixSettings(m,Object.assign({},state.settings[m.id],patch));
+  persist(); closeModal(); renderAll(); $('prompt').value=String(h.prompt||'').slice(0,4000); autosize();
+  toast(video?'도우미가 시작 프레임·프롬프트를 채웠습니다 ('+m.label+')':'도우미가 참고 이미지 '+state.media.ref.length+'장·프롬프트를 채웠습니다 ('+m.label+')','ok');
+  if(h.go){ if(getKey()) generate(); else openKeyModal(); } else if(h.openKey&&!getKey()) openKeyModal();
+  return true;
+}
+window.LukeStudio={applyAssist};
+
 /* 소유자 삭제 (공개 갤러리 항목: 목록 행 + 저장소 파일) */
 async function deletePublic(it){
   if(!confirm('이 항목을 삭제할까요?\n목록과 저장된 파일이 완전히 지워지며 되돌릴 수 없습니다.')) return;
@@ -432,6 +452,10 @@ async function boot(){
   { const mid=q.get('m'); if(mid&&/^[0-9a-f-]{36}$/i.test(mid)&&H.getItem){ H.getItem(mid).then(x=>{ if(!x||x.kind!=='image'){ if(x&&x.kind==='video') openUseChooser(x.url,'video'); return; }
       if(q.get('as')==='video'){ useAsStartFrame(x.url); return; }
       state.surface='image'; if(state.scope==='video') state.scope='image'; state.media.ref=[]; const m=addRef(x.url); persist(); renderAll(); toast(m.label+' 참고 이미지로 넣었습니다 (같은 얼굴 유지)','ok'); }).catch(e=>toast(e.message,'err')); } }
+  /* 방문자 AI 도우미(/assistant.js) → ?assist=<nonce> : localStorage 에 한 번만 남긴 내용으로 채우기 (5분 이내, 읽으면 지움) */
+  { const an=q.get('assist'); if(an){ let h=null; try{ h=JSON.parse(localStorage.getItem(ASSIST_LS)||'null'); localStorage.removeItem(ASSIST_LS); }catch(e){}
+      try{ const u=new URL(location.href); u.searchParams.delete('assist'); history.replaceState(null,'',u.pathname+(u.search||'')+(u.hash||'')); }catch(e){}
+      if(h&&h.nonce===an&&Date.now()-(h.ts||0)<5*60e3) applyAssist(h); } }
   state.runs.filter(r=>r.status==='done'&&r.share==='pending').forEach(r=>autoShare(r));
   state.runs.filter(r=>r.status==='pending').forEach(r=>{ if(r.requestId&&getKey()&&Date.now()-(r.submittedAt||r.createdAt)<DEADLINE_MS){ inflight++; setLamp(); pollRun(r).finally(()=>{ inflight--; setLamp(); }); } else failRun(r,'페이지를 떠나 확인이 중단됨'); });
 }

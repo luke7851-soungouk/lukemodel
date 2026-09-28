@@ -125,9 +125,10 @@ function studioHref(sel,video){
 }
 function openPanel(c){
   const root=document.getElementById('modal'); if(!root) return; root.textContent='';
-  const prevFocus=document.activeElement;
+  const prevFocus=document.activeElement; S.cur=c;
+  try{ document.dispatchEvent(new CustomEvent('lukecasting:open',{detail:{key:c.key}})); }catch(e){}
   const ov=mk('div','modal cast-ov'); const box=mk('div','cast-panel'); box.setAttribute('role','dialog'); box.setAttribute('aria-modal','true'); box.setAttribute('aria-label',c.name+' 캐스팅');
-  const close=()=>{ root.textContent=''; document.removeEventListener('keydown',onKey); try{ prevFocus&&prevFocus.focus&&prevFocus.focus(); }catch(e){} };
+  const close=()=>{ S.cur=null; root.textContent=''; document.removeEventListener('keydown',onKey); try{ prevFocus&&prevFocus.focus&&prevFocus.focus(); }catch(e){} };
   const onKey=e=>{ if(!box.isConnected){ document.removeEventListener('keydown',onKey); return; } if(e.key==='Escape') close(); };
   document.addEventListener('keydown',onKey); ov.onclick=e=>{ if(e.target===ov) close(); };
   const x=mk('button','cast-x','\u00d7'); x.type='button'; x.setAttribute('aria-label','닫기'); x.onclick=close; box.appendChild(x);
@@ -268,5 +269,9 @@ const CSS=`
 `;
 function css(){ if(document.getElementById('castCss')) return; const s=document.createElement('style'); s.id='castCss'; s.textContent=CSS; (document.head||document.documentElement).appendChild(s); }
 css();
-window.LukeCasting={render,openPanel,homeEntry,load,build,_state:S};
+/* 도우미(assistant.js)용: 지금 열린 카드 · 필터 지정 · 패널 닫기 */
+function current(){ return S.cur&&document.querySelector('.cast-panel')?S.cur:null; }
+function setFilter(f){ f=f||{}; CF.g=f.g||''; CF.a=f.a||''; CF.q=f.q||''; CF.ang=!!f.ang; }
+function closePanel(){ const x=document.querySelector('.cast-panel .cast-x'); if(x) x.click(); S.cur=null; }
+window.LukeCasting={render,openPanel,homeEntry,load,build,current,setFilter,close:closePanel,_state:S};
 })();
