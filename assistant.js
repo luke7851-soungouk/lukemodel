@@ -438,6 +438,7 @@ function build(){
   const autosize=()=>{ inp.style.height='auto'; inp.style.height=Math.min(96,inp.scrollHeight)+'px'; }; inp.addEventListener('input',autosize);
   document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!pnl.hidden&&!document.querySelector('#modal .modal,#modal .ov,.cast-ov')) close(); });
   msgs.forEach(m=>drawMsg(m,false)); if(!msgs.length) greet(); else drawChips(lastChips());
+  if(PAGE==='home') document.body.classList.add('la-pad');
   place(); window.addEventListener('resize',place); setInterval(place,1200);
   return UI;
 }
@@ -491,7 +492,23 @@ function place(){ if(!UI) return; let b=18;
   const aside=document.getElementById('aiAsideFab'); if(aside&&getComputedStyle(aside).display!=='none'){ const r=aside.getBoundingClientRect(); if(r.height) b=Math.max(b,innerHeight-r.top+10); }
   const comp=document.querySelector('.composer'); if(comp){ const r=comp.getBoundingClientRect(); if(r.height&&r.top<innerHeight) b=Math.max(b,innerHeight-r.top+10); }
   const sel=document.querySelector('.selbar'); if(sel&&getComputedStyle(sel).display!=='none'){ const r=sel.getBoundingClientRect(); if(r.height) b=Math.max(b,innerHeight-r.top+10); }
+  b=avoid(b);
   UI.fab.style.bottom=b+'px'; if(!isMobile()) UI.pnl.style.bottom=Math.max(16,b-4)+'px'; else UI.pnl.style.bottom=''; }
+
+/* 버튼 밑에 작은 조작 버튼(다운로드·참고로 사용 등)이 깔리면 그 버튼 위로 비켜섬. 큰 카드 전체 버튼은 무시 */
+const HIT='a,button,input,select,textarea,label,summary,[role=button],[onclick],video[controls]';
+function hitAt(bb){ const w=UI.fab.offsetWidth||58, rt=parseFloat(getComputedStyle(UI.fab).right)||16;
+  const L=innerWidth-rt-w, T=innerHeight-bb-w;
+  for(const x of [L+3,L+w/2,L+w-3]) for(const y of [T+3,T+w/2,T+w-3]){
+    if(y<0) continue;
+    for(const e of document.elementsFromPoint(x,y)){ if(UI.fab.contains(e)||UI.pnl.contains(e)||e===UI.back) continue;
+      const c=e.closest(HIT); if(c){ const r=c.getBoundingClientRect(); if(r.height<=100&&r.width<=innerWidth*0.6) return r; }
+      break; } }
+  return null; }
+function avoid(base){ let bb=base;
+  for(let i=0;i<5;i++){ const r=hitAt(bb); if(!r) return bb; bb=Math.ceil(innerHeight-r.top+8); if(bb>innerHeight*0.6) return base; }
+  return hitAt(bb)?base:bb; }
+let placeT=null; window.addEventListener('scroll',()=>{ clearTimeout(placeT); placeT=setTimeout(place,110); },{passive:true});
 
 /* 다른 페이지에서 넘어온 할 일 (각도 만들기·캐스팅 필터) */
 async function pending(){
@@ -505,6 +522,8 @@ async function pending(){
 }
 
 const CSS=`
+.la-fab{transition:bottom .18s ease}
+@media (max-width:700px){body.la-pad{padding-bottom:84px}}
 .la-fab{position:fixed;right:16px;bottom:18px;z-index:45;width:58px;height:58px;border-radius:50%;background:#d1fe17;color:#111;border:0;box-shadow:0 10px 26px rgba(0,0,0,.5),0 0 0 3px rgba(15,17,23,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;padding:0;font:800 10px/1 system-ui,sans-serif}
 .la-fab:hover{filter:brightness(1.06)}.la-fab:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .la-fab svg{width:24px;height:24px}.la-fab-t{font-size:9.5px;margin-top:1px;letter-spacing:-.2px}

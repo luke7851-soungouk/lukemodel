@@ -143,7 +143,9 @@ function applyAssist(h){
   const m=curModel(), patch={}; if(h.ar) patch.ar=h.ar; if(h.dur) patch.dur=String(h.dur);
   state.settings[m.id]=H.fixSettings(m,Object.assign({},state.settings[m.id],patch));
   persist(); closeModal(); renderAll(); $('prompt').value=String(h.prompt||'').slice(0,4000); autosize();
-  toast(video?'도우미가 시작 프레임·프롬프트를 채웠습니다 ('+m.label+')':'도우미가 참고 이미지 '+state.media.ref.length+'장·프롬프트를 채웠습니다 ('+m.label+')','ok');
+  /* 알림은 위쪽 링크(말하는 AI 초이 등)를 가리지 않게 입력창 바로 위 왼쪽에 짧게 */
+  { const c=document.querySelector('.composer'), r=c&&c.getBoundingClientRect(); $('toast').style.setProperty('--toast-low',(r&&r.height?Math.round(innerHeight-r.top+10):24)+'px'); }
+  toast(video?'✓ 도우미: 시작 프레임·프롬프트 채움 ('+m.label+')':'✓ 도우미: 참고 '+state.media.ref.length+'장·프롬프트 채움 ('+m.label+')','ok low');
   if(h.go){ if(getKey()) generate(); else openKeyModal(); } else if(h.openKey&&!getKey()) openKeyModal();
   return true;
 }
