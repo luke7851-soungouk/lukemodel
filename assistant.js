@@ -334,7 +334,7 @@ function doLogin(out){
   if(window.LukeAuth&&LukeAuth.openAccount){ closePanelIfMobile(true); LukeAuth.openAccount(); return say('계정 창을 열었어요. 로그인하면 내가 올린 작품을 지울 수 있어요.'); }
   return say('상단의 「로그인」 버튼을 눌러 주세요.');
 }
-function doUpload(how){ const txt='업로드는 이렇게 해요:\n1) 상단 「+ 업로드」(스튜디오는 「+ 업로드」)를 누르고\n2) 이미지(10MB 이하)나 영상(50MB 이하)을 고른 뒤\n3) 올리면 공개 갤러리 맨 위에 바로 등록돼요. 누구나 무료로 내려받을 수 있으니 개인정보가 담긴 사진은 올리지 마세요.';
+function doUpload(how){ const txt='업로드는 이렇게 해요:\n1) 상단 「+ 업로드」(스튜디오는 「+ 업로드」)를 누르고\n2) 이미지(10MB 이하)나 영상(50MB 이하)을 고른 뒤\n3) 올리면 로그인 없이 공개 갤러리 맨 위에 바로 등록돼요. 내가 올린 건 그 카드의 「삭제」로 언제든 지울 수 있어요. 누구나 무료로 내려받을 수 있으니 개인정보가 담긴 사진은 올리지 마세요.';
   return say(how?txt:'업로드 창을 열까요?\n'+txt,{actions:[{label:'지금 업로드 창 열기',act:'upload'}]}); }
 function doKeyHelp(){ return say('힉스필드로 이미지·영상을 만들려면 본인 Higgsfield 키가 필요해요. 스튜디오 오른쪽 위 「키 추가」에 key-id:key-secret 형식으로 넣으면 이 브라우저에만 저장되고 platform.higgsfield.ai로만 전송돼요. 요금은 키 계정에 청구돼요.'+(hasKey()?'\n(지금 이 브라우저에는 키가 저장되어 있어요.)':''),{actions:[{label:'키 설정 열기',act:'key'}]}); }
 async function doNav(to){
@@ -356,7 +356,7 @@ function runAct(act,arg){
       if(PAGE==='studio'){ const b=[...document.querySelectorAll('#tabs [role=tab]')].find(x=>x.textContent.startsWith(tab==='assets'?'에셋':'공개 갤러리')); if(b){ b.click(); closePanelIfMobile(); return; } }
       location.href='/higgsfield/?tab='+tab; return; }
     if(arg==='mine'){ if(PAGE==='home'&&typeof go==='function'){ closePanelIfMobile(); go('mine'); } else location.href='/'; return; } }
-  if(act==='upload'){ if(PAGE==='home'&&typeof openUploadWorksModal==='function'){ closePanelIfMobile(true); openUploadWorksModal(null); return; } const b=document.getElementById('upBtn'); if(b){ closePanelIfMobile(true); b.click(); } return; }
+  if(act==='upload'){ if(PAGE==='home'&&(typeof openUpload==='function'||typeof openUploadWorksModal==='function')){ closePanelIfMobile(true); if(typeof openUpload==='function') openUpload(); else openUploadWorksModal(null); return; } const b=document.getElementById('upBtn'); if(b){ closePanelIfMobile(true); b.click(); } return; }
   if(act==='logout'){ if(typeof logout==='function') logout(); return; }
   if(act==='key'){ if(PAGE==='studio'){ const b=document.getElementById('keyBtn'); if(b){ closePanelIfMobile(true); b.click(); } return; } const h={v:1,nonce:'k'+rid(),ts:Date.now(),openKey:true,keyOnly:true}; try{ localStorage.setItem(LS_HAND,JSON.stringify(h)); }catch(e){} location.href='/higgsfield/?assist='+h.nonce; return; }
   if(act==='item'){ if(PAGE==='home'&&window.LukeOpenMedia){ closePanelIfMobile(); LukeOpenMedia(arg); } else location.href='/?m='+encodeURIComponent(arg); return; }

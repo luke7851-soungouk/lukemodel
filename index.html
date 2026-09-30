@@ -1439,11 +1439,11 @@ function render(){
     const nm=document.createElement('span'); nm.textContent=DB.user.nick;
     me.appendChild(im); me.appendChild(nm); au.appendChild(me);
     const hub=document.createElement('button'); hub.className='btn ghost sm'; hub.textContent='내 AI 모델'; hub.title='AI 제공자 연결'; hub.onclick=()=>openAiAside({force:true}); au.appendChild(hub);
-    const up=document.createElement('button'); up.className='btn'; up.textContent='+ 업로드'; up.title='이미지·동영상 올리고 사이트 상단에 등록'; up.onclick=()=>openUploadWorksModal(null); au.appendChild(up);
+    const up=document.createElement('button'); up.className='btn'; up.textContent='+ 업로드'; up.title='이미지·동영상을 공개 갤러리에 바로 올리기 (로그인 없이)'; up.onclick=()=>openUpload(); au.appendChild(up);
     const lo=document.createElement('button'); lo.className='btn ghost sm'; lo.textContent='로그아웃'; lo.onclick=logout; au.appendChild(lo);
   } else {
     const li=document.createElement('button'); li.className='btn ghost'; li.textContent='로그인'; li.onclick=()=>openLogin(); au.appendChild(li);
-    const up=document.createElement('button'); up.className='btn'; up.textContent='+ 업로드'; up.title='이미지·동영상 올리고 사이트 상단에 등록'; up.onclick=()=>openUploadWorksModal(null); au.appendChild(up);
+    const up=document.createElement('button'); up.className='btn'; up.textContent='+ 업로드'; up.title='이미지·동영상을 공개 갤러리에 바로 올리기 (로그인 없이)'; up.onclick=()=>openUpload(); au.appendChild(up);
   }
 
   const app=$('app'); app.textContent='';
@@ -1604,7 +1604,7 @@ function renderHomeShared(app){
   const hd=document.createElement('div'); hd.className='hs-head';
   const h=document.createElement('h2'); h.textContent='공개 갤러리 · 최신 영상·이미지';
   const sub=document.createElement('span'); sub.className='hs-sub'; sub.textContent='사이트의 얼굴 사진·업로드·힉스필드 결과가 한 타임라인에 최신순으로 쌓입니다. 누구나 무료 다운로드 · 「참고로 사용」으로 다른 사람 작품을 참고 이미지로.';
-  const up=document.createElement('a'); up.className='btn sm'; up.href='/higgsfield/?tab=public'; up.textContent='+ 올리기';
+  const up=document.createElement('button'); up.type='button'; up.className='btn sm hs-up'; up.textContent='+ 올리기'; up.onclick=()=>openUpload();
   hd.appendChild(h); hd.appendChild(sub);
   const loc=localShareCandidates().length;
   if(loc){ const lb=document.createElement('button'); lb.type='button'; lb.className='btn ghost sm hs-local'; lb.textContent='내 브라우저 작품 '+loc+'개 공유하기'; lb.title='예전에 이 브라우저에만 저장된 업로드·AI 작품을 공개 갤러리(모든 방문자)에 올립니다'; lb.onclick=()=>shareLocalWorks(lb); hd.appendChild(lb); }
@@ -1718,9 +1718,9 @@ function renderMine(app){
 
   const mediaRow=document.createElement('div'); mediaRow.style.cssText='display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap;align-items:center';
   const mediaBtn=document.createElement('button'); mediaBtn.className='btn'; mediaBtn.textContent='이미지·동영상 업로드';
-  mediaBtn.onclick=()=>openUploadWorksModal(null);
+  mediaBtn.onclick=()=>openUpload();
   const mediaHint=document.createElement('span'); mediaHint.style.cssText='font-size:12.5px;color:var(--dim);line-height:1.5';
-  mediaHint.textContent='내 모델에 붙이거나, 새 얼굴 모델로 등록 (이 기기만 · 서버 없음)';
+  mediaHint.textContent='공개 갤러리에 바로 올리고, 내가 올린 건 언제든 삭제할 수 있어요';
   mediaRow.appendChild(mediaBtn); mediaRow.appendChild(mediaHint); app.appendChild(mediaRow);
 
   if(mineTab==='ai' || mineTab==='share'){
@@ -3568,6 +3568,63 @@ function ownedModelsForUpload(){
   return DB.models.filter(m=>{ ensureModelFields(m); return isModelOwner(m) || m.user===DB.user.nick || (m.ownerKey&&me&&m.ownerKey===me); });
 }
 
+/* ── 공개 업로드 (로그인 불필요): Supabase public-media + shared_media, 익명 계정이 자동 발급돼 내 것만 삭제 가능 ──
+   - 얼굴/작품 페이지에서 누르면 그 얼굴(작품)에 붙여 올림(face-hf 「이 얼굴에 올리기」와 같은 경로)
+   - 공유 저장소가 없으면 예전 방식(이 기기에만 저장) */
+function openUpload(){
+  const H=window.LukeHF;
+  if(!(H&&H.shared&&H.publish)) return openUploadWorksModal(null);
+  if(view==='detail'||view==='media'){ const b=document.querySelector('.fhf-up'); if(b&&!b.disabled){ b.scrollIntoView({block:'center'}); b.click(); return; } }
+  openPublicUpload();
+}
+function openPublicUpload(){
+  const H=window.LukeHF, C=window.LUKE_SHARED||{}; const mxI=C.maxImageMB||10, mxV=C.maxVideoMB||50;
+  const host=$('modal'); host.textContent='';
+  const ov=document.createElement('div'); ov.className='modal'; ov.onclick=e=>{ if(e.target===ov&&!busy) _closeModal(); };
+  const box=document.createElement('div'); box.className='mbox wide pu-box'; box.setAttribute('role','dialog'); box.setAttribute('aria-label','사진·동영상 올리기');
+  const h=document.createElement('h2'); h.textContent='사진·동영상 올리기'; box.appendChild(h);
+  const p=document.createElement('p'); p.textContent='로그인 없이 바로 공개 갤러리(사이트 첫 화면)에 올라갑니다. 내가 올린 항목은 이 브라우저에서 언제든 「삭제」할 수 있어요.'; box.appendChild(p);
+  const ttl=document.createElement('input'); ttl.className='inp'; ttl.placeholder='제목 (선택, 80자)'; ttl.maxLength=80; box.appendChild(ttl);
+  const fi=document.createElement('input'); fi.type='file'; fi.multiple=true; fi.hidden=true; fi.accept='image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime'; fi.className='pu-file';
+  const drop=document.createElement('div'); drop.className='drop pu-drop'; drop.style.marginTop='12px'; drop.tabIndex=0; drop.setAttribute('role','button');
+  const d1=document.createElement('div'); d1.className='big'; d1.textContent='여기를 눌러 파일 선택 (또는 끌어다 놓기)';
+  const d2=document.createElement('div'); d2.className='sm'; d2.textContent='JPG·PNG·WEBP·GIF 사진 ≤'+mxI+'MB · MP4·WEBM·MOV 영상 ≤'+mxV+'MB · 한 번에 10개까지';
+  drop.appendChild(d1); drop.appendChild(d2);
+  drop.onclick=()=>fi.click(); drop.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fi.click(); } };
+  drop.ondragover=e=>{ e.preventDefault(); drop.classList.add('on'); }; drop.ondragleave=()=>drop.classList.remove('on');
+  drop.ondrop=e=>{ e.preventDefault(); drop.classList.remove('on'); if(e.dataTransfer) add(e.dataTransfer.files); };
+  box.appendChild(drop); box.appendChild(fi);
+  const list=document.createElement('div'); list.className='pu-list'; list.style.cssText='margin-top:10px;font-size:12.5px;color:var(--dim);line-height:1.6;white-space:pre-line;word-break:break-all'; box.appendChild(list);
+  const agl=document.createElement('label'); agl.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:12.5px;color:var(--dim);line-height:1.5;cursor:pointer';
+  const ag=document.createElement('input'); ag.type='checkbox'; ag.className='pu-agree'; try{ ag.checked=localStorage.getItem('lukehf.terms')==='1'; }catch(e){}
+  const ags=document.createElement('span'); ags.textContent='내가 권리를 가진 사진·영상만 올리고, 모든 방문자가 보고 내려받을 수 있다는 데 동의합니다 (타인 얼굴·개인정보·성인물 금지).';
+  agl.appendChild(ag); agl.appendChild(ags); box.appendChild(agl);
+  const row=document.createElement('div'); row.style.cssText='display:flex;gap:9px;margin-top:16px';
+  const cancel=document.createElement('button'); cancel.type='button'; cancel.className='btn ghost'; cancel.textContent='닫기'; cancel.onclick=()=>{ if(!busy) _closeModal(); };
+  const ub=document.createElement('button'); ub.type='button'; ub.className='btn pu-go'; ub.style.flex='1'; ub.textContent='올리기';
+  row.appendChild(cancel); row.appendChild(ub); box.appendChild(row);
+  const old=document.createElement('button'); old.type='button'; old.className='lnk pu-old'; old.style.cssText='margin-top:12px;background:none;border:0;color:var(--dim);font-size:12px;text-decoration:underline;cursor:pointer;padding:0';
+  old.textContent='공개하지 않고 이 기기에만 저장하기 (예전 방식 · 닉네임 필요)'; old.onclick=()=>{ if(!busy){ _closeModal(); openUploadWorksModal(null); } }; box.appendChild(old);
+  let picked=[], busy=false;
+  function add(fs){ [...(fs||[])].forEach(f=>{ if(picked.length>=10) return; const vid=/^video\//.test(f.type)||/\.(mp4|webm|mov|m4v)$/i.test(f.name||'');
+      if(f.size>(vid?mxV:mxI)*1048576){ toast((f.name||'파일')+': '+(vid?'영상':'사진')+' 최대 '+(vid?mxV:mxI)+'MB','err'); return; } picked.push(f); });
+    list.textContent=picked.length?picked.map(f=>'· '+f.name+' ('+(f.size/1048576).toFixed(1)+'MB)').join('\n'):''; ub.textContent=picked.length?picked.length+'개 올리기':'올리기'; }
+  fi.onchange=()=>{ add(fi.files); fi.value=''; };
+  ub.onclick=async()=>{
+    if(!picked.length){ toast('먼저 파일을 선택하세요','err'); fi.click(); return; }
+    if(!ag.checked){ toast('게시 규칙에 동의해 주세요','err'); agl.style.color='#ffc2c2'; return; }
+    try{ localStorage.setItem('lukehf.terms','1'); }catch(e){}
+    busy=true; ub.disabled=cancel.disabled=true; let ok=0; const errs=[];
+    for(let i=0;i<picked.length;i++){ ub.textContent='올리는 중 '+(i+1)+'/'+picked.length+'…';
+      try{ await H.publish(picked[i],ttl.value.trim(),'upload'); ok++; }catch(e){ errs.push((picked[i].name||'파일')+': '+(e.message||e)); } }
+    busy=false; ub.disabled=cancel.disabled=false;
+    if(ok){ try{ if(window.FaceLookTraffic) FaceLookTraffic.trackEvent('upload'); }catch(e){} }
+    if(!errs.length){ _closeModal(); toast(ok+'개 올렸어요 · 첫 화면 공개 갤러리 맨 앞에 보여요 (내 항목엔 「삭제」 버튼)','ok'); }
+    else { toast(ok+'개 올림 · 실패 '+errs.length+'개 — '+errs[0],'err'); picked=picked.filter((f,i)=>errs.some(x=>x.startsWith((f.name||'파일')+':'))); add([]); }
+    if(ok){ if(view!=='browse'){ go('browse'); setTimeout(pollHomeNew,400); } else { pollHomeNew(); const g=document.getElementById('homeSharedGrid'); if(g) g.scrollIntoView({block:'start',behavior:'smooth'}); } }
+  };
+  ov.appendChild(box); host.appendChild(ov); setTimeout(()=>drop.focus(),30);
+}
 function openUploadWorksModal(modelId){
   if(!needLogin('이미지·동영상 업로드에는 로그인이 필요합니다.')) return;
   const owned=ownedModelsForUpload();
