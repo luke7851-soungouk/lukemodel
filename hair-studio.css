@@ -24,6 +24,7 @@
 .hair-frame img,.hair-frame video{width:100%;height:100%;max-height:330px;object-fit:contain}
 .hair-action{display:flex;gap:8px;flex-wrap:wrap}.hair-action button,.hair-action a{border:0;border-radius:10px;padding:11px 15px;background:#ba8afa;color:#171123;font-weight:800;cursor:pointer;text-decoration:none;font-size:13px}
 .hair-action button:disabled{opacity:.58;cursor:not-allowed}.hair-action a{background:#ffffff19;color:white;border:1px solid #ffffff35}
+.hair-action a[hidden]{display:none}
 .hair-share{display:block;margin-top:12px;color:#d2cbdf;font-size:12px;line-height:1.5}.hair-share input{vertical-align:middle;margin-right:4px}
 .hair-key{margin-top:12px;padding-top:10px;border-top:1px solid #ffffff24}.hair-key .hair-select{display:block}.hair-key .hair-voice{margin-top:7px}
 .hair-status{min-height:20px;font-size:12px;color:#d2cbdf;margin-top:11px;line-height:1.5}
