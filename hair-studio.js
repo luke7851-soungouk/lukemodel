@@ -11,7 +11,7 @@
     const q=c.url+'/rest/v1/'+(c.table||'shared_media')+'?select=title,path,external_url,created_at&title=ilike.*%23hair*&hidden=eq.false&order=created_at.desc&limit=8';
     fetch(q,{headers:{apikey:c.anonKey,Authorization:'Bearer '+c.anonKey}}).then(r=>r.ok?r.json():[]).then(rows=>{
       box.textContent='';rows.forEach(row=>{const url=row.external_url||(row.path?c.url+'/storage/v1/object/public/'+encodeURIComponent(c.bucket)+'/'+String(row.path).split('/').map(encodeURIComponent).join('/'):null);if(!url)return;
-        const a=el('a');a.href=url+'?download=hair-after.png';a.rel='noopener';a.download='hair-after.png';const img=el('img');img.src=url;img.alt='최근 공개된 헤어 변경 결과';img.loading='lazy';a.append(img,el('span','',String(row.title||'헤어 변경').replace(/#hair\b/i,'').trim()));box.appendChild(a);});
+        const ext=/\.(jpe?g|png|webp)(?:\?|$)/i.exec(url)?.[1]||'png',name='hair-after.'+ext;const a=el('a');a.href=url+'?download='+encodeURIComponent(name);a.rel='noopener';a.download=name;const img=el('img');img.src=url;img.alt='최근 공개된 헤어 변경 결과';img.loading='lazy';a.append(img,el('span','',String(row.title||'헤어 변경').replace(/#hair\b/i,'').trim()));box.appendChild(a);});
       if(!box.children.length)box.textContent='아직 공개된 결과가 없습니다.';
     }).catch(()=>{box.textContent='최근 결과를 불러오지 못했습니다.'});
   }
@@ -46,9 +46,9 @@
       const instruction='Change only the hairstyle of the person in this photo to '+select.value+'. '+prompt.value.trim()+'. Keep the same person, facial features, skin tone, expression, clothing, pose, background, framing, and lighting. Natural realistic hair, one image, no text.';
       try{
         const blob=await LukeAngles.hfRun({src:selected,prompt:instruction,width:768,height:1024,onPhase:t=>{status.textContent=t}});
-        if(resultUrl)URL.revokeObjectURL(resultUrl);resultUrl=fileUrl(blob);showImage(after,resultUrl);download.href=resultUrl;download.hidden=false;status.textContent='완료되었습니다. 전후를 비교하고 결과를 다운로드하세요.';
+        if(resultUrl)URL.revokeObjectURL(resultUrl);resultUrl=fileUrl(blob);showImage(after,resultUrl);download.href=resultUrl;download.download='hair-after.'+(blob.type==='image/webp'?'webp':blob.type==='image/jpeg'?'jpg':'png');download.hidden=false;status.textContent='완료되었습니다. 전후를 비교하고 결과를 다운로드하세요.';
         if(window.FaceLookTraffic)FaceLookTraffic.trackEvent('generate');
-        if(share.checked&&window.LukeHF&&LukeHF.shared){try{const out=new File([blob],'hair-after.png',{type:blob.type||'image/png'});await LukeHF.publish(out,select.value+' #hair','hair');status.textContent='완료되었습니다. 결과를 공개 갤러리에 최신순으로 등록했습니다.';loadRecent(recentList);}catch(e){status.textContent='이미지는 완성됐지만 공개 등록에 실패했습니다: '+e.message;}}
+        if(share.checked&&window.LukeHF&&LukeHF.shared){try{const out=new File([blob],download.download,{type:blob.type||'image/png'});await LukeHF.publish(out,select.value+' #hair','hair');status.textContent='완료되었습니다. 결과를 공개 갤러리에 최신순으로 등록했습니다.';loadRecent(recentList);}catch(e){status.textContent='이미지는 완성됐지만 공개 등록에 실패했습니다: '+e.message;}}
       }catch(e){status.textContent=(window.LukeAngles&&LukeAngles.hfErrorText?LukeAngles.hfErrorText(e).text:e.message)||'무료 AI 서버가 응답하지 않았습니다. 잠시 후 다시 시도해 주세요.';}
       finally{generate.disabled=false;}
     };
