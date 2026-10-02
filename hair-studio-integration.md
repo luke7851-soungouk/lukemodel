@@ -1,7 +1,9 @@
-# 무료 헤어스타일 사진 변경
+# Higgsfield 헤어스타일 변경
 
-홈의 `hair-studio.js`는 결제 없이 기존 `LukeAngles.hfRun` 무료 이미지 편집 경로를 사용합니다. 사진 파일은 방문자 브라우저에서 Hugging Face 공개 Space로 전송됩니다. 무료 GPU 대기열, 일일 사용 한도, 외부 Space 가용성의 영향을 받습니다. 실패하면 성공 결과나 결제 완료처럼 표시하지 않습니다.
+홈의 `hair-studio.js`는 기존 `LukeHF` 공용 코드를 사용합니다. 현재 구현은 `lukehf.key`에 저장된 **각 방문자 브라우저의 Higgsfield API 키**로 Qwen Image 3 편집을 요청합니다. 사이트 결제는 없습니다. API 요청 시 키 소유자의 Higgsfield 크레딧이 사용됩니다. 키는 브라우저의 `localStorage`에만 저장되고 `platform.higgsfield.ai`로 전송됩니다.
 
-JPG/PNG/WebP 사진 한 장을 받아 지정한 헤어스타일로 편집하고 전후 비교 및 PNG 다운로드를 제공합니다. 영상 편집은 무료 경로가 확인되지 않아 UI에서 명시적으로 지원하지 않습니다.
+JPG/PNG/WebP 사진 한 장을 Higgsfield 파일 API에 업로드한 뒤 `alibaba/qwen-image-3/edit`에 참고 이미지로 보냅니다. 결과를 원본과 나란히 보여주고 다운로드합니다. 영상 편집은 이 화면에서 지원하지 않습니다.
 
-기본 결과는 브라우저에만 남습니다. 방문자가 `결과를 사이트에 공개 등록`을 직접 선택할 때만 기존 Supabase `public-media`/`shared_media`에 `#hair` 태그로 게시됩니다. 홈의 최근 공개 결과는 `created_at.desc`로 읽습니다. 헤어 결과를 공개하면 `angle-auto.js`는 추가 무료 각도 생성을 시작하지 않습니다.
+기본 결과는 브라우저에만 남습니다. 방문자가 `결과를 사이트에 공개 등록`을 직접 선택하면 기존 Supabase 공개 갤러리에 `#hair` 태그로 게시되고, 홈의 최근 공개 결과에 `created_at.desc`로 표시됩니다.
+
+소유자 키를 모든 방문자에게 제공하려면 브라우저에 키를 넣을 수 없습니다. 서버 비밀 변수에 Higgsfield 키를 저장하고 인증·사용량 제한·생성 작업 추적 기능이 있는 서버 엔드포인트가 필요합니다. 현재 GitHub Pages 정적 사이트에는 그 서버가 없습니다.
