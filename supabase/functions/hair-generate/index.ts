@@ -5,7 +5,6 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const publishableKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const higgsfieldKey = Deno.env.get('HIGGSFIELD_API_KEY') || '';
-const dailyLimit = Math.max(1, Math.min(100, Number(Deno.env.get('HAIR_DAILY_LIMIT') || 5)));
 const styles = new Set(['자연스러운 레이어드','단발 보브','긴 웨이브','허쉬컷','숏컷','가르마 펌','댄디컷','원하는 스타일 직접 입력']);
 type Job = {id:string;user_id:string;request_id:string|null;status:string;result_url:string|null};
 const json = (data:unknown,status=200) => new Response(JSON.stringify(data),{status,headers:{...cors,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
@@ -39,8 +38,8 @@ async function submit(request:Request,user:{id:string}) {
   const form=await request.formData();const file=form.get('file');const style=String(form.get('style')||'');const extra=String(form.get('instruction')||'').trim();
   if(!(file instanceof File)||!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1048576||file.size===0)return problem('10MB 이하 JPG, PNG, WebP 사진을 올려주세요.',400);
   if(!styles.has(style)||extra.length>500)return problem('헤어스타일 또는 추가 요청을 확인해 주세요.',400);
-  const reserved=await admin('rpc/reserve_hair_job',{method:'POST',body:JSON.stringify({p_user_id:user.id,p_daily_limit:dailyLimit})}) as string|null;
-  if(!reserved)return problem(`오늘은 ${dailyLimit}건까지 무료로 변경할 수 있습니다. 내일 다시 이용해 주세요.`,429);
+  const reserved=await admin('rpc/reserve_hair_job',{method:'POST',body:JSON.stringify({p_user_id:user.id})}) as string|null;
+  if(!reserved)return problem('진행 중인 헤어 변경이 있습니다. 완료 후 다시 요청해 주세요.',429);
   try {
     const upload=await hf('files/generate-upload-url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:file.type})});
     if(typeof upload.upload_url!=='string'||typeof upload.public_url!=='string')throw new Error('사진 업로드 주소를 받지 못했습니다.');

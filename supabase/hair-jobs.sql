@@ -11,20 +11,22 @@ create index if not exists hair_jobs_user_created_idx on public.hair_jobs(user_i
 alter table public.hair_jobs enable row level security;
 revoke all on public.hair_jobs from anon, authenticated;
 
-create or replace function public.reserve_hair_job(p_user_id uuid, p_daily_limit integer)
+drop function if exists public.reserve_hair_job(uuid, integer);
+create or replace function public.reserve_hair_job(p_user_id uuid)
 returns uuid language plpgsql security definer set search_path = public
 as $$
 declare v_id uuid;
 begin
   perform pg_advisory_xact_lock(hashtext(p_user_id::text));
-  if (select count(*) from public.hair_jobs
-      where user_id = p_user_id and status <> 'failed'
-      and created_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC') >= p_daily_limit then
+  -- No daily quota: only prevent the same member from starting overlapping jobs.
+  if exists (select 1 from public.hair_jobs
+      where user_id = p_user_id and status in ('reserved', 'submitted')
+      and created_at > now() - interval '15 minutes') then
     return null;
   end if;
   insert into public.hair_jobs(user_id) values (p_user_id) returning id into v_id;
   return v_id;
 end;
 $$;
-revoke all on function public.reserve_hair_job(uuid, integer) from public, anon, authenticated;
-grant execute on function public.reserve_hair_job(uuid, integer) to service_role;
+revoke all on function public.reserve_hair_job(uuid) from public, anon, authenticated;
+grant execute on function public.reserve_hair_job(uuid) to service_role;
