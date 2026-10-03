@@ -7,3 +7,9 @@ JPG/PNG/WebP 사진 한 장을 Higgsfield 파일 API에 업로드한 뒤 `alibab
 기본 결과는 브라우저에만 남습니다. 방문자가 `결과를 사이트에 공개 등록`을 직접 선택하면 기존 Supabase 공개 갤러리에 `#hair` 태그로 게시되고, 홈의 최근 공개 결과에 `created_at.desc`로 표시됩니다.
 
 소유자 키를 모든 방문자에게 제공하려면 브라우저에 키를 넣을 수 없습니다. 서버 비밀 변수에 Higgsfield 키를 저장하고 인증·사용량 제한·생성 작업 추적 기능이 있는 서버 엔드포인트가 필요합니다. 현재 GitHub Pages 정적 사이트에는 그 서버가 없습니다.
+
+## 로그인 회원 무료 이용 전환 준비
+
+`supabase/hair-jobs.sql`과 `supabase/functions/hair-generate/index.ts`에 서버 경로를 준비했습니다. 기존 Supabase 프로젝트의 SQL Editor에서 SQL을 적용하고 Edge Function `hair-generate`를 배포해야 합니다. Edge Function의 비밀값 `HIGGSFIELD_API_KEY`에는 운영자의 `key-id:key-secret`을 저장합니다. 키를 GitHub 저장소나 `shared-config.js`에 넣지 마세요. `HAIR_DAILY_LIMIT`은 회원별 하루 무료 이용 횟수이며 기본값은 5건입니다. 생성 비용은 운영자 Higgsfield 크레딧에서 차감됩니다.
+
+서버 배포와 키 설정, 회원 인증을 실제로 확인한 뒤에만 `shared-config.js`에 다음 공개 엔드포인트를 추가해 전환합니다: `hairBackendUrl: 'https://xiovaesccoqtmcsvwqts.supabase.co/functions/v1/hair-generate'`. 이 값은 URL만 담으며 비밀키가 아닙니다. 전환 전에는 기존 방문자 개인 키 방식이 유지됩니다. 서버 경로는 Supabase 비익명 로그인 세션을 검사하며, 로그인하지 않았거나 익명 계정인 경우 생성을 거부합니다.
