@@ -23,7 +23,7 @@
     const statsLink=el('a','','통계 자세히 →');statsLink.href='/stats.html';stats.appendChild(statsLink);app.appendChild(stats);
 
     const section=el('section','hair-studio');section.id='hair-studio';
-    const head=el('div','hair-heading'),copy=el('div');copy.append(el('div','hair-kicker','AI HAIR STUDIO'),el('h2','','내 사진으로 헤어스타일 바꾸기'),el('p','','사진을 올리고 원하는 머리 스타일을 선택하세요. Higgsfield API로 변경한 뒤 전후 비교와 다운로드를 할 수 있습니다.'));
+    const head=el('div','hair-heading'),copy=el('div');copy.append(el('div','hair-kicker','AI HAIR STUDIO'),el('h2','','내 사진·영상으로 헤어스타일 바꾸기'),el('p','','사진이나 영상을 올리고 원하는 머리 스타일을 선택하세요. Higgsfield API로 변경한 뒤 전후 비교와 다운로드를 할 수 있습니다.'));
     head.append(copy,el('div','hair-price','사이트 결제 없음 · Higgsfield 크레딧 사용'));section.appendChild(head);
     const layout=el('div','hair-layout'),left=el('div','hair-panel'),right=el('div','hair-panel');left.appendChild(el('h3','','1. 원본과 스타일 선택'));
     const drop=el('label','hair-drop'),dropText=el('span','hair-placeholder','사진 또는 영상 선택 · 클릭해서 업로드'),input=el('input');input.type='file';input.accept='image/jpeg,image/png,image/webp,video/mp4';input.setAttribute('aria-label','원본 사진 또는 영상');drop.append(dropText,input);left.append(drop,el('p','hair-hint','사진: JPG·PNG·WebP 최대 10MB · 영상: MP4 최대 20MB. 원본은 Higgsfield API로 전송되며 전후 결과가 자동 공개됩니다.'));
