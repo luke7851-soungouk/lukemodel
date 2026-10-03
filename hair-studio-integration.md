@@ -10,6 +10,6 @@ JPG/PNG/WebP 사진 한 장을 Higgsfield 파일 API에 업로드한 뒤 `alibab
 
 ## 로그인 회원 무료 이용 전환 준비
 
-`supabase/hair-jobs.sql`과 `supabase/functions/hair-generate/index.ts`에 서버 경로를 준비했습니다. 기존 Supabase 프로젝트의 SQL Editor에서 SQL을 적용하고 Edge Function `hair-generate`를 배포해야 합니다. Edge Function의 비밀값 `HIGGSFIELD_API_KEY`에는 운영자의 `key-id:key-secret`을 저장합니다. 키를 GitHub 저장소나 `shared-config.js`에 넣지 마세요. 회원별 하루 횟수 제한은 없습니다. 같은 회원의 동시 작업만 막습니다. 생성 비용은 운영자 Higgsfield 크레딧에서 차감됩니다.
+`supabase/hair-jobs.sql`과 `supabase/functions/hair-generate/index.ts`에 서버 경로를 준비했습니다. 기존 Supabase 프로젝트의 SQL Editor에서 SQL을 적용하고 Edge Function `hair-generate`를 배포해야 합니다. SQL은 Vault에 암호화 키 저장 함수를 추가합니다. 배포 후 운영자 계정(`luke7851@gmail.com`)으로 `https://lukemodel.com/admin/hair-key/`에 로그인하여 `key-id:key-secret`을 저장하세요. 키를 GitHub 저장소나 `shared-config.js`에 넣지 마세요. 기존 Edge Function 비밀값 `HIGGSFIELD_API_KEY`도 있으면 예비 키로 읽습니다. 회원별 하루 횟수 제한은 없습니다. 같은 회원의 동시 작업만 막습니다. 생성 비용은 운영자 Higgsfield 크레딧에서 차감됩니다.
 
 서버 배포와 키 설정, 회원 인증을 실제로 확인한 뒤에만 `shared-config.js`에 다음 공개 엔드포인트를 추가해 전환합니다: `hairBackendUrl: 'https://xiovaesccoqtmcsvwqts.supabase.co/functions/v1/hair-generate'`. 이 값은 URL만 담으며 비밀키가 아닙니다. 전환 전에는 기존 방문자 개인 키 방식이 유지됩니다. 서버 경로는 Supabase 비익명 로그인 세션을 검사하며, 로그인하지 않았거나 익명 계정인 경우 생성을 거부합니다.

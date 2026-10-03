@@ -32,6 +32,7 @@
     const voice=el('button','hair-voice','🎙 말로 스타일 설명');voice.type='button';left.appendChild(voice);
     const keyBox=el('div','hair-key'),keyLabel=el('label','hair-field','내 Higgsfield API 키'),keyInput=el('input','hair-select'),keySave=el('button','hair-voice','키 저장'),keyState=el('div','hair-hint');keyInput.type='password';keyInput.placeholder='key-id:key-secret';keyInput.autocomplete='off';keyInput.setAttribute('aria-label','Higgsfield API 키');keySave.type='button';keyBox.append(keyLabel,keyInput,keySave,keyState);left.appendChild(keyBox);
     const H=window.LukeHF,server=String(window.LUKE_SHARED?.hairBackendUrl||'').trim();keyBox.hidden=!!server;
+    const ownerLink=el('a','hair-hint','운영자 Higgsfield 키 설정 →');ownerLink.href='/admin/hair-key/';ownerLink.style.display='inline-block';ownerLink.style.marginTop='12px';left.appendChild(ownerLink);
     if(server)head.querySelector('.hair-price').textContent='로그인 회원 무료 · 운영자 크레딧 사용';
     const showKeyState=()=>{keyState.textContent=H&&H.getKey()?'이 브라우저에 Higgsfield 키가 연결되었습니다.':'키는 이 브라우저에만 저장됩니다. 사용 시 Higgsfield 계정의 크레딧이 차감됩니다.';};showKeyState();
     keySave.onclick=()=>{if(!H)return;const value=keyInput.value.trim();if(!H.validKey(value)){keyState.textContent='key-id:key-secret 형식으로 입력해 주세요.';return;}H.setKey(value);keyInput.value='';showKeyState();};

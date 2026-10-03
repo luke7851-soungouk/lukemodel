@@ -30,3 +30,32 @@ end;
 $$;
 revoke all on function public.reserve_hair_job(uuid) from public, anon, authenticated;
 grant execute on function public.reserve_hair_job(uuid) to service_role;
+
+-- Encrypted key storage for the site owner's setup screen.
+create extension if not exists supabase_vault with schema vault;
+create or replace function public.hair_set_api_key(p_key text)
+returns void language plpgsql security definer set search_path = public, vault
+as $$
+declare v_id uuid;
+begin
+  if p_key is null or p_key !~ '^[^:[:space:]]+:[^:[:space:]]+$' or length(p_key) > 512 then
+    raise exception 'Invalid Higgsfield key format';
+  end if;
+  select id into v_id from vault.secrets where name = 'lukemodel_higgsfield_api_key';
+  if v_id is null then
+    perform vault.create_secret(p_key, 'lukemodel_higgsfield_api_key', 'lukemodel hair studio');
+  else
+    perform vault.update_secret(v_id, p_key);
+  end if;
+end;
+$$;
+create or replace function public.hair_get_api_key()
+returns text language sql security definer set search_path = public, vault
+as $$
+  select decrypted_secret from vault.decrypted_secrets
+  where name = 'lukemodel_higgsfield_api_key' limit 1;
+$$;
+revoke all on function public.hair_set_api_key(text) from public, anon, authenticated;
+revoke all on function public.hair_get_api_key() from public, anon, authenticated;
+grant execute on function public.hair_set_api_key(text) to service_role;
+grant execute on function public.hair_get_api_key() to service_role;

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Higgsfield 키 설정 · lukemodel</title>
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,-apple-system,"Malgun Gothic",sans-serif;background:#10151f;color:#f4f6fa}
+    body{margin:0;padding:24px 16px}main{max-width:520px;margin:6vh auto;background:#1b2331;border:1px solid #364358;border-radius:22px;padding:28px;box-shadow:0 20px 70px #0005}
+    a{color:#9cc9ff}h1{font-size:1.55rem;line-height:1.35;margin:18px 0 12px}p{line-height:1.7;color:#cbd4e2}label{display:block;margin:22px 0 8px;font-weight:700}
+    input{box-sizing:border-box;width:100%;padding:15px;border-radius:10px;border:1px solid #67788d;background:#111927;color:white;font:inherit}
+    button{font:inherit;font-weight:700;padding:13px 20px;border:0;border-radius:10px;background:#69aafa;color:#10151f;cursor:pointer;margin-top:15px}
+    button:disabled{opacity:.55;cursor:wait}.status{min-height:26px;margin-top:18px;color:#cde5ff}.note{font-size:.9rem}form[hidden]{display:none}
+  </style>
+</head>
+<body>
+<main>
+  <a href="/">← lukemodel.com</a>
+  <h1>운영자 Higgsfield API 키 설정</h1>
+  <p>운영자 계정으로 로그인한 뒤 발급받은 <strong>key-id:key-secret</strong>을 입력하세요. 저장된 키 값은 이 화면에 다시 표시되지 않습니다.</p>
+  <button id="login" type="button" hidden>로그인하기</button>
+  <form id="key-form" hidden autocomplete="off">
+    <label for="api-key">Higgsfield API 키</label>
+    <input id="api-key" type="password" placeholder="key-id:key-secret" autocomplete="new-password" spellcheck="false" required>
+    <button id="save" type="submit">서버에 키 저장</button>
+  </form>
+  <div id="status" class="status" role="status">계정과 서버 연결을 확인하는 중…</div>
+  <p class="note">저장된 키는 회원의 브라우저에 제공되지 않습니다. 회원 생성 비용은 운영자의 Higgsfield 크레딧에서 차감됩니다.</p>
+</main>
+<script src="/shared-config.js"></script>
+<script src="/lm-auth.js"></script>
+<script src="/admin/hair-key/setup.js"></script>
+</body>
+</html>
