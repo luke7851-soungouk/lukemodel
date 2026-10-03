@@ -1,4 +1,4 @@
-/* Hair photo editing through the visitor's browser-local Higgsfield API key. */
+/* Hair photo editing through the authenticated server endpoint. */
 (function(){
   'use strict';
   let statsPromise;
@@ -30,16 +30,13 @@
     left.appendChild(el('label','hair-field','바꿀 헤어스타일'));const select=el('select','hair-select');styles.forEach(s=>{const o=el('option','',s);o.value=s;select.appendChild(o)});left.appendChild(select);
     left.appendChild(el('label','hair-field','추가 요청'));const prompt=el('textarea','hair-prompt');prompt.placeholder='예: 어깨 길이의 자연스러운 웨이브, 앞머리 없이';prompt.maxLength=500;left.appendChild(prompt);
     const voice=el('button','hair-voice','🎙 말로 스타일 설명');voice.type='button';left.appendChild(voice);
-    const keyBox=el('div','hair-key'),keyLabel=el('label','hair-field','내 Higgsfield API 키'),keyInput=el('input','hair-select'),keySave=el('button','hair-voice','키 저장'),keyState=el('div','hair-hint');keyInput.type='password';keyInput.placeholder='key-id:key-secret';keyInput.autocomplete='off';keyInput.setAttribute('aria-label','Higgsfield API 키');keySave.type='button';keyBox.append(keyLabel,keyInput,keySave,keyState);left.appendChild(keyBox);
-    const H=window.LukeHF,server=String(window.LUKE_SHARED?.hairBackendUrl||'').trim();keyBox.hidden=!!server;
+    const H=window.LukeHF,server=String(window.LUKE_SHARED?.hairBackendUrl||'').trim();
     const ownerLink=el('a','hair-hint','운영자 Higgsfield 키 설정 →');ownerLink.href='/admin/hair-key/';ownerLink.style.display='inline-block';ownerLink.style.marginTop='12px';left.appendChild(ownerLink);
-    if(server)head.querySelector('.hair-price').textContent='로그인 회원 무료 · 운영자 크레딧 사용';
-    const showKeyState=()=>{keyState.textContent=H&&H.getKey()?'이 브라우저에 Higgsfield 키가 연결되었습니다.':'키는 이 브라우저에만 저장됩니다. 사용 시 Higgsfield 계정의 크레딧이 차감됩니다.';};showKeyState();
-    keySave.onclick=()=>{if(!H)return;const value=keyInput.value.trim();if(!H.validKey(value)){keyState.textContent='key-id:key-secret 형식으로 입력해 주세요.';return;}H.setKey(value);keyInput.value='';showKeyState();};
+    head.querySelector('.hair-price').textContent='로그인 회원 무료 · 운영자 크레딧 사용';
     right.appendChild(el('h3','','2. 변경 전 · 변경 후'));const compare=el('div','hair-result'),before=el('div','hair-frame'),after=el('div','hair-frame hair-after'),divider=el('div','hair-divider'),handle=el('span','','‹ ›'),slider=el('input','hair-compare-range');before.dataset.label='변경 전';after.dataset.label='변경 후';before.append(el('span','','변경 전'),el('div','hair-placeholder','원본 미리보기'));after.append(el('span','','변경 후'),el('div','hair-placeholder','Higgsfield 결과가 여기에 표시됩니다'));divider.appendChild(handle);slider.type='range';slider.min='0';slider.max='100';slider.value='50';slider.setAttribute('aria-label','변경 전후 비교 위치');const setSplit=()=>{const v=Number(slider.value);after.style.clipPath='inset(0 0 0 '+v+'%)';divider.style.left=v+'%';};slider.oninput=setSplit;setSplit();compare.append(before,after,divider,slider);right.appendChild(compare);
-    const actions=el('div','hair-action'),generate=el('button','',server?'무료로 머리 변경하기':'Higgsfield로 머리 변경하기'),download=el('a','','↓ 변경 후 사진 다운로드');generate.type='button';download.hidden=true;download.download='hair-after.png';actions.append(generate,download);right.appendChild(actions);
+    const actions=el('div','hair-action'),generate=el('button','','무료로 머리 변경하기'),download=el('a','','↓ 변경 후 사진 다운로드');generate.type='button';download.hidden=true;download.download='hair-after.png';actions.append(generate,download);right.appendChild(actions);
     const shareLabel=el('label','hair-share'),share=el('input');share.type='checkbox';shareLabel.append(share,el('span','',' 결과를 사이트에 공개 등록 (선택)'));right.appendChild(shareLabel);
-    const status=el('div','hair-status',server?'로그인한 회원은 무료로 이용할 수 있습니다.':'사진과 스타일을 선택하세요. 변경 요청 한 건에 Higgsfield API 크레딧이 사용됩니다.');status.setAttribute('role','status');right.appendChild(status);
+    const status=el('div','hair-status','로그인한 회원은 무료로 이용할 수 있습니다.');status.setAttribute('role','status');right.appendChild(status);
     layout.append(left,right);section.appendChild(layout);const recent=el('div','hair-recent'),recentList=el('div','hair-recent-list');recent.append(el('h3','','최근 공개된 헤어 변경 · 최신순'),recentList);section.appendChild(recent);app.appendChild(section);loadRecent(recentList);
 
     let selected=null,originalUrl=null,resultUrl=null;
@@ -79,22 +76,9 @@
       finally{generate.disabled=false;}
     }
     generate.onclick=async()=>{
-      if(!selected){status.textContent='원본 사진을 먼저 선택해 주세요.';return;}if(server)return serverGenerate();if(!H||!H.getKey()){status.textContent='Higgsfield API 키를 먼저 저장해 주세요.';keyInput.focus();return;}
-      generate.disabled=true;download.hidden=true;status.textContent='원본 사진을 Higgsfield에 업로드하는 중입니다…';
-      const instruction='Change only the hairstyle of the person in this photo to '+select.value+'. '+prompt.value.trim()+'. Keep the same person, facial features, skin tone, expression, clothing, pose, background, framing, and lighting. Natural realistic hair, one image, no text.';
-      try{
-        const src=await H.hfUpload(selected),model=H.modelById('qwen-image-3'),settings=H.fixSettings(model,{res:'1k',ar:'3:4'}),request=H.buildRequest(model,instruction,{ref:[{url:src}]},settings);
-        status.textContent='Higgsfield Qwen Image 3 편집을 요청하는 중입니다…';const submitted=await H.hfSubmit(request.path,request.body);
-        if(!submitted.request_id)throw new Error('Higgsfield 요청 번호를 받지 못했습니다.');
-        const result=await H.waitForResult(submitted.request_id,Date.now(),{onPhase:phase=>{status.textContent='이미지 변경 중 · '+phase}});
-        const url=result&&result.urls&&result.urls[0];if(!url)throw new Error('결과 이미지가 없습니다.');
-        let blob=null;try{const response=await fetch(url);if(response.ok)blob=await response.blob();}catch(e){}
-        if(resultUrl&&resultUrl.startsWith('blob:'))URL.revokeObjectURL(resultUrl);resultUrl=blob?fileUrl(blob):url;showImage(after,resultUrl);compare.classList.add('has-result');download.href=resultUrl;download.download='hair-after.'+(blob?.type==='image/webp'?'webp':blob?.type==='image/jpeg'?'jpg':'png');download.hidden=false;
-        download.onclick=blob?null:async e=>{e.preventDefault();const saved=await H.download({url,kind:'image',fileName:download.download});if(!saved)status.textContent='이미지를 새 탭에서 열었습니다. 이미지를 길게 누르거나 우클릭해 저장하세요.';};status.textContent='완료되었습니다. 전후를 비교하고 변경 후 사진을 다운로드하세요.';
-        if(window.FaceLookTraffic)FaceLookTraffic.trackEvent('generate');
-        if(share.checked&&H.shared){try{if(blob){const out=new File([blob],download.download,{type:blob.type||'image/png'});await H.publish(out,select.value+' #hair','hair');}else await H.shareResult({url,kind:'image',title:select.value+' #hair'});status.textContent='완료되었습니다. 결과를 공개 갤러리에 최신순으로 등록했습니다.';loadRecent(recentList);}catch(e){status.textContent='이미지는 완성됐지만 공개 등록에 실패했습니다: '+e.message;}}
-      }catch(e){status.textContent=e.message||'Higgsfield 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.';}
-      finally{generate.disabled=false;}
+      if(!selected){status.textContent='원본 사진을 먼저 선택해 주세요.';return;}
+      if(!server){status.textContent='헤어 변경 서버가 연결되지 않았습니다.';return;}
+      await serverGenerate();
     };
   }
   window.LukeHair={render};

@@ -12,5 +12,6 @@ window.LUKE_SHARED = {
   table: 'shared_media',
   reportsTable: 'media_reports',
   maxImageMB: 10,
-  maxVideoMB: 50
+  maxVideoMB: 50,
+  hairBackendUrl: 'https://xiovaesccoqtmcsvwqts.supabase.co/functions/v1/hair-generate'
 };
