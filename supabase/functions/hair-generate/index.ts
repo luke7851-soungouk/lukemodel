@@ -79,14 +79,20 @@ async function status(url:URL,user:{id:string}) {
   if(job.status==='completed')return json({status:'completed',resultUrl:job.result_url});
   if(job.status==='failed')return problem('헤어 변경에 실패했습니다. 다시 시도해 주세요.',502);
   if(!job.request_id)return json({status:'pending'});
-  const result=await hf(`requests/${encodeURIComponent(job.request_id)}/status`);
+  // Model submissions return status URLs on api.higgsfield.ai. The legacy
+  // platform host can report the wrong state for requests submitted there.
+  const result=await hf(`requests/${encodeURIComponent(job.request_id)}/status`,{},true);
   const state=String(result.status||'').toLowerCase();
   if(state==='completed') {
     const image=Array.isArray(result.images)?result.images[0]:null;const video=result.video as {url?:string}|undefined;const resultUrl=video?.url||image?.url;
     if(typeof resultUrl!=='string')return problem('결과 파일을 찾지 못했습니다.',502);
     await patchJob(id,{status:'completed',result_url:resultUrl});return json({status:'completed',resultUrl});
   }
-  if(['failed','nsfw','canceled','cancelled'].includes(state)){await patchJob(id,{status:'failed'});return problem('헤어 변경에 실패했습니다. 다시 시도해 주세요.',502);}
+  if(['failed','nsfw','canceled','cancelled'].includes(state)){
+    await patchJob(id,{status:'failed'});
+    const detail=typeof result.error==='string'&&result.error.length<300?result.error:'';
+    return problem(detail?`Higgsfield 변경 실패: ${detail}`:'헤어 변경에 실패했습니다. 다시 시도해 주세요.',502);
+  }
   return json({status:'pending',phase:state});
 }
 Deno.serve(async request=>{
