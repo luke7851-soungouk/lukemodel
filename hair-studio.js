@@ -5,6 +5,40 @@
   const styles=['자연스러운 레이어드','단발 보브','긴 웨이브','허쉬컷','숏컷','가르마 펌','댄디컷','원하는 스타일 직접 입력'];
   const el=(tag,cls,value)=>{const x=document.createElement(tag);if(cls)x.className=cls;if(value!=null)x.textContent=value;return x;};
   const fileUrl=f=>URL.createObjectURL(f);
+  let ffmpegLoader;
+  function loadVideoConverter(){
+    if(window.FFmpegWASM?.FFmpeg)return Promise.resolve();
+    ffmpegLoader=ffmpegLoader||new Promise((resolve,reject)=>{
+      const script=document.createElement('script');script.src='/vendor/ffmpeg/ffmpeg.js';
+      script.onload=()=>window.FFmpegWASM?.FFmpeg?resolve():reject(new Error('영상 변환 도구를 불러오지 못했습니다.'));
+      script.onerror=()=>reject(new Error('영상 변환 도구를 불러오지 못했습니다.'));
+      document.head.appendChild(script);
+    }).catch(e=>{ffmpegLoader=null;throw e});
+    return ffmpegLoader;
+  }
+  async function needsVideoConversion(file){
+    const chunk=2*1048576;
+    const head=new Uint8Array(await file.slice(0,Math.min(file.size,chunk)).arrayBuffer());
+    const tail=file.size>chunk?new Uint8Array(await file.slice(Math.max(chunk,file.size-chunk)).arrayBuffer()):new Uint8Array();
+    const has=(bytes,tag)=>{const code=[...tag].map(c=>c.charCodeAt(0));outer:for(let i=0;i<=bytes.length-code.length;i++){for(let j=0;j<code.length;j++)if(bytes[i+j]!==code[j])continue outer;return true;}return false;};
+    return !(has(head,'avc1')||has(tail,'avc1'));
+  }
+  async function prepareVideo(file,progress){
+    if(!(await needsVideoConversion(file)))return file;
+    progress('영상 코덱을 AI가 읽을 수 있는 MP4로 변환하는 중입니다. 첫 실행은 변환 도구 다운로드로 시간이 걸릴 수 있습니다…');
+    await loadVideoConverter();
+    const ffmpeg=new window.FFmpegWASM.FFmpeg();
+    try{
+      await ffmpeg.load({coreURL:'/vendor/ffmpeg/ffmpeg-core.js',wasmURL:'/vendor/ffmpeg/ffmpeg-core.wasm'});
+      await ffmpeg.writeFile('input.mp4',new Uint8Array(await file.arrayBuffer()));
+      const code=await ffmpeg.exec(['-i','input.mp4','-vf','scale=min(720\\,iw):min(1280\\,ih):force_original_aspect_ratio=decrease','-c:v','libx264','-preset','ultrafast','-crf','27','-pix_fmt','yuv420p','-c:a','aac','-b:a','96k','-movflags','+faststart','output.mp4'],120000);
+      if(code!==0)throw new Error('영상 코덱 변환에 실패했습니다.');
+      const output=await ffmpeg.readFile('output.mp4');
+      if(!(output instanceof Uint8Array)||!output.length)throw new Error('변환된 영상 파일이 비어 있습니다.');
+      if(output.length>20*1048576)throw new Error('변환된 영상이 20MB를 초과했습니다. 짧은 영상을 사용해 주세요.');
+      return new File([output],file.name.replace(/\.mp4$/i,'')+'-h264.mp4',{type:'video/mp4'});
+    }finally{ffmpeg.terminate();}
+  }
   function showMedia(frame,url,kind){frame.querySelectorAll('img,video,.hair-placeholder').forEach(x=>x.remove());const media=el(kind==='video'?'video':'img');media.src=url;if(kind==='video'){media.controls=true;media.playsInline=true;media.preload='metadata';}else media.alt=frame.dataset.label||'사진';frame.appendChild(media);}
   function loadRecent(box){
     const c=window.LUKE_SHARED;if(!c||!c.url||!c.anonKey){box.textContent='아직 공개된 결과가 없습니다.';return;}
@@ -62,9 +96,10 @@
       if(!auth){status.textContent='회원 인증을 불러오지 못했습니다. 새로고침해 주세요.';return;}
       await auth.ensure();
       if(!auth.user()||auth.isAnon()){status.textContent='로그인한 회원만 무료로 이용할 수 있습니다.';auth.openAccount();return;}
-      generate.disabled=true;download.hidden=true;status.textContent='사진을 보내고 머리 스타일 변경을 시작하는 중입니다…';
+      generate.disabled=true;download.hidden=true;status.textContent='파일을 준비하고 머리 스타일 변경을 시작하는 중입니다…';
       try{
-        const form=new FormData();form.set('file',selected);form.set('style',select.value);form.set('instruction',prompt.value.trim());
+        const inputFile=mediaKind()==='video'?await prepareVideo(selected,message=>{status.textContent=message}):selected;
+        const form=new FormData();form.set('file',inputFile);form.set('style',select.value);form.set('instruction',prompt.value.trim());
         const send=await fetch(server,{method:'POST',headers:auth.headers(),body:form});
         const started=await send.json();if(!send.ok)throw new Error(started.error||'요청에 실패했습니다.');
         if(!started.jobId)throw new Error('작업 번호를 받지 못했습니다.');
@@ -75,7 +110,7 @@
           const response=await fetch(server+'?job='+encodeURIComponent(started.jobId),{headers:auth.headers()});
           const result=await response.json();if(!response.ok)throw new Error(result.error||'결과를 확인하지 못했습니다.');
           if(result.status==='completed'){url=result.resultUrl;break;}
-          status.textContent='이미지 변경 중'+(result.phase?' · '+result.phase:'')+'…';
+          status.textContent=(mediaKind()==='video'?'영상':'사진')+' 변경 중'+(result.phase?' · '+result.phase:'')+'…';
         }
         if(!url)throw new Error('변경 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.');
         let blob=null;try{const response=await fetch(url);if(response.ok)blob=await response.blob();}catch(e){}
