@@ -2,9 +2,9 @@
 
 홈의 `hair-studio.js`는 로그인 회원의 요청을 Supabase Edge Function `hair-generate`로 보냅니다. 헤어 화면에는 방문자 개인 API 키 입력이 없고, 브라우저에서 직접 Higgsfield 생성 요청을 보내지 않습니다. 사이트 결제는 없으며 운영자의 Higgsfield 크레딧이 사용됩니다.
 
-JPG/PNG/WebP 사진 한 장을 Higgsfield 파일 API에 업로드한 뒤 `alibaba/qwen-image-3/edit`에 참고 이미지로 보냅니다. 결과를 원본과 나란히 보여주고 다운로드합니다. 영상 편집은 이 화면에서 지원하지 않습니다.
+JPG/PNG/WebP 사진(최대 10MB)은 `alibaba/qwen-image-3/edit`, MP4 영상(최대 20MB)은 `kling-video/o3/video-edit`로 헤어 변경을 요청합니다. 두 유형 모두 원본과 결과를 비교하고 다운로드합니다.
 
-기본 결과는 브라우저에만 남습니다. 방문자가 `결과를 사이트에 공개 등록`을 직접 선택하면 기존 Supabase 공개 갤러리에 `#hair` 태그로 게시되고, 홈의 최근 공개 결과에 `created_at.desc`로 표시됩니다.
+생성이 완료되면 변경 전·후 파일을 각각 기존 Supabase 공개 갤러리에 `#hair` 태그로 자동 게시하고, 홈의 최근 공개 결과에 `created_at.desc`로 표시합니다. 공개 등록에 실패하면 변환을 다시 실행하지 않고 `공개 등록 다시 시도` 버튼으로 재시도할 수 있습니다. 사진 작업은 사진 두 장, 영상 작업은 영상 두 개로 게시됩니다.
 
 소유자 키는 브라우저에 넣을 수 없습니다. 서버의 Vault 비밀값 또는 Edge Function Secret으로 저장하고 인증·생성 작업 추적 기능이 있는 서버 엔드포인트가 필요합니다. GitHub Pages 정적 사이트와 별도로 Supabase Edge Function을 배포해야 합니다.
 

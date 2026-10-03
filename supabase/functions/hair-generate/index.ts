@@ -35,9 +35,10 @@ async function storedKey() {
     throw error;
   }
 }
-async function hf(path:string,init:RequestInit={}) {
+async function hf(path:string,init:RequestInit={},videoEdit=false) {
   const key=await storedKey();if(!key)throw new Error('헤어 변경 서비스가 아직 연결되지 않았습니다.');
-  const response=await fetch(`https://platform.higgsfield.ai/${path}`,{...init,headers:{'Authorization':`Key ${key}`,...init.headers}});
+  const base=videoEdit?'https://api.higgsfield.ai':'https://platform.higgsfield.ai';
+  const response=await fetch(`${base}/${path}`,{...init,headers:{'Authorization':`Key ${key}`,...init.headers}});
   const raw=await response.text();let data:Record<string,unknown>={};try{data=JSON.parse(raw)}catch{}
   if(!response.ok)throw new Error(response.status===402?'Higgsfield 크레딧이 부족합니다.':`Higgsfield 요청 실패 (${response.status})`);
   return data;
@@ -48,7 +49,8 @@ async function patchJob(id:string,values:Record<string,string|null>) {
 async function submit(request:Request,user:{id:string}) {
   if(!serviceKey||!(await storedKey()))return problem('헤어 변경 서비스가 아직 연결되지 않았습니다.',503);
   const form=await request.formData();const file=form.get('file');const style=String(form.get('style')||'');const extra=String(form.get('instruction')||'').trim();
-  if(!(file instanceof File)||!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1048576||file.size===0)return problem('10MB 이하 JPG, PNG, WebP 사진을 올려주세요.',400);
+  const isVideo=file instanceof File&&file.type==='video/mp4';
+  if(!(file instanceof File)||!['image/jpeg','image/png','image/webp','video/mp4'].includes(file.type)||file.size>(isVideo?20:10)*1048576||file.size===0)return problem('사진은 10MB 이하 JPG·PNG·WebP, 영상은 20MB 이하 MP4를 올려주세요.',400);
   if(!styles.has(style)||extra.length>500)return problem('헤어스타일 또는 추가 요청을 확인해 주세요.',400);
   const reserved=await admin('rpc/reserve_hair_job',{method:'POST',body:JSON.stringify({p_user_id:user.id})}) as string|null;
   if(!reserved)return problem('진행 중인 헤어 변경이 있습니다. 완료 후 다시 요청해 주세요.',429);
@@ -57,8 +59,10 @@ async function submit(request:Request,user:{id:string}) {
     if(typeof upload.upload_url!=='string'||typeof upload.public_url!=='string')throw new Error('사진 업로드 주소를 받지 못했습니다.');
     const uploaded=await fetch(upload.upload_url,{method:'PUT',headers:(upload.upload_headers as HeadersInit)||{'Content-Type':file.type},body:file});
     if(!uploaded.ok)throw new Error('사진 전송에 실패했습니다.');
-    const prompt=`Change only the hairstyle of the person in this photo to ${style}. ${extra}. Keep the same person, facial features, skin tone, expression, clothing, pose, background, framing, and lighting. Natural realistic hair, one image, no text.`;
-    const result=await hf('alibaba/qwen-image-3/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,resolution:'1k',aspect_ratio:'3:4',image_urls:[upload.public_url]})});
+    const prompt=`Change only the hairstyle of the person in this ${isVideo?'video':'photo'} to ${style}. ${extra}. Keep the same person, facial features, skin tone, expression, clothing, pose, background, framing, lighting${isVideo?', camera motion, timing, and original audio':''}. Natural realistic hair, no text.`;
+    const result=isVideo
+      ?await hf('kling-video/o3/video-edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'std',prompt,video_urls:[upload.public_url]})},true)
+      :await hf('alibaba/qwen-image-3/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,resolution:'1k',aspect_ratio:'3:4',image_urls:[upload.public_url]})});
     if(typeof result.request_id!=='string')throw new Error('Higgsfield 요청 번호를 받지 못했습니다.');
     await patchJob(reserved,{request_id:result.request_id,status:'submitted'});
     return json({jobId:reserved});
@@ -78,8 +82,8 @@ async function status(url:URL,user:{id:string}) {
   const result=await hf(`requests/${encodeURIComponent(job.request_id)}/status`);
   const state=String(result.status||'').toLowerCase();
   if(state==='completed') {
-    const image=Array.isArray(result.images)?result.images[0]:null;const resultUrl=image?.url;
-    if(typeof resultUrl!=='string')return problem('결과 이미지를 찾지 못했습니다.',502);
+    const image=Array.isArray(result.images)?result.images[0]:null;const video=result.video as {url?:string}|undefined;const resultUrl=video?.url||image?.url;
+    if(typeof resultUrl!=='string')return problem('결과 파일을 찾지 못했습니다.',502);
     await patchJob(id,{status:'completed',result_url:resultUrl});return json({status:'completed',resultUrl});
   }
   if(['failed','nsfw','canceled','cancelled'].includes(state)){await patchJob(id,{status:'failed'});return problem('헤어 변경에 실패했습니다. 다시 시도해 주세요.',502);}
