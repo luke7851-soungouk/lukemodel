@@ -1436,7 +1436,7 @@ function render(){
   { const hf=document.createElement('a'); hf.href='/higgsfield/'; hf.className='nav-hf'; hf.textContent='힉스필드 스튜디오'; hf.title='Higgsfield 모델로 이미지·영상 생성 + 공개 갤러리 (lukemodel.com/higgsfield/)'; nav.appendChild(hf);
     const products=document.createElement('a'); products.href='/products/'; products.className='nav-pub'; products.textContent='상품'; nav.appendChild(products);
     const fashion=document.createElement('a'); fashion.href='/fashion/'; fashion.className='nav-pub'; fashion.textContent='가상 피팅'; fashion.title='가상 피팅·대량 룩북 Make 자동화'; nav.appendChild(fashion);
-    const pg=document.createElement('a'); pg.href='/higgsfield/?tab=public'; pg.className='nav-pub'; pg.textContent='공개 갤러리'; pg.title='누구나 업로드·다운로드'; nav.appendChild(pg); }
+    const pg=document.createElement('a'); pg.href='/higgsfield/?tab=public'; pg.className='nav-pub'; pg.textContent='공개 갤러리'; pg.title='운영자 승인 후 다운로드·재사용'; nav.appendChild(pg); }
 
   const au=$('auth'); au.textContent='';
   au.style.cssText='display:flex;align-items:center;gap:9px';
@@ -1611,7 +1611,7 @@ function renderHomeShared(app){
   const sec=document.createElement('section'); sec.className='hs-sec'; sec.setAttribute('aria-label','공개 갤러리');
   const hd=document.createElement('div'); hd.className='hs-head';
   const h=document.createElement('h2'); h.textContent='공개 갤러리 · 최신 영상·이미지';
-  const sub=document.createElement('span'); sub.className='hs-sub'; sub.textContent='사이트의 얼굴 사진·업로드·힉스필드 결과가 한 타임라인에 최신순으로 쌓입니다. 누구나 무료 다운로드 · 「참고로 사용」으로 다른 사람 작품을 참고 이미지로.';
+  const sub=document.createElement('span'); sub.className='hs-sub'; sub.textContent='사이트의 얼굴 사진·업로드·힉스필드 결과가 한 타임라인에 최신순으로 쌓입니다. 회원 가입 후 운영자 승인을 받으면 다운로드와 참고 이미지 사용이 가능합니다.';
   const up=document.createElement('button'); up.type='button'; up.className='btn sm hs-up'; up.textContent='+ 올리기'; up.onclick=()=>openUpload();
   hd.appendChild(h); hd.appendChild(sub);
   const loc=localShareCandidates().length;
@@ -1743,7 +1743,7 @@ function renderMine(app){
     if(!favModels.length){ const e=emptyBox('아직 관심얼굴이 없습니다','탐색에서 ♡를 누르면 여기에 모입니다'); const b=document.createElement('button'); b.className='btn'; b.style.marginTop='14px'; b.textContent='얼굴 탐색하기'; b.onclick=()=>go('browse'); e.appendChild(b); app.appendChild(e); return; }
     app.appendChild(gridOf(favModels));
   } else if(mineTab==='dl'){
-    if(!dlModels.length){ const e=emptyBox('받은 얼굴이 없습니다','상세 페이지에서 무료 다운로드하면 여기에 쌓입니다'); const b=document.createElement('button'); b.className='btn'; b.style.marginTop='14px'; b.textContent='얼굴 탐색하기'; b.onclick=()=>go('browse'); e.appendChild(b); app.appendChild(e); return; }
+    if(!dlModels.length){ const e=emptyBox('받은 얼굴이 없습니다','운영자 승인 후 상세 페이지에서 다운로드하면 여기에 쌓입니다'); const b=document.createElement('button'); b.className='btn'; b.style.marginTop='14px'; b.textContent='얼굴 탐색하기'; b.onclick=()=>go('browse'); e.appendChild(b); app.appendChild(e); return; }
     app.appendChild(gridOf(dlModels));
   } else if(mineTab==='ai'){
     if(!aiModels.length){ const e=emptyBox('내 AI 모델이 없습니다','AI 스튜디오에서 얼굴을 생성하고 저장해보세요'); const b=document.createElement('button'); b.className='btn'; b.style.marginTop='14px'; b.textContent='AI 스튜디오'; b.onclick=()=>go('studio'); e.appendChild(b); app.appendChild(e); return; }
@@ -1951,12 +1951,12 @@ function renderDetail(app){
   const dl=document.createElement('button'); dl.className='dlbtn'+(!DB.user&&scanOk?' login':'');
   dl.disabled = !scanOk;
   dl.textContent = !scanOk ? '스캔 완료 후 다운로드 가능'
-                 : !DB.user ? '로그인하고 무료 다운로드'
-                 : '무료 다운로드  ('+mb(f.kb)+')';
+                 : !DB.user ? '로그인 · 승인 후 다운로드'
+                 : '모델 다운로드  ('+mb(f.kb)+')';
   dl.onclick=async(ev)=>{
     if(ev && ev.preventDefault) ev.preventDefault();
     if(!scanOk) return;
-    if(!requireLogin('로그인하면 모든 얼굴 모델을 무제한 무료로 받을 수 있습니다.')) return;
+    if(!requireLogin('회원 로그인 후 운영자 승인을 받으면 모델을 다운로드할 수 있습니다.')) return;
     if(window.LukeAccess && !await LukeAccess.require()) return;
     dl.disabled=true;
     try{
