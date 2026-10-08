@@ -614,6 +614,8 @@ function facePollinationsUrl(seed, w, h){
   return 'https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt)+'?width='+WW+'&height='+HH+'&model=flux&nologo=true&nofeed=true&enhance=false&seed='+(Math.abs(hashCode(String(seed||'face')))%1000000);
 }
 function faceSrc(m, ai, w, h){
+  if(m?.name==='커리어 30대 남성 실사' && m.photos?.[0]==='faces/photo-09.jpg')return 'faces/real-02.jpg';
+  if(m?.name==='30대 남성 중후한 인상' && m.photos?.[0]==='faces/vface-m30.jpg')return 'faces/real-06.jpg';
   if(m && m.faceRef){
     const fr=String(m.faceRef);
     if(fr.indexOf('data:')===0 || fr.indexOf('faces/')===0 || fr.indexOf('http')===0 || fr.indexOf('blob:')===0) return m.faceRef;
