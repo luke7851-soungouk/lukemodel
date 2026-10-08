@@ -138,11 +138,18 @@
     layout.append(left,right);const st=el('p','후보 생성 또는 내 모델 사진으로 시작하세요.');st.id='ms-status';st.setAttribute('role','status');const cancel=button('생성 중지',()=>{stop=true;controller?.abort();});cancel.id='ms-stop';cancel.disabled=true;shell.append(layout,st,cancel);panel.append(style,shell);document.body.append(panel);refresh();draw();lock(true);
     try{const data=await storage('readonly');if(data){items=data.items||[];selected=items.find(i=>i.id===data.selected)||null;product=data.product||null;Object.keys(fields()).forEach(k=>{if(typeof data.fields?.[k]==='string')$(k).value=data.fields[k];});pp.hidden=!product;if(product)pp.src=product;draw();}}catch{status('기기 저장을 사용할 수 없어요. 작업 후 프로젝트를 내보내 주세요.');}finally{lock(false);}
   }
-  async function openWithModel(url,name){
+  async function openWithModel(url,name,startAngles=false){
     if(window.LukeAccess&&!await LukeAccess.require())return;
     await open();
-    const item={id:crypto.randomUUID(),name:String(name||'선택한 모델'),kind:'기존 모델',url:String(url),prompt:'기존 모델에서 시작',parentId:null,createdAt:new Date().toISOString()};
-    items.push(item);selected=item;draw();await save();status('선택한 모델을 기준으로 각도·의상·배경을 제작할 수 있어요.');
+    try{
+      const response=await fetch(String(url));if(!response.ok)throw new Error('모델 사진을 불러오지 못했어요.');
+      const blob=await response.blob();
+      const type=blob.type.split(';')[0]||'image/jpeg';
+      const image=await readImage(new File([blob],String(name||'model')+'.jpg',{type}));
+      const item={id:crypto.randomUUID(),name:String(name||'선택한 모델'),kind:'기존 모델',url:image,prompt:'기존 모델에서 시작',parentId:null,createdAt:new Date().toISOString()};
+      items.push(item);selected=item;draw();await save();status('선택한 모델을 기준으로 각도·의상·배경을 제작할 수 있어요.');
+      if(startAngles)await run('angles');
+    }catch(error){status(error instanceof Error?error.message:'모델 사진을 불러오지 못했어요.');}
   }
   async function openWithProduct(id){
     if(window.LukeAccess&&!await LukeAccess.require())return;

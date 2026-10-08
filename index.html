@@ -106,6 +106,7 @@ nav.top button.on{background:var(--panel);color:#fff}
 .hero{border-radius:12px;background:#14171f;margin-bottom:10px;overflow:hidden;position:relative}
 /* 대표 얼굴: 전체가 보이게 (세로로 긴 화면은 높이 제한 + 여백) */
 .hero img{display:block;width:100%;height:auto;aspect-ratio:auto 4/5;max-height:min(78vh,760px);object-fit:contain;background:#14171f}
+.lm-angle-grid{display:grid;grid-template-columns:minmax(120px,1fr) minmax(180px,2fr);gap:12px}.lm-angle-card,.lm-angle-prompt{margin:0;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#171c27}.lm-angle-card img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover}.lm-angle-card figcaption{padding:10px 12px;color:var(--dim);font-size:12px}.lm-angle-prompt{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:20px}.lm-angle-prompt p{color:#c4cbd7;line-height:1.6;font-size:13px;margin:0 0 14px}@media(max-width:580px){.lm-angle-grid{grid-template-columns:1fr 1fr}.lm-angle-prompt{padding:12px}.lm-angle-prompt button{font-size:12px}}
 h1.tit{font-size:25px;font-weight:800;letter-spacing:-.5px;margin-bottom:9px;line-height:1.3}
 .byline{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--dim);margin-bottom:18px;flex-wrap:wrap}
 .sec{margin-bottom:26px}
@@ -1809,6 +1810,18 @@ function renderDetail(app){
   const hi=document.createElement('img'); hi.alt=m.name||''; hi.decoding='async'; hi.src=String(faceSrc(m,0,900,900)); hero.appendChild(hi);
   left.appendChild(hero);
 
+  const angleSection=document.createElement('section');angleSection.className='sec lm-angle-section';
+  const angleTitle=document.createElement('h2');angleTitle.textContent='360° 모델 이미지';angleSection.appendChild(angleTitle);
+  const angleGrid=document.createElement('div');angleGrid.className='lm-angle-grid';
+  const front=document.createElement('figure');front.className='lm-angle-card';
+  const frontImage=document.createElement('img');frontImage.src=String(faceSrc(m,0,900,900));frontImage.alt=m.name+' 정면 이미지';
+  const frontCaption=document.createElement('figcaption');frontCaption.textContent='등록된 모델 사진';front.append(frontImage,frontCaption);angleGrid.appendChild(front);
+  const anglePrompt=document.createElement('div');anglePrompt.className='lm-angle-prompt';
+  const angleText=document.createElement('p');angleText.textContent='측면과 뒷면 이미지는 이 모델을 기준으로 AI가 새로 제작합니다.';
+  const angleButton=document.createElement('button');angleButton.type='button';angleButton.className='btn';angleButton.textContent='360° 5개 각도 만들기';angleButton.dataset.requiresApproval='';
+  angleButton.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;await window.LukeModelStudio?.openWithModel?.(String(faceSrc(m,0,900,900)),m.name,true);};
+  anglePrompt.append(angleText,angleButton);angleGrid.appendChild(anglePrompt);angleSection.appendChild(angleGrid);left.appendChild(angleSection);
+
   /* 얼굴 속성 */
   const s2=document.createElement('div'); s2.className='sec';
   const s2h=document.createElement('h2'); s2h.textContent='얼굴 속성'; s2.appendChild(s2h);
@@ -1908,17 +1921,7 @@ function renderDetail(app){
   }
 
   const f=m.file;
-  const fd=document.createElement('div'); fd.className='file';
-  const fh=document.createElement('div'); fh.className='fhead';
-  const fn=document.createElement('span'); fn.className='fname'; fn.textContent=f.name;
-  const fz=document.createElement('span'); fz.className='fsize'; fz.textContent=mb(f.kb);
-  fh.appendChild(fn); fh.appendChild(fz); fd.appendChild(fh);
-  const sc=document.createElement('div');
-  if(f.scan==='Success'){ sc.className='scan ok'; sc.textContent='\u2713  보안 스캔 통과 \u00b7 safetensors'; }
-  else { sc.className='scan pend'; sc.textContent='\u23f3  스캔 대기 중 \u00b7 완료 전까지 다운로드 불가'; }
-  fd.appendChild(sc);
-  if(f.sha){ const hh=document.createElement('div'); hh.className='hash'; hh.textContent='SHA256 '+f.sha; fd.appendChild(hh); }
-  const downloadNote=document.createElement('p');downloadNote.className='lm-download-note';downloadNote.textContent='다운로드 시 실제 등록된 모델 파일이 있으면 그 파일을, 없으면 모델 사진과 정보 파일을 저장합니다.';vb.appendChild(downloadNote);
+  const downloadNote=document.createElement('p');downloadNote.className='lm-download-note';downloadNote.textContent='등록된 가중치 파일이 있으면 해당 파일을 저장합니다. 사진만 등록된 모델은 사진과 모델 정보 파일을 저장합니다.';vb.appendChild(downloadNote);
 
   const scanOk = f.scan==='Success';
   const dl=document.createElement('button'); dl.className='dlbtn'+(!DB.user&&scanOk?' login':'');
@@ -3882,6 +3885,6 @@ render();
 window.LukeAccess?.check?.().then(()=>render());
 window.LukeAuth?.onChange?.(()=>render());
 </script>
-<script src="/model-studio.js?v=20261009-product-selection"></script>
+<script src="/model-studio.js?v=20261009-angle-reference"></script>
 </body>
 </html>
