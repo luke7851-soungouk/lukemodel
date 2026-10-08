@@ -1927,14 +1927,12 @@ function renderDetail(app){
   else { sc.className='scan pend'; sc.textContent='\u23f3  스캔 대기 중 \u00b7 완료 전까지 다운로드 불가'; }
   fd.appendChild(sc);
   if(f.sha){ const hh=document.createElement('div'); hh.className='hash'; hh.textContent='SHA256 '+f.sha; fd.appendChild(hh); }
-  vb.appendChild(fd);
+  const downloadNote=document.createElement('p');downloadNote.className='lm-download-note';downloadNote.textContent='다운로드 시 실제 등록된 모델 파일이 있으면 그 파일을, 없으면 모델 사진과 정보 파일을 저장합니다.';vb.appendChild(downloadNote);
 
   const scanOk = f.scan==='Success';
   const dl=document.createElement('button'); dl.className='dlbtn'+(!DB.user&&scanOk?' login':'');
   dl.disabled = !scanOk;
-  dl.textContent = !scanOk ? '스캔 완료 후 다운로드 가능'
-                 : !DB.user ? '로그인 · 승인 후 다운로드'
-                 : '모델 다운로드  ('+mb(f.kb)+')';
+  dl.textContent = !scanOk ? '파일 확인 후 다운로드 가능' : '모델 자료 다운로드';
   dl.onclick=async(ev)=>{
     if(ev && ev.preventDefault) ev.preventDefault();
     if(!scanOk) return;
@@ -1978,7 +1976,7 @@ function renderDetail(app){
   fv.onclick=()=>toggleFav(m.id);
   vb.appendChild(fv);
   const ft=document.createElement('div'); ft.className='freetag';
-  ft.textContent = DB.user ? '모든 모델 무료 · 다운로드 제한 없음' : '로그인하면 전 모델 무료';
+  ft.textContent = '회원 가입 후 운영자 승인 시 다운로드·제작 사용 가능';
   vb.appendChild(ft);
   side.appendChild(vb); wrap.appendChild(side); app.appendChild(wrap);
 }
@@ -3893,6 +3891,6 @@ render();
 window.LukeAccess?.check?.().then(()=>render());
 window.LukeAuth?.onChange?.(()=>render());
 </script>
-<script src="/model-studio.js?v=20261009-model2"></script>
+<script src="/model-studio.js?v=20261009-model-product"></script>
 </body>
 </html>
