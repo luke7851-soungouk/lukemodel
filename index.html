@@ -119,6 +119,7 @@ h1.tit{font-size:25px;font-weight:800;letter-spacing:-.5px;margin-bottom:9px;lin
 
 .side{position:sticky;top:78px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .lm-profile-summary{padding:23px;border-bottom:1px solid #394357;background:linear-gradient(135deg,#222b3a,#151a24)}.lm-profile-summary span{color:#c9fb68;font-size:11px;font-weight:800;letter-spacing:.2em}.lm-profile-summary h2{font-size:25px;line-height:1.3;margin:8px 0}.lm-profile-summary p{color:#bfc8d6;font-size:13px;line-height:1.65;margin:8px 0}.lm-profile-summary button{width:100%;margin-top:12px;background:#c9fb68;color:#17220d}
+.lm-result-gallery{margin:22px 0 30px}.lm-result-gallery h2{font-size:21px;margin:0 0 6px}.lm-result-gallery>p{color:var(--dim);font-size:13px;margin:0 0 14px}.lm-result-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.lm-result-card{display:block;text-align:left;width:100%;padding:0;border:1px solid #3b4250;border-radius:12px;background:#171b25;color:#fff;overflow:hidden;cursor:pointer}.lm-result-card img{width:100%;aspect-ratio:3/4;object-fit:contain;display:block;background:#10141b}.lm-result-card span{display:block;padding:9px 11px;font-size:12px}.lm-result-card:hover{border-color:#c9fb68}.lm-result-empty{padding:32px 16px;border:1px dashed #4c5362;border-radius:12px;color:var(--dim);font-size:13px}.lm-result-modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.89);display:grid;place-items:center;padding:18px}.lm-result-modal-inner{width:min(850px,100%);max-height:100%;overflow:auto;background:#171b25;padding:18px;border:1px solid #4c5362;border-radius:15px}.lm-result-modal-inner img{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:12px auto}.lm-result-modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}@media(max-width:680px){.lm-result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .vtabs{display:flex;gap:2px;padding:9px 9px 0;overflow-x:auto}
 .vtabs button{padding:8px 13px;font-size:12.5px;font-weight:700;color:var(--dim);border-radius:7px 7px 0 0;white-space:nowrap}
 .vtabs button.on{background:var(--panel2);color:#fff}
@@ -1821,8 +1822,30 @@ function renderDetail(app){
   const anglePrompt=document.createElement('div');anglePrompt.className='lm-angle-prompt';
   const angleText=document.createElement('p');angleText.textContent='측면과 뒷면 이미지는 이 모델을 기준으로 AI가 새로 제작합니다.';
   const angleButton=document.createElement('button');angleButton.type='button';angleButton.className='btn';angleButton.textContent='360° 5개 각도 만들기';angleButton.dataset.requiresApproval='';
-  angleButton.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;await window.LukeModelStudio?.openWithModel?.(String(faceSrc(m,0,900,900)),m.name,true);};
+  angleButton.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;await window.LukeModelStudio?.openWithModel?.(String(faceSrc(m,0,900,900)),m.name,true,m.id);};
   anglePrompt.append(angleText,angleButton);angleGrid.appendChild(anglePrompt);angleSection.appendChild(angleGrid);left.appendChild(angleSection);
+
+  const modelResults=document.createElement('div');left.appendChild(modelResults);
+  const showModelResults=async()=>{
+    const results=await window.LukeModelStudio?.resultsForModel?.(m.id)||[];
+    if(view!=='detail'||curId!==m.id)return;
+    modelResults.replaceChildren();
+    const angleKinds=new Set(['정면','좌측면','우측면','뒷면','클로즈업']);
+    const showPhoto=item=>{
+      const overlay=document.createElement('div');overlay.className='lm-result-modal';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label',item.name+' 사진 상세');
+      const inner=document.createElement('div');inner.className='lm-result-modal-inner';const title=document.createElement('h2');title.textContent=item.name;
+      const image=document.createElement('img');image.src=item.url;image.alt=item.name;
+      const actions=document.createElement('div');actions.className='lm-result-modal-actions';
+      const close=document.createElement('button');close.className='btn ghost';close.textContent='닫기';close.onclick=()=>overlay.remove();
+      const down=document.createElement('button');down.className='btn';down.textContent='다운로드';down.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;const link=document.createElement('a');link.href=item.url;link.download='luke-model-'+item.id+'.png';document.body.append(link);link.click();link.remove();};
+      const remove=document.createElement('button');remove.className='btn ghost';remove.textContent='이 프로젝트에서 삭제';remove.onclick=async()=>{if(!confirm('이 생성 사진을 이 브라우저의 프로젝트에서 삭제할까요?'))return;try{if(await window.LukeModelStudio.deleteResultForModel(m.id,item.id)){overlay.remove();showModelResults();}}catch(error){toast('삭제하지 못했습니다: '+error.message,'err');}};
+      actions.append(close,down,remove);inner.append(title,image,actions);overlay.append(inner);overlay.onclick=event=>{if(event.target===overlay)overlay.remove();};overlay.onkeydown=event=>{if(event.key==='Escape')overlay.remove();};document.body.append(overlay);close.focus();
+    };
+    const group=(title,copy,list)=>{const section=document.createElement('section');section.className='lm-result-gallery';const h=document.createElement('h2');h.textContent=title;const p=document.createElement('p');p.textContent=copy;section.append(h,p);if(!list.length){const empty=document.createElement('div');empty.className='lm-result-empty';empty.textContent='아직 제작한 이미지가 없습니다. 이 모델로 생성하면 여기에 표시됩니다.';section.append(empty);}else{const grid=document.createElement('div');grid.className='lm-result-grid';list.forEach(item=>{const card=document.createElement('button');card.type='button';card.className='lm-result-card';const image=document.createElement('img');image.src=item.url;image.alt=item.name;image.loading='lazy';const label=document.createElement('span');label.textContent=item.kind;card.append(image,label);card.onclick=()=>showPhoto(item);grid.append(card);});section.append(grid);}modelResults.append(section);};
+    group('360° 모델 이미지','이 브라우저에서 제작한 각도별 이미지를 비교하세요.',results.filter(item=>angleKinds.has(item.kind)));
+    group('의상 · 배경 화보','이미지를 클릭하면 크게 보고 다운로드하거나 삭제할 수 있습니다.',results.filter(item=>!angleKinds.has(item.kind)));
+  };
+  showModelResults();
 
   /* 얼굴 속성 */
   const s2=document.createElement('div'); s2.className='sec';
@@ -1904,7 +1927,7 @@ function renderDetail(app){
   const profileMeta=document.createElement('p');profileMeta.textContent=[AGES[m.age],GENDERS[m.gender],STYLES[m.style]].filter(Boolean).join(' · ');
   const profileDesc=document.createElement('p');profileDesc.textContent=String(m.desc||'이 모델의 얼굴과 스타일을 확인하고 새 이미지 제작에 활용하세요.').slice(0,220);
   const profileUse=document.createElement('button');profileUse.type='button';profileUse.className='btn';profileUse.textContent='이 모델로 이미지 만들기';profileUse.dataset.requiresApproval='';
-  profileUse.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;await window.LukeModelStudio?.openWithModel?.(String(faceSrc(m,0,900,900)),m.name);};
+  profileUse.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;await window.LukeModelStudio?.openWithModel?.(String(faceSrc(m,0,900,900)),m.name,false,m.id);};
   profile.append(profileKick,profileName,profileMeta,profileDesc,profileUse);side.appendChild(profile);
   const vb=document.createElement('div'); vb.className='vbody';
 
@@ -3887,6 +3910,6 @@ render();
 window.LukeAccess?.check?.().then(()=>render());
 window.LukeAuth?.onChange?.(()=>render());
 </script>
-<script src="/model-studio.js?v=20261009-angle-outfit-viewer"></script>
+<script src="/model-studio.js?v=20261009-catalog-results"></script>
 </body>
 </html>

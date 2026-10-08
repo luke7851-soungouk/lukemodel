@@ -156,7 +156,7 @@
     try{for(const [label,direction] of jobs){if(stop)break;status(label+' 생성 중 · '+(done+1)+'/'+jobs.length+' · 잠시 기다려 주세요.');
       const identity=kind==='candidate'?'Do not imitate any real person. '+(product?'The reference is a PRODUCT mood reference. Cast a model suited to its design and audience; do not copy people from the product photo.':''):'Reference image 1 is the confirmed person. Preserve their exact facial identity, age, hair and body proportions. '+(refs.length>1?'Reference image 2 is the product or garment. Preserve its color, cut, material and branding when applying it to the model.':'');
       const prompt=[identity,'Natural editorial photograph, realistic skin texture, subtle asymmetry, no plastic skin, no beauty filter, one adult person, no collage.',kind==='candidate'?JSON.stringify({gender:f.gender,age:f.age,height:f.height,hair:f.hair,mood:f.mood}):'', 'Campaign brief: '+f.brief, direction,kind==='candidate'||kind==='angles'?'Plain white T-shirt and blue jeans, neutral gray studio background.':'', 'One image, no captions.'].filter(Boolean).join('\n');
-      const result=await generate(prompt,refs,c,cfg);const item={id:crypto.randomUUID(),name:(f.name.trim()||'LUKE')+' · '+label,kind:kind==='candidate'?'모델 후보':label,url:result,prompt,parentId:original?.id||null,createdAt:new Date().toISOString()};items.push(item);done++;draw();if(!await save())break;}
+      const result=await generate(prompt,refs,c,cfg);const item={id:crypto.randomUUID(),name:(f.name.trim()||'LUKE')+' · '+label,kind:kind==='candidate'?'모델 후보':label,url:result,prompt,parentId:original?.id||null,catalogModelId:original?.catalogModelId||null,createdAt:new Date().toISOString()};items.push(item);done++;draw();if(!await save())break;}
       status((stop?'중지했어요.':'작업을 마쳤어요.')+' '+done+'장 생성 · 확정 모델과 얼굴 일관성을 직접 비교해 주세요.');
     }catch(e){const raw=String(e&&e.message||e);const friendly=raw==='no-higgs'?'Higgsfield 자격증명(key-id:key-secret)을 AI 연결 설정에 입력해 주세요.':raw;status((e.name==='AbortError'?'요청이 중지되었거나 시간이 초과됐어요. 서버에서 이미 처리 중이면 비용이 발생할 수 있어요.':friendly)+' 완료된 '+done+'장은 유지돼요.');}finally{lock(false);}}
   async function downloadProject(){if(window.LukeAccess && !await LukeAccess.require())return;const data=JSON.stringify({version:1,items,selected:selected?.id||null,product,fields:fields()},null,2);const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=el('a');a.href=url;a.download='luke-model-studio.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
@@ -177,18 +177,35 @@
     layout.append(left,right);const st=el('p','후보 생성 또는 내 모델 사진으로 시작하세요.');st.id='ms-status';st.setAttribute('role','status');const cancel=button('생성 중지',()=>{stop=true;controller?.abort();});cancel.id='ms-stop';cancel.disabled=true;shell.append(layout,st,cancel);panel.append(style,shell);document.body.append(panel);refresh();draw();lock(true);
     try{const data=await storage('readonly');if(data){items=data.items||[];selected=items.find(i=>i.id===data.selected)||null;product=data.product||null;Object.keys(fields()).forEach(k=>{if(typeof data.fields?.[k]==='string')$(k).value=data.fields[k];});pp.hidden=!product;if(product)pp.src=product;draw();}}catch{status('기기 저장을 사용할 수 없어요. 작업 후 프로젝트를 내보내 주세요.');}finally{lock(false);}
   }
-  async function openWithModel(url,name,startAngles=false){
+  async function openWithModel(url,name,startAngles=false,catalogModelId=null){
     if(window.LukeAccess&&!await LukeAccess.require())return;
     await open();
     try{
+      const existing=catalogModelId&&items.find(item=>item.catalogModelId===catalogModelId&&item.kind==='기존 모델');
+      if(existing){selected=existing;draw();await save();status('저장된 모델 프로젝트를 열었어요.');if(startAngles)await run('angles');return;}
       const response=await fetch(String(url));if(!response.ok)throw new Error('모델 사진을 불러오지 못했어요.');
       const blob=await response.blob();
       const type=blob.type.split(';')[0]||'image/jpeg';
       const image=await readImage(new File([blob],String(name||'model')+'.jpg',{type}));
-      const item={id:crypto.randomUUID(),name:String(name||'선택한 모델'),kind:'기존 모델',url:image,prompt:'기존 모델에서 시작',parentId:null,createdAt:new Date().toISOString()};
+      const item={id:crypto.randomUUID(),name:String(name||'선택한 모델'),kind:'기존 모델',url:image,prompt:'기존 모델에서 시작',parentId:null,catalogModelId:catalogModelId||null,createdAt:new Date().toISOString()};
       items.push(item);selected=item;draw();await save();status('선택한 모델을 기준으로 각도·의상·배경을 제작할 수 있어요.');
       if(startAngles)await run('angles');
     }catch(error){status(error instanceof Error?error.message:'모델 사진을 불러오지 못했어요.');}
+  }
+  async function resultsForModel(catalogModelId){
+    if(!catalogModelId)return [];
+    try{const d=await db;const data=await new Promise((resolve,reject)=>{const request=d.transaction('projects','readonly').objectStore('projects').get(owner());request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});return (data?.items||[]).filter(item=>item.catalogModelId===catalogModelId&&item.kind!=='기존 모델'&&safeImage(item.url)).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));}catch{return [];}
+  }
+  async function deleteResultForModel(catalogModelId,itemId){
+    const d=await db,key=owner();
+    const data=await new Promise((resolve,reject)=>{const request=d.transaction('projects','readonly').objectStore('projects').get(key);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+    const target=data?.items?.find(item=>item.id===itemId&&item.catalogModelId===catalogModelId&&item.kind!=='기존 모델');
+    if(!target)return false;
+    data.items=data.items.filter(item=>item.id!==itemId);
+    if(data.selected===itemId)data.selected=null;
+    await new Promise((resolve,reject)=>{const tx=d.transaction('projects','readwrite');tx.objectStore('projects').put(data,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});
+    if(panelOwner===key){items=data.items;selected=items.find(item=>item.id===data.selected)||null;if(panel)draw();}
+    return true;
   }
   async function openWithProduct(id){
     if(window.LukeAccess&&!await LukeAccess.require())return;
@@ -208,7 +225,7 @@
       await save();status(item.name+' 상품 사진을 참고 이미지로 불러왔어요.');
     }catch(error){status(error instanceof Error?error.message:'상품을 불러오지 못했어요.');}
   }
-  window.LukeModelStudio={open,openWithModel,openWithProduct};
+  window.LukeModelStudio={open,openWithModel,openWithProduct,resultsForModel,deleteResultForModel};
   document.getElementById('model-studio-link')?.addEventListener('click',e=>{e.preventDefault();location.hash='model-studio';open();});
   window.addEventListener('hashchange',()=>{if(location.hash==='#model-studio')open();});
   if(location.hash==='#model-studio'){
