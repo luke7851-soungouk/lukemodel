@@ -5,27 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'none'; img-src data: blob: https: http:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com https://apis.google.com https://t1.kakaocdn.net https://developers.kakao.com https://static.nid.naver.com; connect-src 'self' blob: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://kauth.kakao.com https://kapi.kakao.com https://nid.naver.com https://openapi.naver.com https://image.pollinations.ai https://pollinations.ai https://fal.run https://queue.fal.run https://api.fal.ai https://api.replicate.com https://*.replicate.com https://api.openai.com https://platform.higgsfield.ai https://api.higgsfield.ai https://*.higgsfield.ai https://generativelanguage.googleapis.com https://abacus.jasoncameron.dev https://*.supabase.co https:; media-src data: blob: https: http:; frame-src https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; form-action https://accounts.google.com https://kauth.kakao.com https://nid.naver.com; base-uri 'none'">
-<title>페이스루크 — 얼굴 모델 전문 공유 플랫폼</title>
-<meta name="description" content="페이스루크(FaceLook) — 얼굴 한 번 업로드/생성하면 이미지·영상을 같은 모델 아래에. BYOK(Fal/Replicate 등). 공유 코드. 브라우저 로컬(서버 동기화 없음). Same-person AI faces & video — your API keys.">
+<title>LUKE MODEL — AI 모델 · 상품</title>
+<meta name="description" content="LUKE MODEL — AI 모델을 탐색하고 상품과 함께 이미지를 제작하세요. 모델과 상품의 다운로드·제작 사용은 회원 가입 후 운영자 승인이 필요합니다.">
 <link rel="canonical" href="https://lukemodel.com/">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="FaceLook / 페이스루크">
+<meta property="og:site_name" content="LUKE MODEL">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:locale:alternate" content="en_US">
 <meta property="og:url" content="https://lukemodel.com/">
-<meta property="og:title" content="페이스루크 / FaceLook — Same-person AI faces & video">
-<meta property="og:description" content="Upload/generate a face once, keep image+video under one model. BYOK (Fal/Replicate/…). Share codes. Browser-local — no cloud sync yet.">
+<meta property="og:title" content="LUKE MODEL — AI 모델 · 상품">
+<meta property="og:description" content="AI 모델과 상품을 둘러보고, 운영자 승인 후 다운로드와 제작에 사용하세요.">
 <meta property="og:image" content="https://lukemodel.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="FaceLook / 페이스루크 — Same-person AI faces & video">
-<meta name="twitter:description" content="BYOK face+video studio. Browser-local. Share codes. Your API keys never leave your browser for lukemodel.">
+<meta name="twitter:title" content="LUKE MODEL — AI 모델 · 상품">
+<meta name="twitter:description" content="AI 모델과 상품을 둘러보고, 운영자 승인 후 다운로드와 제작에 사용하세요.">
 <meta name="twitter:image" content="https://lukemodel.com/og.png">
 <link rel="icon" href="/logo-512.png" type="image/png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"FaceLook","alternateName":["페이스루크","lukemodel"],"url":"https://lukemodel.com/","description":"Same-person AI faces and video — your API keys. Upload or generate a face once, keep image and video under one model. BYOK (Fal, Replicate, and more). Share codes. Browser-local — no cloud sync yet.","applicationCategory":"MultimediaApplication","operatingSystem":"Web Browser","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":["ko","en"],"featureList":["Bring-your-own-key AI image and video","Same-person face identity across assets","Local share codes","Browser localStorage and IndexedDB storage"],"isAccessibleForFree":true}
+{"@context":"https://schema.org","@type":"WebApplication","name":"LUKE MODEL","url":"https://lukemodel.com/","description":"AI 모델과 상품을 둘러보고 운영자 승인 후 다운로드와 제작에 사용합니다.","applicationCategory":"MultimediaApplication","operatingSystem":"Web Browser","inLanguage":"ko"}
 </script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -117,6 +117,7 @@ h1.tit{font-size:25px;font-weight:800;letter-spacing:-.5px;margin-bottom:9px;lin
 .fcell .v{font-size:13.5px;font-weight:700}
 
 .side{position:sticky;top:78px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lm-profile-summary{padding:23px;border-bottom:1px solid #394357;background:linear-gradient(135deg,#222b3a,#151a24)}.lm-profile-summary span{color:#c9fb68;font-size:11px;font-weight:800;letter-spacing:.2em}.lm-profile-summary h2{font-size:25px;line-height:1.3;margin:8px 0}.lm-profile-summary p{color:#bfc8d6;font-size:13px;line-height:1.65;margin:8px 0}.lm-profile-summary button{width:100%;margin-top:12px;background:#c9fb68;color:#17220d}
 .vtabs{display:flex;gap:2px;padding:9px 9px 0;overflow-x:auto}
 .vtabs button{padding:8px 13px;font-size:12.5px;font-weight:700;color:var(--dim);border-radius:7px 7px 0 0;white-space:nowrap}
 .vtabs button.on{background:var(--panel2);color:#fff}
@@ -468,43 +469,29 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 <body>
 <header>
   <div class="wrap hbar">
-    <button class="logo" onclick="go('browse')"><span class="mark">루</span><span>페이스루크</span></button>
+    <button class="logo" onclick="go('browse')"><span class="mark">L</span><span>LUKE MODEL</span></button>
     <nav class="top" id="nav"></nav>
     <div class="search"><span class="ic">&#128269;</span>
       <input id="q" type="text" placeholder="모델명, 태그, 제작자 검색" autocomplete="off"></div>
     <div id="auth"></div>
   </div>
-<a id="model-studio-link" href="#model-studio" style="display:inline-block;padding:10px 14px;color:#c9fb68;font-weight:800">모델 스튜디오</a>
-<a href="/products/" style="display:inline-block;padding:10px 14px;color:#c9fb68;font-weight:800">상품 카테고리</a>
-<a href="/admin/access/" style="display:inline-block;padding:10px 14px;color:#dce2ef;font-weight:700">회원 승인 관리</a>
-<a href="/talk/" style="display:inline-block;padding:10px 14px;color:#d1fe17;font-weight:700">🎙 말하는 AI 초이</a>
 </header>
 <main id="app" class="wrap"></main>
-<div id="aiAsideRoot"></div>
-<button type="button" class="ai-aside-fab" id="aiAsideFab" title="내 AI 모델">내 AI 모델</button>
 <div id="modal"></div>
 <div class="toast" id="toast"></div>
 
 <footer class="site-footer">
   <div class="wrap foot-row">
-    <div>FaceLook / 페이스루크 · BYOK · browser-local</div>
+    <div>LUKE MODEL · AI 모델과 상품</div>
     <nav>
-      <a href="/casting/" onclick="go('casting');return false;">모델 캐스팅</a>
-      <a href="/higgsfield/">힉스필드 스튜디오</a>
-      <a href="/higgsfield/?tab=public">공개 갤러리</a>
-      <a href="/en/">English</a>
+      <a href="/">모델</a>
+      <a href="/products/">상품</a>
       <a href="/privacy.html" onclick="go('privacy');return false;">Privacy</a>
       <a href="/terms.html" onclick="go('terms');return false;">Terms</a>
-      <a href="/stats.html" style="opacity:.55;font-weight:500">트래픽 통계</a>
-      <a href="https://github.com/luke7851-soungouk/lukemodel" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://showmebest.ai" target="_blank"><img src="https://showmebest.ai/badge/feature-badge-white.webp" alt="Featured on ShowMeBestAI" width="220" height="60"></a>
     </nav>
   </div>
 </footer>
 
-<script src="/traffic.js"></script>
-<link rel="stylesheet" href="/hair-studio.css?v=20261003-auto-public-video">
-<script src="/hair-studio.js?v=20261008-after-only"></script>
 <script src="/shared-config.js"></script>
 <script src="/lm-auth.js"></script>
 <script src="/access-gate.js?v=20261009"></script>
@@ -1431,29 +1418,16 @@ function openLogin(reason){
 /* ── 렌더 ────────────────────────────────────────────────────────────── */
 function render(){
   const nav=$('nav'); nav.textContent='';
-  [['browse','모델 탐색'],['casting','모델 캐스팅'],['studio','AI 스튜디오'],['mine','내 페이지']].forEach(([k,l])=>{
+  [['browse','모델']].forEach(([k,l])=>{
     const b=document.createElement('button'); b.textContent=l; if(view===k)b.className='on';
     b.onclick=()=>go(k); nav.appendChild(b); });
-  { const hf=document.createElement('a'); hf.href='/higgsfield/'; hf.className='nav-hf'; hf.textContent='힉스필드 스튜디오'; hf.title='Higgsfield 모델로 이미지·영상 생성 + 공개 갤러리 (lukemodel.com/higgsfield/)'; nav.appendChild(hf);
-    const products=document.createElement('a'); products.href='/products/'; products.className='nav-pub'; products.textContent='상품'; nav.appendChild(products);
-    const fashion=document.createElement('a'); fashion.href='/fashion/'; fashion.className='nav-pub'; fashion.textContent='가상 피팅'; fashion.title='가상 피팅·대량 룩북 Make 자동화'; nav.appendChild(fashion);
-    const pg=document.createElement('a'); pg.href='/higgsfield/?tab=public'; pg.className='nav-pub'; pg.textContent='공개 갤러리'; pg.title='운영자 승인 후 다운로드·재사용'; nav.appendChild(pg); }
+  { const products=document.createElement('a'); products.href='/products/'; products.className='nav-pub'; products.textContent='상품'; nav.appendChild(products); }
 
   const au=$('auth'); au.textContent='';
   au.style.cssText='display:flex;align-items:center;gap:9px';
-  if(DB.user){
-    const me=document.createElement('button'); me.className='me'; me.title='내 페이지';
-    me.onclick=()=>go('mine');
-    const im=document.createElement('img'); im.src=DB.user.photo||avatar(DB.user.nick); im.alt=''; im.referrerPolicy='no-referrer';
-    const nm=document.createElement('span'); nm.textContent=DB.user.nick;
-    me.appendChild(im); me.appendChild(nm); au.appendChild(me);
-    const hub=document.createElement('button'); hub.className='btn ghost sm'; hub.textContent='내 AI 모델'; hub.title='AI 제공자 연결'; hub.onclick=()=>openAiAside({force:true}); au.appendChild(hub);
-    const up=document.createElement('button'); up.className='btn'; up.textContent='+ 업로드'; up.title='이미지·동영상을 공개 갤러리에 바로 올리기 (로그인 없이)'; up.onclick=()=>openUpload(); au.appendChild(up);
-    const lo=document.createElement('button'); lo.className='btn ghost sm'; lo.textContent='로그아웃'; lo.onclick=logout; au.appendChild(lo);
-  } else {
-    const li=document.createElement('button'); li.className='btn ghost'; li.textContent='로그인'; li.onclick=()=>openLogin(); au.appendChild(li);
-    const up=document.createElement('button'); up.className='btn'; up.textContent='+ 업로드'; up.title='이미지·동영상을 공개 갤러리에 바로 올리기 (로그인 없이)'; up.onclick=()=>openUpload(); au.appendChild(up);
-  }
+  if(window.LukeAuth?.chip)au.appendChild(LukeAuth.chip());
+  const make=document.createElement('button'); make.className='btn'; make.textContent='+ AI 모델 만들기'; make.onclick=()=>{location.hash='model-studio';window.LukeModelStudio?.open?.();}; au.appendChild(make);
+  if(window.LukeAccess?.owner){const manage=document.createElement('a');manage.className='btn ghost sm';manage.href='/admin/access/';manage.textContent='회원 승인 관리';au.appendChild(manage);}
 
   const app=$('app'); app.textContent='';
   if(view==='browse') renderBrowse(app);
@@ -1638,14 +1612,12 @@ function renderHomeShared(app){
   else if(Date.now()-homeShared.lastPoll>60000) pollHomeNew();
 }
 function renderBrowse(app){
-  if(window.LukeHair) LukeHair.render(app);
-  try{ if(window.LukeCasting) LukeCasting.homeEntry(app); }catch(e){ console.warn(e); }   /* 첫 화면 짧은 입구: 모델 캐스팅 */
   const libraryHead=document.createElement('section'); libraryHead.className='lm-library-head';
   const libraryEyebrow=document.createElement('span'); libraryEyebrow.textContent='LUKE MODEL / AI MODEL LIBRARY';
   const libraryTitle=document.createElement('h2'); libraryTitle.textContent='AI 모델 라이브러리';
-  const libraryCopy=document.createElement('p'); libraryCopy.textContent='영상의 캐스팅 사이트처럼 모델을 고르고, 상세 사진과 각도를 비교하세요. 다운로드와 제작 사용은 회원 승인 후 열립니다.';
+  const libraryCopy=document.createElement('p'); libraryCopy.textContent='모델을 고르고 상세 사진과 각도를 비교하세요. 다운로드와 제작 사용은 운영자 승인 후 열립니다.';
   const libraryTabs=document.createElement('div'); libraryTabs.className='lm-library-tabs';
-  [['모델','browse'],['상품','/products/'],['공개 갤러리','/higgsfield/?tab=public']].forEach(([label,url])=>{const a=document.createElement('a');a.textContent=label;a.href=url==='browse'?'#models':url;if(url==='browse')a.className='on';libraryTabs.appendChild(a);});
+  [['모델','browse'],['상품','/products/']].forEach(([label,url])=>{const a=document.createElement('a');a.textContent=label;a.href=url==='browse'?'#models':url;if(url==='browse')a.className='on';libraryTabs.appendChild(a);});
   libraryHead.append(libraryEyebrow,libraryTitle,libraryCopy,libraryTabs);app.appendChild(libraryHead);
   /* ?share=CODE public-ish instruction card (no backend — local pack may still be required) */
   if(pendingShareCode){
@@ -1664,13 +1636,11 @@ function renderBrowse(app){
 
   /* 공개 갤러리(이미지·영상 타임라인) 다음에 바로 얼굴 모델 목록 — 홍보/안내 카드 없음 */
   const fh=document.createElement('div'); fh.className='seclabel'; fh.style.margin='22px 0 0';
-  const fht=document.createElement('span'); fht.textContent='얼굴 모델'; fht.style.cssText='font-size:13px;font-weight:800;color:var(--dim)';
+  const fht=document.createElement('span'); fht.textContent='AI 모델'; fht.style.cssText='font-size:13px;font-weight:800;color:var(--dim)';
   const fhl=document.createElement('span'); fhl.className='ln'; fh.appendChild(fht); fh.appendChild(fhl); app.appendChild(fh);
 
   const f=document.createElement('div'); f.className='filters';
   const chip=(label,on,fn)=>{ const b=document.createElement('button'); b.className='chip'+(on?' on':''); b.textContent=label; b.onclick=fn; f.appendChild(b); };
-  chip('전체', !filt.kind, ()=>{filt.kind='';render();});
-  Object.keys(KINDS).forEach(k=>chip(KINDS[k], filt.kind===k, ()=>{filt.kind=k;render();}));
   const d1=document.createElement('div'); d1.className='divider'; f.appendChild(d1);
   const mkSel=(key,all,map)=>{ const s=document.createElement('select'); s.className='sel';
     [['',all],...Object.keys(map).map(k=>[k,map[k]])].forEach(([v,l])=>{ const o=document.createElement('option'); o.value=v; o.textContent=l; if(filt[key]===v)o.selected=true; s.appendChild(o); });
@@ -1687,9 +1657,8 @@ function renderBrowse(app){
   list.sort((a,b)=> filt.sort==='rating' ? avgRating(b)-avgRating(a)
                   : filt.sort==='reviews' ? b.reviews.length-a.reviews.length
                   : filt.sort==='new' ? listingAt(b)-listingAt(a) : b.dl-a.dl);
-  if(!list.length){ app.appendChild(emptyBox('검색 결과가 없습니다','다른 키워드나 필터를 시도해보세요')); renderHomeShared(app); return; }
+  if(!list.length){ app.appendChild(emptyBox('검색 결과가 없습니다','다른 키워드나 필터를 시도해보세요')); return; }
   const grid=gridOf(list); grid.id='models'; app.appendChild(grid);
-  renderHomeShared(app);
   if(window._highlightModelId!=null){
     requestAnimationFrame(()=>{
       const el=grid.querySelector('.card.flash-new')||document.querySelector('.card.flash-new');
@@ -1841,9 +1810,6 @@ function renderDetail(app){
   const hi=document.createElement('img'); hi.alt=m.name||''; hi.decoding='async'; hi.src=String(faceSrc(m,0,900,900)); hero.appendChild(hi);
   left.appendChild(hero);
 
-  /* 이 얼굴로 힉스필드 제작 (이미지·영상, 얼굴 유지) + 이 얼굴로 만든 작품 — /face-hf.js */
-  renderFaceHfPanel(left, m);
-
   /* 얼굴 속성 */
   const s2=document.createElement('div'); s2.className='sec';
   const s2h=document.createElement('h2'); s2h.textContent='얼굴 속성'; s2.appendChild(s2h);
@@ -1918,6 +1884,14 @@ function renderDetail(app){
 
   /* 사이드 */
   const side=document.createElement('div'); side.className='side';
+  const profile=document.createElement('div');profile.className='lm-profile-summary';
+  const profileKick=document.createElement('span');profileKick.textContent='AI MODEL PROFILE';
+  const profileName=document.createElement('h2');profileName.textContent=m.name;
+  const profileMeta=document.createElement('p');profileMeta.textContent=[AGES[m.age],GENDERS[m.gender],STYLES[m.style]].filter(Boolean).join(' · ');
+  const profileDesc=document.createElement('p');profileDesc.textContent=String(m.desc||'이 모델의 얼굴과 스타일을 확인하고 새 이미지 제작에 활용하세요.').slice(0,220);
+  const profileUse=document.createElement('button');profileUse.type='button';profileUse.className='btn';profileUse.textContent='이 모델로 이미지 만들기';profileUse.dataset.requiresApproval='';
+  profileUse.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;await window.LukeModelStudio?.openWithModel?.(String(faceSrc(m,0,900,900)),m.name);};
+  profile.append(profileKick,profileName,profileMeta,profileDesc,profileUse);side.appendChild(profile);
   const vb=document.createElement('div'); vb.className='vbody';
   const st=dlStats(m);
   const ds=document.createElement('div'); ds.className='dlstat';
@@ -1964,7 +1938,6 @@ function renderDetail(app){
   dl.onclick=async(ev)=>{
     if(ev && ev.preventDefault) ev.preventDefault();
     if(!scanOk) return;
-    if(!requireLogin('회원 로그인 후 운영자 승인을 받으면 모델을 다운로드할 수 있습니다.')) return;
     if(window.LukeAccess && !await LukeAccess.require()) return;
     dl.disabled=true;
     try{
@@ -3916,11 +3889,10 @@ let pendingShareCode=null;
 
 $('q').addEventListener('input', e=>{ filt.q=e.target.value; if(view!=='browse') view='browse'; render(); });
 
-runDailyAuto(false);   /* 접속 시 하루 1회 자동 등록 */
-try{ if(window.FaceLookTraffic) FaceLookTraffic.trackPageview(); }catch(e){}
 render();
+window.LukeAccess?.check?.().then(()=>render());
+window.LukeAuth?.onChange?.(()=>render());
 </script>
 <script src="/model-studio.js?v=20261009-model2"></script>
-<script src="/assistant.js"></script>
 </body>
 </html>
