@@ -156,6 +156,7 @@
       const image=await fetch(item.image_url);
       if(!image.ok)throw new Error('상품 사진을 불러오지 못했어요.');
       product=await readImage(new File([await image.blob()],item.name+'.png',{type:image.headers.get('content-type')?.split(';')[0]||'image/png'}));
+      selected=null;draw();
       $('product-preview').src=product;$('product-preview').hidden=false;
       $('name').value=item.name+' 캠페인';$('brief').value=(item.description||item.name).slice(0,1200);
       await save();status(item.name+' 상품 사진을 참고 이미지로 불러왔어요.');
