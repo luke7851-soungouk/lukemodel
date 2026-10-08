@@ -14,6 +14,12 @@
   function options(id,values){const s=el('select');s.id='ms-'+id;values.forEach(v=>s.add(new Option(v,v)));return s;}
   function field(parent,label,id,values){const l=el('label',label);let n=Array.isArray(values)?options(id,values):el(values==='textarea'?'textarea':'input');n.id='ms-'+id;if(n.tagName==='INPUT'||n.tagName==='TEXTAREA')n.maxLength=id==='brief'?1200:150;l.append(n);parent.append(l);return n;}
   const safeImage=url=>typeof url==='string'&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(url);
+  function dataImageBlob(url){
+    if(!safeImage(url))throw new Error('참고 이미지가 손상됐어요.');
+    const comma=url.indexOf(','),type=url.slice(5,url.indexOf(';')),bytes=atob(url.slice(comma+1));
+    const array=new Uint8Array(bytes.length);for(let i=0;i<bytes.length;i++)array[i]=bytes.charCodeAt(i);
+    return new Blob([array],{type});
+  }
   function draw(){
     const grid=$('gallery');grid.replaceChildren();$('chosen').textContent=selected?'확정 모델: '+selected.name:'후보 카드에서 기준 모델을 확정하세요.';
     const featured=$('featured');
@@ -67,7 +73,7 @@
         const form=new FormData();form.append('prompt',prompt);
         for(const [i,ref] of refs.entries()){
           if(!safeImage(ref))throw new Error('참고 이미지가 손상됐어요.');
-          const blob=await (await fetch(ref)).blob();
+          const blob=dataImageBlob(ref);
           form.append('reference',new File([blob],`reference-${i+1}.png`,{type:blob.type||'image/png'}));
         }
         const sent=await fetch(server+'?action=model',{method:'POST',headers:auth.headers(),body:form,signal:controller.signal});
