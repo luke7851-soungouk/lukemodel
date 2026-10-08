@@ -225,7 +225,7 @@ function autoView(key,getSrc){ whenIdle(()=>run({key,getSrc,from:'view'})); }
 /* ── 올린 직후: 새 행의 뿌리에 각도가 없으면 올린 사람 브라우저에서 ── */
 let uploadQueued=0;
 window.addEventListener('lukemedia:inserted',ev=>{
-  const row=ev.detail||{}; if(row.source==='hair'||isAngle(row.title)||isSheet(row.title)||!/^(image|video)$/.test(row.kind||'')) return;
+  const row=ev.detail||{}; if(window.__lmSkipAutoAngle||row.source==='hair'||isAngle(row.title)||isSheet(row.title)||!/^(image|video)$/.test(row.kind||'')) return;
   if(uploadQueued>=UPLOAD_QUEUE_MAX) return; uploadQueued++;
   whenIdle(async()=>{
     try{ const col=row.path?'path':'external_url', val=row.path||row.external_url; if(!val) return;

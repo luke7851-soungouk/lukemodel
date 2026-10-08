@@ -87,7 +87,7 @@ async function renderDetail(p){
   const status=node('p','','pd-status');status.setAttribute('role','status');view.append(status);
 
   /* 결과 */
-  const rSec=node('section',null,'pd-section');const rh=node('div',null,'pd-sec-head');const rht=node('div');rht.append(node('h2','생성한 컷'),node('p','이 브라우저에 보관돼요. 누르면 크게 보고 다운로드하거나 삭제할 수 있어요.'));rh.append(rht);rSec.append(rh);
+  const rSec=node('section',null,'pd-section');const rh=node('div',null,'pd-sec-head');const rht=node('div');rht.append(node('h2','생성한 컷'),node('p','완성된 컷은 lukemodel.com 공개 갤러리에도 자동 등록되고, 이 브라우저에도 보관돼요. 누르면 크게 보고 다운로드할 수 있어요.'));rh.append(rht);rSec.append(rh);
   const rgrid=node('div',null,'pd-results');rSec.append(rgrid);view.append(rSec);
   let shots=await loadShots(p.id);if(token!==detailToken)return;
   let pending=0;
@@ -99,7 +99,7 @@ async function renderDetail(p){
   goBtn.onclick=async()=>{
     if(window.LukeAccess&&!await LukeAccess.require())return;
     const chosen=list.filter(c=>picked.has(c.id));if(!chosen.length)return;
-    goBtn.disabled=true;let done=0;pending=cuts;drawShots();
+    goBtn.disabled=true;let done=0,shared=0;pending=cuts;drawShots();
     try{
       await auth.ensure();if(!auth.user()||auth.isAnon()){auth.openAccount?.();throw new Error('로그인한 회원만 제작할 수 있어요.');}
       const r=await fetch(p.image_url);if(!r.ok)throw new Error('제품 사진을 불러오지 못했어요.');const ref=await r.blob();
@@ -107,21 +107,24 @@ async function renderDetail(p){
         const c=chosen[i%chosen.length];status.textContent=`${c.title} 생성 중 · ${i+1}/${cuts} · 잠시 기다려 주세요.`;
         const text=['Reference image 1 is the exact PRODUCT. Keep its shape, color, label, typography and packaging identical; do not invent a different product or brand.',c.prompt,prompt.value.trim()?'Extra direction: '+prompt.value.trim():'',note.value.trim()?'Brand note: '+note.value.trim():'',`Product: ${p.name} (${p.category||''}). ${String(p.description||'').slice(0,300)}`,`Aspect ratio ${c.ratio}. Photorealistic commercial product photography, no text overlays, no watermark, one image.`].filter(Boolean).join('\n');
         const url=await generate(text,ref);
+        const published=await publishShot(p.name+' · '+c.title);if(published)shared++;
         shots.unshift({id:crypto.randomUUID(),url,label:c.title,concept:c.id,createdAt:new Date().toISOString()});done++;pending=cuts-done;
         try{await saveShots(p.id,shots.slice(0,40));}catch{status.textContent='기기 저장 공간이 부족해요. 결과를 다운로드해 주세요.';}
         drawShots();
       }
-      status.textContent=`${done}컷을 만들었어요. 제품 모양과 라벨이 원본과 같은지 꼭 확인해 주세요.`;
+      status.textContent=`${done}컷을 만들었어요${shared?` · ${shared}컷은 lukemodel.com 갤러리에 자동 등록`:''}. 제품 모양과 라벨이 원본과 같은지 꼭 확인해 주세요.`;
     }catch(e){status.textContent=(e&&e.message||'생성에 실패했어요.')+(done?` 완료된 ${done}컷은 보관돼요.`:'');}
     finally{pending=0;drawShots();goBtn.disabled=false;}
   };
 }
-async function generate(prompt,refBlob){
+let lastRemote='';
+async function publishShot(title){if(!lastRemote||!window.LukeHF?.shareResult)return false;try{await LukeHF.shareResult({url:lastRemote,kind:'image',title});return true;}catch(e){console.warn('auto publish failed',e);return false;}}
+async function generate(prompt,refBlob){lastRemote='';
   const form=new FormData();form.append('prompt',prompt);form.append('reference',new File([refBlob],'product.png',{type:refBlob.type||'image/png'}));
   const sent=await fetch(endpoint+'?action=model',{method:'POST',headers:auth.headers(),body:form});const started=await sent.json().catch(()=>({}));
   if(!sent.ok)throw new Error(started.error||'제작 요청에 실패했어요.');if(!started.jobId)throw new Error('제작 번호를 받지 못했어요.');
   for(let i=0;i<100;i++){await new Promise(r=>setTimeout(r,3000));await auth.ensure();const c=await fetch(endpoint+'?action=model-status&job='+encodeURIComponent(started.jobId),{headers:auth.headers()});const cur=await c.json().catch(()=>({}));if(!c.ok)throw new Error(cur.error||'제작 상태를 확인하지 못했어요.');
-    if(cur.status==='completed'){const r=await fetch(cur.resultUrl,{credentials:'omit',referrerPolicy:'no-referrer'});const b=await r.blob();if(!/^image\//.test(b.type))throw new Error('결과 이미지를 받지 못했어요.');return await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);});}}
+    if(cur.status==='completed'){lastRemote=cur.resultUrl;const r=await fetch(cur.resultUrl,{credentials:'omit',referrerPolicy:'no-referrer'});const b=await r.blob();if(!/^image\//.test(b.type))throw new Error('결과 이미지를 받지 못했어요.');return await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);});}}
   throw new Error('제작이 오래 걸리고 있어요. 잠시 후 다시 시도해 주세요.');
 }
 function showImage(item,onDelete){

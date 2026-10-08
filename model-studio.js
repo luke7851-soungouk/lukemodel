@@ -1,6 +1,14 @@
 'use strict';
 (() => {
-  let panel, panelOwner, busy=false, stop=false, controller=null, selected=null, product=null, extraRefs=[], items=[], higgsUploadApproved=false, step=1, pendingKind=null, pendingCount=0;
+  let panel, panelOwner, busy=false, stop=false, controller=null, selected=null, product=null, extraRefs=[], items=[], higgsUploadApproved=false, step=1, pendingKind=null, pendingCount=0, publishMeta=null;
+  const faceKeyFromUrl=url=>{const m=String(url||'').match(/\/faces\/([a-z0-9-]+)\.(?:jpe?g|png|webp)(?:[?#]|$)/i);return m?'r-'+m[1].toLowerCase():null;};
+  async function autoPublish(remoteUrl){
+    if(!publishMeta||!window.LukeHF?.shareResult||!/^https:\/\//i.test(String(remoteUrl||'')))return '';
+    window.__lmSkipAutoAngle=true;
+    try{const r=await LukeHF.shareResult({url:remoteUrl,kind:'image',title:publishMeta.title,faceKey:publishMeta.faceKey||null});return r&&r.share?' · lukemodel.com 갤러리에 자동 등록':'';}
+    catch(e){console.warn('auto publish failed',e);return ' · 사이트 자동 등록은 실패(결과는 이 프로젝트에 보관)';}
+    finally{window.__lmSkipAutoAngle=false;}
+  }
   const $=id=>document.getElementById('ms-'+id);
   const el=(tag,text,cls)=>{const n=document.createElement(tag); if(text)n.textContent=text;if(cls)n.className=cls;return n;};
   const status=t=>{$('status').textContent=t;};
@@ -129,7 +137,7 @@
           const checked=await fetch(server+'?action=model-status&job='+encodeURIComponent(started.jobId),{headers:auth.headers(),signal:controller.signal});
           const current=await checked.json().catch(()=>({}));
           if(!checked.ok)throw new Error(current.error||'모델 제작 상태를 확인하지 못했어요.');
-          if(current.status==='completed')return await keepResult(current.resultUrl);
+          if(current.status==='completed'){const kept=await keepResult(current.resultUrl);publishMeta&&(publishMeta.note=await autoPublish(current.resultUrl));return kept;}
         }
         throw new Error('제작이 오래 걸리고 있어요. 잠시 후 다시 확인해 주세요.');
       }else if(connection.provider==='higgsfield'){
@@ -161,7 +169,7 @@
     try{for(const [label,direction] of jobs){if(stop)break;status(label+' 생성 중 · '+(done+1)+'/'+jobs.length+' · 잠시 기다려 주세요.');
       const identity=kind==='candidate'?'Do not imitate any real person. '+(refs.length?'The reference images are PRODUCT or MOOD references. Cast a model suited to their design and audience; do not copy people from the reference photos.':''):'Reference image 1 is the confirmed person. Preserve their exact facial identity, age, hair and body proportions. '+(refs.length>1?'Reference image 2 is the product or garment. Preserve its color, cut, material and branding when applying it to the model.':'');
       const prompt=[identity,'Natural editorial photograph, realistic skin texture, subtle asymmetry, no plastic skin, no beauty filter, one adult person, no collage.',kind==='candidate'?JSON.stringify({gender:f.gender,appearance:f.look,age:(parseInt(f.age,10)||27)+' years old adult',height:f.height,body:f.body,hair:f.hair,hairColor:f.hairColor,mood:f.mood,details:f.detail}):'', 'Campaign brief: '+f.brief, direction,kind==='candidate'||kind==='angles'?'Plain white T-shirt and blue jeans, neutral gray studio background.':'', 'One image, no captions.'].filter(Boolean).join('\n');
-      const result=await generate(prompt,refs,c,cfg);const item={id:crypto.randomUUID(),name:(f.name.trim()||'LUKE')+' · '+label,kind:kind==='candidate'?'모델 후보':label,url:result,prompt,parentId:original?.id||null,catalogModelId:original?.catalogModelId||null,createdAt:new Date().toISOString()};items.push(item);done++;pendingCount=jobs.length-done;draw();if(!await save())break;}
+      publishMeta={title:(f.name.trim()||'LUKE MODEL')+' · '+label,faceKey:kind==='candidate'?null:(original?.faceKey||null),note:''};const result=await generate(prompt,refs,c,cfg);const item={id:crypto.randomUUID(),name:(f.name.trim()||'LUKE')+' · '+label,kind:kind==='candidate'?'모델 후보':label,url:result,prompt,parentId:original?.id||null,catalogModelId:original?.catalogModelId||null,faceKey:original?.faceKey||null,createdAt:new Date().toISOString()};items.push(item);done++;pendingCount=jobs.length-done;draw();if(publishMeta?.note)status(label+' 완료'+publishMeta.note);if(!await save())break;}
       status((stop?'중지했어요.':'작업을 마쳤어요.')+' '+done+'장 생성 · 확정 모델과 얼굴 일관성을 직접 비교해 주세요.');
     }catch(e){const raw=String(e&&e.message||e);const friendly=raw==='no-higgs'?'Higgsfield 자격증명(key-id:key-secret)을 AI 연결 설정에 입력해 주세요.':raw;status((e.name==='AbortError'?'요청이 중지되었거나 시간이 초과됐어요. 서버에서 이미 처리 중이면 비용이 발생할 수 있어요.':friendly)+' 완료된 '+done+'장은 유지돼요.');}finally{pendingCount=0;pendingKind=null;draw();lock(false);}}
   async function downloadProject(){if(window.LukeAccess && !await LukeAccess.require())return;const data=JSON.stringify({version:1,items,selected:selected?.id||null,product,extraRefs,fields:fields()},null,2);const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=el('a');a.href=url;a.download='luke-model-studio.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
@@ -235,7 +243,7 @@
     const conn=el('select');conn.id='ms-connection';conn.setAttribute('aria-label','이미지 생성 연결');conn.style.cssText='width:auto;display:inline-block;padding:10px 12px;font-size:12px';
     genRow.append(el('span','후보 수','ms-label'),countRow,countInput,gen,conn);genRow.querySelector('.ms-label').style.margin='0';p2.append(genRow);
     const own=el('label','또는 내 모델 사진으로 시작');own.className='ms-file';own.style.cssText='display:inline-block;margin-top:12px;color:#a7acc0;font-size:12.5px;text-decoration:underline;cursor:pointer';const oi=el('input');oi.type='file';oi.accept='image/png,image/jpeg,image/webp';oi.onchange=async()=>{if(busy)return;try{const url=await readImage(oi.files[0]);if(items.length>=40)throw new Error('프로젝트당 최대 40장이에요.');const item={id:crypto.randomUUID(),name:fields().name+' · 내 모델',kind:'불러온 모델',url};items.push(item);selected=item;draw();await save();goStep(3);}catch(e){status(e.message);}oi.value='';};own.append(oi);p2.append(own);
-    p2.append(el('p','승인된 회원은 운영자의 서버 Higgsfield 키로 제작해요. 후보 4명은 4회 생성되고, 레퍼런스 사진은 제작을 위해 Higgsfield로 전송돼요. 공개 갤러리에는 자동 등록하지 않아요.'));
+    p2.append(el('p','승인된 회원은 운영자의 서버 Higgsfield 키로 제작해요. 후보 4명은 4회 생성되고, 레퍼런스 사진은 제작을 위해 Higgsfield로 전송돼요. 완성된 이미지는 lukemodel.com 공개 갤러리에 자동 등록돼요.'));
     const grid=el('div',null,'ms-grid');grid.id='ms-gallery';p2.append(grid);
     const f2=el('div',null,'ms-foot');f2.append(button('← 프로필 수정',()=>goStep(1)));p2.append(f2);
     /* STEP 3 — 모델 확정 */
@@ -264,12 +272,12 @@
     await open();
     try{
       const existing=catalogModelId&&items.find(item=>item.catalogModelId===catalogModelId&&item.kind==='기존 모델');
-      if(existing){selected=existing;draw();await save();goStep(3);status('저장된 모델 프로젝트를 열었어요.');if(startAngles)await run('angles');return;}
+      if(existing){if(!existing.faceKey)existing.faceKey=faceKeyFromUrl(url);selected=existing;draw();await save();goStep(3);status('저장된 모델 프로젝트를 열었어요.');if(startAngles)await run('angles');return;}
       const response=await fetch(String(url));if(!response.ok)throw new Error('모델 사진을 불러오지 못했어요.');
       const blob=await response.blob();
       const type=blob.type.split(';')[0]||'image/jpeg';
       const image=await readImage(new File([blob],String(name||'model')+'.jpg',{type}));
-      const item={id:crypto.randomUUID(),name:String(name||'선택한 모델'),kind:'기존 모델',url:image,prompt:'기존 모델에서 시작',parentId:null,catalogModelId:catalogModelId||null,createdAt:new Date().toISOString()};
+      const item={id:crypto.randomUUID(),name:String(name||'선택한 모델'),kind:'기존 모델',url:image,prompt:'기존 모델에서 시작',parentId:null,catalogModelId:catalogModelId||null,faceKey:faceKeyFromUrl(url),createdAt:new Date().toISOString()};
       items.push(item);selected=item;draw();await save();goStep(3);status('선택한 모델을 기준으로 각도·의상·배경을 제작할 수 있어요.');
       if(startAngles)await run('angles');
     }catch(error){status(error instanceof Error?error.message:'모델 사진을 불러오지 못했어요.');}
