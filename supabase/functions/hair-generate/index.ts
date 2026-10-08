@@ -71,6 +71,35 @@ async function submit(request:Request,user:{id:string}) {
     return problem(error instanceof Error?error.message:'변경 요청에 실패했습니다.',502);
   }
 }
+async function submitModel(request:Request,user:{id:string}) {
+  if(!serviceKey||!(await storedKey()))return problem('모델 제작 서비스가 아직 연결되지 않았습니다.',503);
+  const form=await request.formData();
+  const prompt=String(form.get('prompt')||'').trim();
+  const refs=form.getAll('reference');
+  if(prompt.length<10||prompt.length>2500||refs.length>2)return problem('모델 설명 또는 참고 사진을 확인해 주세요.',400);
+  if(refs.some(file=>!(file instanceof File)||!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size===0||file.size>10*1048576))return problem('참고 사진은 JPG·PNG·WebP 10MB 이하로 올려주세요.',400);
+  const reserved=await admin('rpc/reserve_hair_job',{method:'POST',body:JSON.stringify({p_user_id:user.id})}) as string|null;
+  if(!reserved)return problem('진행 중인 제작이 있습니다. 완료 후 다시 요청해 주세요.',429);
+  try {
+    const urls:string[]=[];
+    for(const file of refs as File[]) {
+      const upload=await hf('files/generate-upload-url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:file.type})},true);
+      if(typeof upload.upload_url!=='string'||typeof upload.public_url!=='string')throw new Error('참고 사진 업로드 주소를 받지 못했습니다.');
+      const uploaded=await fetch(upload.upload_url,{method:'PUT',headers:(upload.upload_headers as HeadersInit)||{'Content-Type':file.type},body:file});
+      if(!uploaded.ok)throw new Error('참고 사진 전송에 실패했습니다.');
+      urls.push(upload.public_url);
+    }
+    const result=urls.length
+      ?await hf('alibaba/qwen-image-3/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,resolution:'1k',aspect_ratio:'3:4',image_urls:urls})},true)
+      :await hf('higgsfield-ai/soul/v2/standard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,resolution:'720p',aspect_ratio:'3:4',batch_size:1})},true);
+    if(typeof result.request_id!=='string')throw new Error('Higgsfield 요청 번호를 받지 못했습니다.');
+    await patchJob(reserved,{request_id:result.request_id,status:'submitted'});
+    return json({jobId:reserved});
+  }catch(error){
+    await patchJob(reserved,{status:'failed'}).catch(()=>{});
+    return problem(error instanceof Error?error.message:'모델 제작 요청에 실패했습니다.',502);
+  }
+}
 async function status(url:URL,user:{id:string}) {
   const id=url.searchParams.get('job')||'';
   if(!/^[0-9a-f-]{36}$/i.test(id))return problem('작업 번호를 확인해 주세요.',400);
@@ -102,6 +131,8 @@ Deno.serve(async request=>{
   try {
     const user=await member(request);if(!user)return problem('로그인한 회원만 이용할 수 있습니다.',401);
     const url=new URL(request.url);
+    if(url.searchParams.get('action')==='model'&&request.method==='POST')return await submitModel(request,user);
+    if(url.searchParams.get('action')==='model-status'&&request.method==='GET')return await status(url,user);
     if(url.searchParams.get('action')==='key-status'||url.searchParams.get('action')==='save-key'){
       if(user.email?.toLowerCase()!==adminEmail||!user.email_confirmed_at)return problem('운영자 계정만 키를 설정할 수 있습니다.',403);
       if(url.searchParams.get('action')==='key-status'&&request.method==='GET')return json({configured:!!(await storedKey())});
