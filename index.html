@@ -73,6 +73,7 @@ nav.top button.on{background:var(--panel);color:#fff}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .13s,border-color .13s}
 .card:hover{transform:translateY(-3px);border-color:#3f4660}
 .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card{border-radius:14px;background:#181d28;border-color:#343c4d}.card:hover{border-color:#c9fb68;box-shadow:0 14px 34px #0005}@media(max-width:940px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}}
+.lm-library-head{margin:32px 0 18px;padding:28px;border:1px solid #353e4d;border-radius:18px;background:linear-gradient(110deg,#1d2531,#10151d)}.lm-library-head>span{color:#c9fb68;font-size:12px;letter-spacing:.2em;font-weight:800}.lm-library-head h2{font-size:clamp(28px,4vw,48px);margin:8px 0}.lm-library-head p{color:#bfc8d5;line-height:1.6}.lm-library-tabs{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}.lm-library-tabs a{display:inline-block;padding:10px 17px;border:1px solid #495365;border-radius:999px;color:#edf0f5;text-decoration:none}.lm-library-tabs a.on,.lm-library-tabs a:hover{background:#c9fb68;border-color:#c9fb68;color:#18220e;font-weight:800}#models{scroll-margin-top:90px}@media(max-width:650px){.lm-library-head{padding:18px;margin-top:24px}}
 .cover{position:relative;background:#14171f}
 /* 얼굴 사진은 자르지 않음: 원본 비율 그대로 (불러오기 전에는 4:5 자리) */
 .cover-img{display:block;width:100%;height:auto;aspect-ratio:auto 4/5;object-fit:contain;background:#14171f}
@@ -1639,7 +1640,13 @@ function renderHomeShared(app){
 function renderBrowse(app){
   if(window.LukeHair) LukeHair.render(app);
   try{ if(window.LukeCasting) LukeCasting.homeEntry(app); }catch(e){ console.warn(e); }   /* 첫 화면 짧은 입구: 모델 캐스팅 */
-  renderHomeShared(app);
+  const libraryHead=document.createElement('section'); libraryHead.className='lm-library-head';
+  const libraryEyebrow=document.createElement('span'); libraryEyebrow.textContent='LUKE MODEL / AI MODEL LIBRARY';
+  const libraryTitle=document.createElement('h2'); libraryTitle.textContent='AI 모델 라이브러리';
+  const libraryCopy=document.createElement('p'); libraryCopy.textContent='영상의 캐스팅 사이트처럼 모델을 고르고, 상세 사진과 각도를 비교하세요. 다운로드와 제작 사용은 회원 승인 후 열립니다.';
+  const libraryTabs=document.createElement('div'); libraryTabs.className='lm-library-tabs';
+  [['모델','browse'],['상품','/products/'],['공개 갤러리','/higgsfield/?tab=public']].forEach(([label,url])=>{const a=document.createElement('a');a.textContent=label;a.href=url==='browse'?'#models':url;if(url==='browse')a.className='on';libraryTabs.appendChild(a);});
+  libraryHead.append(libraryEyebrow,libraryTitle,libraryCopy,libraryTabs);app.appendChild(libraryHead);
   /* ?share=CODE public-ish instruction card (no backend — local pack may still be required) */
   if(pendingShareCode){
     const sl=document.createElement('div'); sl.className='share-landing';
@@ -1680,8 +1687,9 @@ function renderBrowse(app){
   list.sort((a,b)=> filt.sort==='rating' ? avgRating(b)-avgRating(a)
                   : filt.sort==='reviews' ? b.reviews.length-a.reviews.length
                   : filt.sort==='new' ? listingAt(b)-listingAt(a) : b.dl-a.dl);
-  if(!list.length){ app.appendChild(emptyBox('검색 결과가 없습니다','다른 키워드나 필터를 시도해보세요')); return; }
-  const grid=gridOf(list); app.appendChild(grid);
+  if(!list.length){ app.appendChild(emptyBox('검색 결과가 없습니다','다른 키워드나 필터를 시도해보세요')); renderHomeShared(app); return; }
+  const grid=gridOf(list); grid.id='models'; app.appendChild(grid);
+  renderHomeShared(app);
   if(window._highlightModelId!=null){
     requestAnimationFrame(()=>{
       const el=grid.querySelector('.card.flash-new')||document.querySelector('.card.flash-new');
