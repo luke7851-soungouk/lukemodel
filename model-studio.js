@@ -237,7 +237,10 @@
     const top=el('div',null,'ms-top'),brand=el('span','LUKE MODEL','ms-brand'),stepper=el('nav',null,'ms-stepper');stepper.setAttribute('aria-label','캐스팅 단계');
     [['1','프로필 설정'],['2','후보 선택'],['3','모델 확정']].forEach(([n,label],i)=>{if(i)stepper.append(el('span',null,'sep'));const b=button('',()=>goStep(Number(n)));b.dataset.step=n;const num=el('i',n),text=el('span',label);b.append(num,text);stepper.append(b);});
     const back=button('← 모델 리스트로',()=>{panel.hidden=true;history.replaceState(null,'',location.pathname+location.search);document.getElementById('model-studio-link')?.focus();});
-    top.append(brand,stepper,back);
+    const hfLink=el('a','Higgsfield 스튜디오 ↗');hfLink.href='https://lukemodel-studio.higgsfield.app';hfLink.target='_blank';hfLink.rel='noopener';hfLink.hidden=true;hfLink.title='Nano Banana 2 · 내 Higgsfield 크레딧 · 히스토리 저장 · 사이트 자동 등록';
+    Promise.resolve(window.LukeAccess?.check?.()).then(()=>{hfLink.hidden=!window.LukeAccess?.owner;}).catch(()=>{});
+    const topRight=el('div',null,'ms-actions');topRight.append(hfLink,back);
+    top.append(brand,stepper,topRight);
     /* STEP 1 — 프로필 설정 */
     const p1=el('div',null,'ms-card-shell ms-pane');p1.dataset.step='1';
     p1.append(el('h1','어떤 모델을 캐스팅할까요?'),el('p','원하는 조건을 고르면 조건에 맞는 가상 인물 후보를 만들어 드려요. 실존 인물은 만들지 않아요.'));

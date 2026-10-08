@@ -165,7 +165,7 @@ function showImage(item,onDelete){
 
 /* ── 라우팅 ───────────────────────────────────────── */
 function route(){const id=currentId();if(id){const p=products.find(x=>String(x.id)===id);if(p){renderDetail(p);return;}if(products.length){$('message').textContent='상품을 찾지 못했어요.';}}document.title='Product Studio · LUKE MODEL';renderList();}
-async function load(){if(!products.length&&!currentId())skeleton();try{const d=await api('products-list');products=d.products||[];owner=!!d.owner;$('owner-toggle').hidden=!owner;if(!owner)$('owner-modal').hidden=true;route();}catch(e){$('message').textContent=e.message;$('grid').replaceChildren();}}
+async function load(){if(!products.length&&!currentId())skeleton();try{const d=await api('products-list');products=d.products||[];owner=!!d.owner;$('owner-toggle').hidden=!owner;$('hf-studio').hidden=!owner;if(!owner)$('owner-modal').hidden=true;route();}catch(e){$('message').textContent=e.message;$('grid').replaceChildren();}}
 window.addEventListener('popstate',route);
 $('account').append(auth.chip());CATEGORIES.forEach(c=>$('owner-category').add(new Option(c,c)));$('owner-toggle').onclick=()=>{$('owner-modal').hidden=false;$('owner-form').querySelector('input').focus();};$('owner-cancel').onclick=()=>{$('owner-modal').hidden=true;};$('owner-modal').onclick=e=>{if(e.target===$('owner-modal'))$('owner-modal').hidden=true;};
 $('owner-form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]');button.disabled=true;try{await api('products-create',Object.fromEntries(new FormData(form)));form.reset();$('owner-modal').hidden=true;await load();$('message').textContent='제품을 등록했습니다.';}catch(error){$('message').textContent=error.message;}finally{button.disabled=false;}};
