@@ -18,6 +18,7 @@ async function admin(path:string, init:RequestInit={}) {
   const body=await response.text();return body?JSON.parse(body):null;
 }
 type Member = {id:string;email?:string;email_confirmed_at?:string};
+type Access = {id:string;user_id:string;email:string;resource_type:string;resource_id:string;purpose:string;status:string;created_at:string};
 async function member(request:Request):Promise<Member|null> {
   const bearer=request.headers.get('authorization')||'';
   if(!bearer.startsWith('Bearer '))return null;
@@ -70,6 +71,59 @@ async function submit(request:Request,user:{id:string}) {
     await patchJob(reserved,{status:'failed'}).catch(()=>{});
     return problem(error instanceof Error?error.message:'변경 요청에 실패했습니다.',502);
   }
+}
+const isOwner=(user:Member)=>user.email?.toLowerCase()===adminEmail&&!!user.email_confirmed_at;
+async function accessState(user:Member,resourceType='all',resourceId='*') {
+  if(isOwner(user))return 'approved';
+  const all=await admin(`member_access_requests?select=status&user_id=eq.${encodeURIComponent(user.id)}&resource_type=eq.all&resource_id=eq.*&limit=1`) as Access[];
+  if(all?.[0]?.status==='approved')return 'approved';
+  if(resourceType==='all')return all?.[0]?.status||'none';
+  const rows=await admin(`member_access_requests?select=status&user_id=eq.${encodeURIComponent(user.id)}&resource_type=eq.${encodeURIComponent(resourceType)}&resource_id=eq.${encodeURIComponent(resourceId)}&limit=1`) as Access[];
+  return rows?.[0]?.status||'none';
+}
+async function accessAction(request:Request,url:URL,user:Member){
+  const action=url.searchParams.get('action');
+  if(action==='access-status'&&request.method==='GET'){
+    const type=url.searchParams.get('type')||'all',id=url.searchParams.get('id')||'*';
+    return json({status:await accessState(user,type,id),owner:isOwner(user)});
+  }
+  if(action==='access-request'&&request.method==='POST'){
+    const body=await request.json();const type=String(body?.type||'all'),id=String(body?.id||'*'),purpose=String(body?.purpose||'').trim();
+    if(!/^(all|model|product|gallery|generation)$/.test(type)||id.length>120||!id||purpose.length>500||!user.email)return problem('승인 신청 내용을 확인해 주세요.',400);
+    const rows=await admin(`member_access_requests?on_conflict=user_id,resource_type,resource_id`,{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({user_id:user.id,email:user.email,resource_type:type,resource_id:id,purpose,status:'pending',decided_at:null})}) as Access[];
+    return json({status:rows?.[0]?.status||'pending'});
+  }
+  if(action==='access-list'&&request.method==='GET'){
+    if(!isOwner(user))return problem('운영자만 볼 수 있습니다.',403);
+    const rows=await admin('member_access_requests?select=id,email,resource_type,resource_id,purpose,status,created_at&order=created_at.desc&limit=100') as Access[];
+    return json({requests:rows||[]});
+  }
+  if(action==='access-decision'&&request.method==='POST'){
+    if(!isOwner(user))return problem('운영자만 승인할 수 있습니다.',403);
+    const body=await request.json();const id=String(body?.id||''),decision=String(body?.decision||'');
+    if(!/^[0-9a-f-]{36}$/i.test(id)||!['approved','rejected'].includes(decision))return problem('승인 대상을 확인해 주세요.',400);
+    const rows=await admin(`member_access_requests?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({status:decision,decided_at:new Date().toISOString()})}) as Access[];
+    if(!rows?.length)return problem('신청을 찾지 못했습니다.',404);
+    return json({status:decision});
+  }
+  return problem('지원하지 않는 요청입니다.',405);
+}
+async function productAction(request:Request,url:URL,user:Member|null){
+  const action=url.searchParams.get('action');
+  if(action==='products-list'&&request.method==='GET'){
+    const rows=await admin('products?select=id,name,category,description,image_url,created_at&order=created_at.desc&limit=100');
+    return json({products:rows||[],owner:!!user&&isOwner(user)});
+  }
+  if(action==='products-create'&&request.method==='POST'){
+    if(!user||!isOwner(user))return problem('운영자만 상품을 등록할 수 있습니다.',403);
+    const body=await request.json();
+    const name=String(body?.name||'').trim(),category=String(body?.category||'기타').trim(),description=String(body?.description||'').trim(),imageUrl=String(body?.image_url||'').trim();
+    let parsed:URL;try{parsed=new URL(imageUrl)}catch{return problem('이미지 주소를 확인해 주세요.',400)}
+    if(!name||name.length>80||category.length>40||description.length>500||parsed.protocol!=='https:')return problem('상품 정보를 확인해 주세요.',400);
+    const rows=await admin('products',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({name,category,description,image_url:imageUrl})});
+    return json({product:rows?.[0]});
+  }
+  return problem('지원하지 않는 요청입니다.',405);
 }
 async function submitModel(request:Request,user:{id:string}) {
   if(!serviceKey||!(await storedKey()))return problem('모델 제작 서비스가 아직 연결되지 않았습니다.',503);
@@ -129,9 +183,16 @@ Deno.serve(async request=>{
   if(request.headers.get('origin')!==origin)return problem('허용되지 않은 출처입니다.',403);
   if(!supabaseUrl||!publishableKey||!serviceKey)return problem('서버 설정을 확인해 주세요.',503);
   try {
-    const user=await member(request);if(!user)return problem('로그인한 회원만 이용할 수 있습니다.',401);
+    const user=await member(request);
     const url=new URL(request.url);
-    if(url.searchParams.get('action')==='model'&&request.method==='POST')return await submitModel(request,user);
+    if(url.searchParams.get('action')==='products-list'&&request.method==='GET')return await productAction(request,url,user);
+    if(!user)return problem('로그인한 회원만 이용할 수 있습니다.',401);
+    if(url.searchParams.get('action')?.startsWith('access-'))return await accessAction(request,url,user);
+    if(url.searchParams.get('action')?.startsWith('products-'))return await productAction(request,url,user);
+    if(url.searchParams.get('action')==='model'&&request.method==='POST'){
+      if(await accessState(user)!=='approved')return problem('운영자 승인 후 AI 모델을 제작할 수 있습니다.',403);
+      return await submitModel(request,user);
+    }
     if(url.searchParams.get('action')==='model-status'&&request.method==='GET')return await status(url,user);
     if(url.searchParams.get('action')==='key-status'||url.searchParams.get('action')==='save-key'){
       if(user.email?.toLowerCase()!==adminEmail||!user.email_confirmed_at)return problem('운영자 계정만 키를 설정할 수 있습니다.',403);

@@ -49,6 +49,7 @@ const {hfSubmit,hfStatus}=H;
 let inflight=0;
 function setLamp(){ const l=$('lamp'), k=!!getKey(); l.className='lamp'+(inflight?' busy':k?' on':''); l.title=inflight?('생성 중 '+inflight+'건'):k?'키 저장됨':'키 없음'; $('keyBtn').textContent=k?'키 변경':'키 추가'; }
 async function generate(){
+  if(window.LukeAccess && !await LukeAccess.require())return;
   const prompt=$('prompt').value.trim(); const m=curModel(); const s=curSettings();
   if(!getKey()){ openKeyModal(()=>generate()); return; }
   if(!prompt&&!state.media.start){ toast('프롬프트를 입력하세요','err'); $('prompt').focus(); return; }
@@ -185,7 +186,7 @@ async function shareLocalPub(btn){
 }
 
 /* ───────── Download ───────── */
-const download=(it,i)=>H.download(it,i);
+const download=async(it,i)=>{if(window.LukeAccess && !await LukeAccess.require())return false;return H.download(it,i);};
 
 /* ───────── Rendering ───────── */
 const SCOPES=[['image','이미지'],['video','영상'],['assets','에셋'],['fav','즐겨찾기'],['public','공개 갤러리']];
@@ -316,7 +317,7 @@ function renderSelbar(){ const b=$('selbar'); b.textContent=''; const on=state.s
 
 /* run ops */
 function toggleFav(r){ r.fav=!r.fav; saveRun(r); renderGrid(); }
-function reuse(r){ const m=modelById(r.model); state.surface=m.kind; state.model[m.kind]=m.id; state.settings[m.id]=Object.assign({},r.settings); state.media=JSON.parse(JSON.stringify(r.media||{start:null,end:null,ref:[]})); if(!state.media.ref) state.media.ref=[];
+async function reuse(r){ if(window.LukeAccess && !await LukeAccess.require())return; const m=modelById(r.model); state.surface=m.kind; state.model[m.kind]=m.id; state.settings[m.id]=Object.assign({},r.settings); state.media=JSON.parse(JSON.stringify(r.media||{start:null,end:null,ref:[]})); if(!state.media.ref) state.media.ref=[];
   $('prompt').value=r.prompt||''; autosize(); persist(); closeModal(); renderComposer(); $('prompt').focus(); toast('모델·설정·프롬프트를 불러왔습니다'); }
 function removeRuns(ids,silent){ const removed=state.runs.filter(r=>ids.includes(r.id)); state.runs=state.runs.filter(r=>!ids.includes(r.id)); exitSelect(); renderAll();
   if(silent){ removed.forEach(r=>idbDel('runs',r.id)); return; }

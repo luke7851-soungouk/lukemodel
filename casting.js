@@ -173,7 +173,7 @@ function openPanel(c){
   const det=mk('button','btn ghost sm','상세 보기'); det.type='button';
   det.onclick=()=>{ close(); window._lmFromCasting=true; if(c.type==='face') go('detail',c.model.id); else if(typeof openMedia==='function') openMedia(c.row); };
   const dl=mk('button','btn ghost sm cast-dl','\u2913 다운로드'); dl.type='button';
-  dl.onclick=async()=>{ const r=sel.row; const it=r&&r.path?Object.assign({},r):{url:sel.url,kind:'image'};
+  dl.onclick=async()=>{ if(window.LukeAccess && !await LukeAccess.require())return; const r=sel.row; const it=r&&r.path?Object.assign({},r):{url:sel.url,kind:'image'};
     const ext=(String(sel.url).match(/\.(png|jpe?g|webp)(\?|$)/i)||[,r&&r.mime==='image/jpeg'?'jpg':'png'])[1];
     it.fileName='lukemodel-casting-'+c.key.replace(/^m-/,'g-').slice(0,20)+(sel===base?'':'-'+(ANG.find(a=>a[1]===sel.label)||['x'])[0])+'.'+ext;
     try{ if(window.LukeHF&&LukeHF.download) await LukeHF.download(it); else window.open(sel.url,'_blank','noopener'); }catch(e){ if(typeof toast==='function') toast('다운로드 실패: '+e.message,'err'); } };

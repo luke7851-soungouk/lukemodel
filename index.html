@@ -72,6 +72,7 @@ nav.top button.on{background:var(--panel);color:#fff}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px;padding-bottom:20px;align-items:start}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .13s,border-color .13s}
 .card:hover{transform:translateY(-3px);border-color:#3f4660}
+.grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card{border-radius:14px;background:#181d28;border-color:#343c4d}.card:hover{border-color:#c9fb68;box-shadow:0 14px 34px #0005}@media(max-width:940px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}}
 .cover{position:relative;background:#14171f}
 /* 얼굴 사진은 자르지 않음: 원본 비율 그대로 (불러오기 전에는 4:5 자리) */
 .cover-img{display:block;width:100%;height:auto;aspect-ratio:auto 4/5;object-fit:contain;background:#14171f}
@@ -473,6 +474,8 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
     <div id="auth"></div>
   </div>
 <a id="model-studio-link" href="#model-studio" style="display:inline-block;padding:10px 14px;color:#c9fb68;font-weight:800">모델 스튜디오</a>
+<a href="/products/" style="display:inline-block;padding:10px 14px;color:#c9fb68;font-weight:800">상품 카테고리</a>
+<a href="/admin/access/" style="display:inline-block;padding:10px 14px;color:#dce2ef;font-weight:700">회원 승인 관리</a>
 <a href="/talk/" style="display:inline-block;padding:10px 14px;color:#d1fe17;font-weight:700">🎙 말하는 AI 초이</a>
 </header>
 <main id="app" class="wrap"></main>
@@ -503,6 +506,7 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 <script src="/hair-studio.js?v=20261008-after-only"></script>
 <script src="/shared-config.js"></script>
 <script src="/lm-auth.js"></script>
+<script src="/access-gate.js?v=20261009"></script>
 <script src="/hf-core.js"></script>
 <script src="/angle-auto.js"></script>
 <script src="/sheet-split.js"></script>
@@ -1180,6 +1184,7 @@ async function shareFilesOrFallback(files, title, text){
 }
 
 async function downloadModelFile(m){
+  if(window.LukeAccess && !await LukeAccess.require()) return {kind:'blocked'};
   const weights = await idbGet(m.id);
   if(weights){
     const name = (m.file && m.file.name) || ((m.name||'model')+'.safetensors');
@@ -1429,6 +1434,7 @@ function render(){
     const b=document.createElement('button'); b.textContent=l; if(view===k)b.className='on';
     b.onclick=()=>go(k); nav.appendChild(b); });
   { const hf=document.createElement('a'); hf.href='/higgsfield/'; hf.className='nav-hf'; hf.textContent='힉스필드 스튜디오'; hf.title='Higgsfield 모델로 이미지·영상 생성 + 공개 갤러리 (lukemodel.com/higgsfield/)'; nav.appendChild(hf);
+    const products=document.createElement('a'); products.href='/products/'; products.className='nav-pub'; products.textContent='상품'; nav.appendChild(products);
     const fashion=document.createElement('a'); fashion.href='/fashion/'; fashion.className='nav-pub'; fashion.textContent='가상 피팅'; fashion.title='가상 피팅·대량 룩북 Make 자동화'; nav.appendChild(fashion);
     const pg=document.createElement('a'); pg.href='/higgsfield/?tab=public'; pg.className='nav-pub'; pg.textContent='공개 갤러리'; pg.title='누구나 업로드·다운로드'; nav.appendChild(pg); }
 
@@ -1951,6 +1957,7 @@ function renderDetail(app){
     if(ev && ev.preventDefault) ev.preventDefault();
     if(!scanOk) return;
     if(!requireLogin('로그인하면 모든 얼굴 모델을 무제한 무료로 받을 수 있습니다.')) return;
+    if(window.LukeAccess && !await LukeAccess.require()) return;
     dl.disabled=true;
     try{
       const result=await downloadModelFile(m);
