@@ -77,6 +77,7 @@ nav.top button.on{background:var(--panel);color:#fff}
 .cover{position:relative;background:#14171f}
 /* 얼굴 사진은 자르지 않음: 원본 비율 그대로 (불러오기 전에는 4:5 자리) */
 .cover-img{display:block;width:100%;height:auto;aspect-ratio:auto 4/5;object-fit:contain;background:#14171f}
+.lm-card-body{padding:12px 12px 14px}.lm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.lm-card-body .lm-card-top h3{min-height:0;margin:0;font-size:14px;-webkit-line-clamp:1}.lm-card-owner{flex:none;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8c88ff;font-size:11px;font-weight:700}.lm-card-desc{margin:7px 0 10px;color:#8f96a8;font-size:12px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:37px}.lm-card-chips{display:flex;gap:6px;flex-wrap:wrap}.lm-card-chips span{padding:4px 9px;border:1px solid #333a4a;border-radius:999px;background:#12151d;color:#c8cdd9;font-size:11px}
 /* 태그는 사진 아래로 (얼굴·턱을 가리지 않게) */
 .cover .tags{padding:9px 12px 0;background:var(--panel)}
 .heart{position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:50%;background:rgba(8,10,16,.55);color:#fff;font-size:16px;z-index:2;line-height:1}
@@ -121,6 +122,13 @@ h1.tit{font-size:25px;font-weight:800;letter-spacing:-.5px;margin-bottom:9px;lin
 .lm-profile-summary{padding:23px;border-bottom:1px solid #394357;background:linear-gradient(135deg,#222b3a,#151a24)}.lm-profile-summary span{color:#c9fb68;font-size:11px;font-weight:800;letter-spacing:.2em}.lm-profile-summary h2{font-size:25px;line-height:1.3;margin:8px 0}.lm-profile-summary p{color:#bfc8d6;font-size:13px;line-height:1.65;margin:8px 0}.lm-profile-summary button{width:100%;margin-top:12px;background:#c9fb68;color:#17220d}
 .lm-result-gallery{margin:22px 0 30px}.lm-result-gallery h2{font-size:21px;margin:0 0 6px}.lm-result-gallery>p{color:var(--dim);font-size:13px;margin:0 0 14px}.lm-result-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.lm-result-card{display:block;text-align:left;width:100%;padding:0;border:1px solid #3b4250;border-radius:12px;background:#171b25;color:#fff;overflow:hidden;cursor:pointer}.lm-result-card img{width:100%;aspect-ratio:3/4;object-fit:contain;display:block;background:#10141b}.lm-result-card span{display:block;padding:9px 11px;font-size:12px}.lm-result-card:hover{border-color:#c9fb68}.lm-result-empty{padding:32px 16px;border:1px dashed #4c5362;border-radius:12px;color:var(--dim);font-size:13px}.lm-result-modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.89);display:grid;place-items:center;padding:18px}.lm-result-modal-inner{width:min(850px,100%);max-height:100%;overflow:auto;background:#171b25;padding:18px;border:1px solid #4c5362;border-radius:15px}.lm-result-modal-inner img{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:12px auto}.lm-result-modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}@media(max-width:680px){.lm-result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .detail.lm-model-detail{display:grid;grid-template-columns:1fr;gap:22px;max-width:1100px;margin:auto}.lm-model-detail .lm-detail-intro{display:grid;grid-template-columns:190px minmax(0,1fr);gap:22px;align-items:stretch}.lm-model-detail .lm-detail-intro .hero{margin:0}.lm-model-detail .lm-detail-intro .hero img{width:100%;height:260px;object-fit:cover;display:block}.lm-model-detail .lm-detail-intro .lm-profile-summary{border:1px solid #394357;border-radius:12px;padding:24px}.lm-model-detail .lm-detail-intro .lm-profile-summary h1{font-size:32px;margin:7px 0}.lm-model-detail .lm-detail-intro .lm-profile-summary button{width:auto;margin:10px 8px 0 0}.lm-model-detail .side{position:static;max-width:none}.lm-model-detail .lm-angle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:680px){.lm-model-detail .lm-detail-intro{grid-template-columns:110px minmax(0,1fr);gap:12px}.lm-model-detail .lm-detail-intro .hero img{height:180px}.lm-model-detail .lm-detail-intro .lm-profile-summary{padding:12px}.lm-model-detail .lm-detail-intro .lm-profile-summary h1{font-size:20px}.lm-model-detail .lm-detail-intro .lm-profile-summary p{font-size:12px}.lm-model-detail .lm-angle-grid{grid-template-columns:1fr}}
+.lm-model-detail .lm-detail-intro{grid-template-columns:210px minmax(0,1fr);gap:26px;align-items:start}.lm-model-detail .lm-detail-intro .hero{border-radius:14px;overflow:hidden;cursor:zoom-in;border:0}.lm-model-detail .lm-detail-intro .hero img{height:280px}.lm-model-detail .lm-detail-intro .lm-profile-summary{background:none;border:0;padding:4px 0 0}.lm-model-detail .lm-detail-intro .lm-profile-summary h1{font-size:34px;margin:0 0 10px;letter-spacing:-.02em}
+.lm-profile-chips,.lm-profile-uses,.lm-profile-actions{display:flex;flex-wrap:wrap;gap:7px;align-items:center}.lm-model-detail .lm-profile-summary .lm-profile-chips span{letter-spacing:0;font-weight:500;padding:4px 10px;border:1px solid #2f3442;border-radius:999px;color:#aeb4c3;font-size:11.5px}.lm-model-detail .lm-profile-summary .lm-profile-desc{max-width:640px;margin:14px 0;color:#a9b0bf;font-size:13.5px;line-height:1.75}.lm-model-detail .lm-profile-summary .lm-profile-uses span{letter-spacing:0;color:#fff}.lm-profile-uses em{font-style:normal;color:#7f8698;font-size:11.5px;margin-right:2px}.lm-profile-uses span{padding:5px 12px;border-radius:999px;background:#6d68f2;color:#fff;font-size:11.5px;font-weight:700}.lm-profile-actions{margin-top:18px}.lm-model-detail .lm-detail-intro .lm-profile-summary .lm-profile-actions button{width:auto;margin:0}.lm-model-detail .lm-profile-summary .lm-violet-btn{background:linear-gradient(135deg,#7b74ff,#5b55e8);color:#fff}.lm-model-detail .lm-profile-summary .lm-dark-btn{background:#1c1f28;color:#e7e9ef}
+.lm-violet-btn{border:0;border-radius:10px;padding:11px 16px;background:linear-gradient(135deg,#7b74ff,#5b55e8);color:#fff!important;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 8px 22px #5b55e855}.lm-violet-btn:hover{filter:brightness(1.1)}.lm-violet-btn:disabled{opacity:.5;cursor:default}.lm-dark-btn{border:1px solid #2e3340;border-radius:10px;padding:11px 15px;background:#1c1f28;color:#e7e9ef!important;font-weight:700;font-size:13px;cursor:pointer}.lm-dark-btn:hover{background:#252a36}.lm-dark-btn:disabled{opacity:.45;cursor:default}
+.lm-turn{margin:6px 0 10px}.lm-turn-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:14px}.lm-turn-head h2{font-size:24px;margin:0 0 5px;letter-spacing:-.01em}.lm-turn-head p{margin:0;color:#7f8698;font-size:12.5px;line-height:1.6}.lm-turn-head .lm-violet-btn{flex:none}
+.lm-turn-stage{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;gap:0;padding:18px 18px 8px;border-radius:16px;background:linear-gradient(#ececec,#dcdcdc)}.lm-model-detail .lm-turn-stage{padding:18px 18px 8px}.lm-turn-view{position:relative;display:flex;flex-direction:column;justify-content:flex-start;border:0;padding:0;background:none;cursor:zoom-in}.lm-turn-view img{display:block;width:100%;aspect-ratio:3/5;object-fit:cover;object-position:top;mix-blend-mode:multiply}.lm-turn-view span,.lm-turn-slot span{display:block;padding:8px 0 4px;text-align:center;color:#555b66;font-size:11.5px;font-weight:700}.lm-turn-stage.empty .lm-turn-view img{mix-blend-mode:normal;border-radius:10px}.lm-turn-slot{display:flex;flex-direction:column;justify-content:flex-end;margin:0 0 0 12px;border:1.5px dashed #b9bcc3;border-radius:10px;background:repeating-linear-gradient(135deg,#0000 0 10px,#00000008 10px 20px)}
+.lm-result-modal-inner{background:#1b1d24;border-color:#30343f;border-radius:18px}.lm-result-modal-inner img{border-radius:10px;background:#efefef}.lm-result-modal-actions{justify-content:center}.lm-modal-btn,.lm-modal-del,.lm-modal-close{border-radius:9px;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid #343947;background:#262a34;color:#eef0f5}.lm-modal-del{background:#5a1018;border-color:#7a1a25;color:#ffd5da}.lm-modal-close{background:#fff;color:#111;border-color:#fff}
+@media(max-width:680px){.lm-model-detail .lm-detail-intro{grid-template-columns:120px minmax(0,1fr);gap:14px}.lm-model-detail .lm-detail-intro .hero img{height:170px}.lm-model-detail .lm-detail-intro .lm-profile-summary h1{font-size:22px}.lm-turn-head{flex-direction:column;align-items:flex-start}.lm-turn-stage{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;row-gap:10px}.lm-turn-slot{min-height:180px;margin:0 0 0 8px}}
 .vtabs{display:flex;gap:2px;padding:9px 9px 0;overflow-x:auto}
 .vtabs button{padding:8px 13px;font-size:12.5px;font-weight:700;color:var(--dim);border-radius:7px 7px 0 0;white-space:nowrap}
 .vtabs button.on{background:var(--panel2);color:#fff}
@@ -1776,19 +1784,18 @@ function gridOf(list){
     ht.onclick=e=>{ e.stopPropagation(); toggleFav(m.id); };
     cv.appendChild(ht);
     cv.appendChild(tg); c.appendChild(cv);
-    const b=document.createElement('div'); b.className='cbody';
-    const h3=document.createElement('h3'); h3.textContent=m.name; b.appendChild(h3);
-    const av=avgRating(m);
-    const st=document.createElement('div'); st.className='stars';
-    st.textContent = m.reviews.length ? starStr(av)+'  '+av.toFixed(1)+' ('+m.reviews.length+')' : '☆☆☆☆☆  리뷰 없음';
-    if(!m.reviews.length) st.style.color='var(--dim)';
-    b.appendChild(st);
-    const mt=document.createElement('div'); mt.className='meta';
-    const who=document.createElement('div'); who.className='who';
-    const ai=document.createElement('img'); ai.className='av'; ai.src=avatar(m.user); ai.alt='';
-    const un=document.createElement('span'); un.textContent=m.user;
-    who.appendChild(ai); who.appendChild(un);
-    mt.appendChild(who); b.appendChild(mt);
+    tg.style.display='none';
+    const b=document.createElement('div'); b.className='cbody lm-card-body';
+    const top=document.createElement('div'); top.className='lm-card-top';
+    const h3=document.createElement('h3'); h3.textContent=m.name;
+    const owner=document.createElement('span'); owner.className='lm-card-owner'; owner.textContent=(/bot/i.test(String(m.user||''))||!m.user)?'':String(m.user);if(!owner.textContent)owner.hidden=true;
+    top.append(h3,owner); b.appendChild(top);
+    const desc=document.createElement('p'); desc.className='lm-card-desc';
+    desc.textContent=String(m.desc||'').replace(/\s+/g,' ').trim()||'캐스팅용 AI 모델 프로필입니다.';
+    b.appendChild(desc);
+    const chips=document.createElement('div'); chips.className='lm-card-chips';
+    [GENDERS[m.gender],AGES[m.age]].filter(Boolean).forEach(v=>{const s=document.createElement('span');s.textContent=v;chips.appendChild(s);});
+    b.appendChild(chips);
     c.appendChild(b); g.appendChild(c);
   });
   return g;
@@ -1807,37 +1814,50 @@ function renderDetail(app){
   const hi=document.createElement('img'); hi.alt=m.name||''; hi.decoding='async'; hi.src=String(faceSrc(m,0,900,900)); hero.appendChild(hi);
   left.appendChild(hero);
 
-  const angleSection=document.createElement('section');angleSection.className='sec lm-angle-section';
-  const angleTitle=document.createElement('h2');angleTitle.textContent='360° 모델 이미지';angleSection.appendChild(angleTitle);
-  const angleGrid=document.createElement('div');angleGrid.className='lm-angle-grid';
-  const front=document.createElement('figure');front.className='lm-angle-card';
-  const frontImage=document.createElement('img');frontImage.src=String(faceSrc(m,0,900,900));frontImage.alt=m.name+' 정면 이미지';
-  const frontCaption=document.createElement('figcaption');frontCaption.textContent='등록된 모델 사진';front.append(frontImage,frontCaption);angleGrid.appendChild(front);
-  const anglePrompt=document.createElement('div');anglePrompt.className='lm-angle-prompt';
-  const angleText=document.createElement('p');angleText.textContent='측면과 뒷면 이미지는 이 모델을 기준으로 AI가 새로 제작합니다.';
-  const angleButton=document.createElement('button');angleButton.type='button';angleButton.className='btn';angleButton.textContent='360° 5개 각도 만들기';angleButton.dataset.requiresApproval='';
-  angleButton.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;await window.LukeModelStudio?.openWithModel?.(String(faceSrc(m,0,900,900)),m.name,true,m.id);};
-  anglePrompt.append(angleText,angleButton);angleGrid.appendChild(anglePrompt);angleSection.appendChild(angleGrid);left.appendChild(angleSection);
+  const photoUrl=String(faceSrc(m,0,900,900));
+  const angleOrder=['정면','좌측면','우측면','뒷면'];
+  const turn=document.createElement('section');turn.className='lm-turn';
+  const turnHead=document.createElement('div');turnHead.className='lm-turn-head';
+  const turnText=document.createElement('div');
+  const turnTitle=document.createElement('h2');turnTitle.textContent='360° 턴어라운드';
+  const turnSub=document.createElement('p');turnSub.textContent='정면 · 좌측면 · 우측면 · 뒷면을 같은 얼굴과 체형으로 제작합니다. 이미지를 누르면 크게 보고 저장할 수 있어요.';
+  turnText.append(turnTitle,turnSub);
+  const turnButton=document.createElement('button');turnButton.type='button';turnButton.className='lm-violet-btn';turnButton.textContent='턴어라운드 생성 ✦';turnButton.dataset.requiresApproval='';
+  turnButton.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;await window.LukeModelStudio?.openWithModel?.(photoUrl,m.name,true,m.id);};
+  turnHead.append(turnText,turnButton);
+  const turnStage=document.createElement('div');turnStage.className='lm-turn-stage';
+  turn.append(turnHead,turnStage);left.appendChild(turn);
 
   const modelResults=document.createElement('div');left.appendChild(modelResults);
+  const showPhoto=(item,removable)=>{
+    const overlay=document.createElement('div');overlay.className='lm-result-modal';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label',item.name+' 사진 상세');
+    const inner=document.createElement('div');inner.className='lm-result-modal-inner';
+    const image=document.createElement('img');image.src=item.url;image.alt=item.name;
+    const actions=document.createElement('div');actions.className='lm-result-modal-actions';
+    const close=document.createElement('button');close.className='lm-modal-close';close.textContent='닫기';close.onclick=()=>overlay.remove();
+    const down=document.createElement('button');down.className='lm-modal-btn';down.textContent='다운로드';down.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;const link=document.createElement('a');link.href=item.url;link.download='luke-model-'+item.id+'.png';document.body.append(link);link.click();link.remove();};
+    const openTab=document.createElement('button');openTab.className='lm-modal-btn';openTab.textContent='원본 새 탭에서 열기';openTab.onclick=async()=>{try{const blob=await (await fetch(item.url)).blob();const url=URL.createObjectURL(blob);window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),60000);}catch{window.open(item.url,'_blank','noopener');}};
+    if(removable){const remove=document.createElement('button');remove.className='lm-modal-del';remove.textContent='삭제';remove.onclick=async()=>{if(!confirm('이 생성 사진을 이 브라우저의 프로젝트에서 삭제할까요?'))return;try{if(await window.LukeModelStudio.deleteResultForModel(m.id,item.id)){overlay.remove();showModelResults();}}catch(error){toast('삭제하지 못했습니다: '+error.message,'err');}};actions.append(remove);}
+    actions.append(down,openTab,close);inner.append(image,actions);overlay.append(inner);overlay.onclick=event=>{if(event.target===overlay)overlay.remove();};overlay.onkeydown=event=>{if(event.key==='Escape')overlay.remove();};document.body.append(overlay);close.focus();
+  };
   const showModelResults=async()=>{
     const results=await window.LukeModelStudio?.resultsForModel?.(m.id)||[];
     if(view!=='detail'||curId!==m.id)return;
-    modelResults.replaceChildren();
-    const angleKinds=new Set(['정면','좌측면','우측면','뒷면','클로즈업']);
-    const showPhoto=item=>{
-      const overlay=document.createElement('div');overlay.className='lm-result-modal';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label',item.name+' 사진 상세');
-      const inner=document.createElement('div');inner.className='lm-result-modal-inner';const title=document.createElement('h2');title.textContent=item.name;
-      const image=document.createElement('img');image.src=item.url;image.alt=item.name;
-      const actions=document.createElement('div');actions.className='lm-result-modal-actions';
-      const close=document.createElement('button');close.className='btn ghost';close.textContent='닫기';close.onclick=()=>overlay.remove();
-      const down=document.createElement('button');down.className='btn';down.textContent='다운로드';down.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;const link=document.createElement('a');link.href=item.url;link.download='luke-model-'+item.id+'.png';document.body.append(link);link.click();link.remove();};
-      const remove=document.createElement('button');remove.className='btn ghost';remove.textContent='이 프로젝트에서 삭제';remove.onclick=async()=>{if(!confirm('이 생성 사진을 이 브라우저의 프로젝트에서 삭제할까요?'))return;try{if(await window.LukeModelStudio.deleteResultForModel(m.id,item.id)){overlay.remove();showModelResults();}}catch(error){toast('삭제하지 못했습니다: '+error.message,'err');}};
-      actions.append(close,down,remove);inner.append(title,image,actions);overlay.append(inner);overlay.onclick=event=>{if(event.target===overlay)overlay.remove();};overlay.onkeydown=event=>{if(event.key==='Escape')overlay.remove();};document.body.append(overlay);close.focus();
-    };
-    const group=(title,copy,list)=>{const section=document.createElement('section');section.className='lm-result-gallery';const h=document.createElement('h2');h.textContent=title;const p=document.createElement('p');p.textContent=copy;section.append(h,p);if(!list.length){const empty=document.createElement('div');empty.className='lm-result-empty';empty.textContent='아직 제작한 이미지가 없습니다. 이 모델로 생성하면 여기에 표시됩니다.';section.append(empty);}else{const grid=document.createElement('div');grid.className='lm-result-grid';list.forEach(item=>{const card=document.createElement('button');card.type='button';card.className='lm-result-card';const image=document.createElement('img');image.src=item.url;image.alt=item.name;image.loading='lazy';const label=document.createElement('span');label.textContent=item.kind;card.append(image,label);card.onclick=()=>showPhoto(item);grid.append(card);});section.append(grid);}modelResults.append(section);};
-    group('360° 모델 이미지','이 브라우저에서 제작한 각도별 이미지를 비교하세요.',results.filter(item=>angleKinds.has(item.kind)));
-    group('의상 · 배경 화보','이미지를 클릭하면 크게 보고 다운로드하거나 삭제할 수 있습니다.',results.filter(item=>!angleKinds.has(item.kind)));
+    turnStage.replaceChildren();modelResults.replaceChildren();
+    const angles=angleOrder.map(kind=>results.find(item=>item.kind===kind)).filter(Boolean);
+    turnButton.textContent=angles.length?'턴어라운드 다시 생성 ✦':'턴어라운드 생성 ✦';
+    turnStage.classList.toggle('empty',!angles.length);
+    if(angles.length){
+      angles.forEach(item=>{const fig=document.createElement('button');fig.type='button';fig.className='lm-turn-view';const image=document.createElement('img');image.src=item.url;image.alt=m.name+' '+item.kind;image.loading='lazy';const label=document.createElement('span');label.textContent=item.kind;fig.append(image,label);fig.onclick=()=>showPhoto(item,true);turnStage.append(fig);});
+    }else{
+      const base=document.createElement('button');base.type='button';base.className='lm-turn-view';const image=document.createElement('img');image.src=photoUrl;image.alt=m.name+' 정면';const label=document.createElement('span');label.textContent='정면 · 등록 사진';base.append(image,label);base.onclick=()=>showPhoto({id:String(m.id),name:m.name,url:photoUrl},false);turnStage.append(base);
+      angleOrder.slice(1).forEach(kind=>{const slot=document.createElement('div');slot.className='lm-turn-slot';const label=document.createElement('span');label.textContent=kind;slot.append(label);turnStage.append(slot);});
+    }
+    const shoots=results.filter(item=>!angleOrder.includes(item.kind));
+    const section=document.createElement('section');section.className='lm-result-gallery';const h=document.createElement('h2');h.textContent='화보';const p=document.createElement('p');p.textContent='이 모델로 만든 의상 · 배경 · 클로즈업 이미지입니다. 누르면 크게 보고 다운로드하거나 삭제할 수 있어요.';section.append(h,p);
+    if(!shoots.length){const empty=document.createElement('div');empty.className='lm-result-empty';empty.textContent='아직 제작한 화보가 없습니다. 「이 모델로 이미지 만들기」에서 의상과 배경을 바꿔 보세요.';section.append(empty);}
+    else{const grid=document.createElement('div');grid.className='lm-result-grid';shoots.forEach(item=>{const card=document.createElement('button');card.type='button';card.className='lm-result-card';const image=document.createElement('img');image.src=item.url;image.alt=item.name;image.loading='lazy';const label=document.createElement('span');label.textContent=item.kind;card.append(image,label);card.onclick=()=>showPhoto(item,true);grid.append(card);});section.append(grid);}
+    modelResults.append(section);
   };
   showModelResults();
 
@@ -1916,13 +1936,21 @@ function renderDetail(app){
   /* 사이드 */
   const side=document.createElement('div'); side.className='side';
   const profile=document.createElement('div');profile.className='lm-profile-summary';
-  const profileKick=document.createElement('span');profileKick.textContent='AI MODEL PROFILE';
   const profileName=document.createElement('h1');profileName.textContent=m.name;
-  const profileMeta=document.createElement('p');profileMeta.textContent=[AGES[m.age],GENDERS[m.gender],STYLES[m.style]].filter(Boolean).join(' · ');
-  const profileDesc=document.createElement('p');profileDesc.textContent=String(m.desc||'이 모델의 얼굴과 스타일을 확인하고 새 이미지 제작에 활용하세요.').slice(0,220);
-  const profileUse=document.createElement('button');profileUse.type='button';profileUse.className='btn';profileUse.textContent='이 모델로 이미지 만들기';profileUse.dataset.requiresApproval='';
+  const profileMeta=document.createElement('div');profileMeta.className='lm-profile-chips';
+  [GENDERS[m.gender],AGES[m.age],STYLES[m.style]].filter(Boolean).forEach(v=>{const s=document.createElement('span');s.textContent=v;profileMeta.appendChild(s);});
+  const profileDesc=document.createElement('p');profileDesc.className='lm-profile-desc';profileDesc.textContent=String(m.desc||'이 모델의 얼굴과 스타일을 확인하고 새 이미지 제작에 활용하세요.').replace(/\s+/g,' ').trim().slice(0,260);
+  const useRow=document.createElement('div');useRow.className='lm-profile-uses';const useLabel=document.createElement('em');useLabel.textContent='추천 활용';useRow.appendChild(useLabel);
+  const uses=(Array.isArray(m.tags)?m.tags:[]).map(t=>String(t).trim()).filter(t=>t&&t.length<=10).slice(0,3);
+  (uses.length?uses:['뷰티','패션','라이프스타일']).forEach(v=>{const s=document.createElement('span');s.textContent=v;useRow.appendChild(s);});
+  const profileActions=document.createElement('div');profileActions.className='lm-profile-actions';
+  const profileUse=document.createElement('button');profileUse.type='button';profileUse.className='lm-violet-btn';profileUse.textContent='이 모델로 이미지 만들기';profileUse.dataset.requiresApproval='';
   profileUse.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;await window.LukeModelStudio?.openWithModel?.(String(faceSrc(m,0,900,900)),m.name,false,m.id);};
-  profile.append(profileKick,profileName,profileMeta,profileDesc,profileUse);
+  const profileOpen=document.createElement('button');profileOpen.type='button';profileOpen.className='lm-dark-btn';profileOpen.textContent='프로필 원본 열기';
+  profileOpen.onclick=()=>showPhoto({id:String(m.id),name:m.name,url:String(faceSrc(m,0,900,900))},false);
+  hero.tabIndex=0;hero.setAttribute('role','button');hero.setAttribute('aria-label','프로필 원본 크게 보기');hero.onclick=()=>profileOpen.click();hero.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();profileOpen.click();}};
+  profileActions.append(profileUse,profileOpen);
+  profile.append(profileName,profileMeta,profileDesc,useRow,profileActions);
   const intro=document.createElement('section');intro.className='lm-detail-intro';intro.append(hero,profile);wrap.prepend(intro);
   const vb=document.createElement('div'); vb.className='vbody';
 
@@ -1984,7 +2012,7 @@ function renderDetail(app){
     }
   };
   vb.appendChild(dl);
-  const profileDownload=document.createElement('button');profileDownload.type='button';profileDownload.className='btn ghost';profileDownload.textContent='모델 자료 다운로드';profileDownload.dataset.requiresApproval='';profileDownload.disabled=!scanOk;profileDownload.onclick=()=>dl.click();profile.appendChild(profileDownload);
+  const profileDownload=document.createElement('button');profileDownload.type='button';profileDownload.className='btn ghost';profileDownload.textContent='모델 자료 다운로드';profileDownload.dataset.requiresApproval='';profileDownload.disabled=!scanOk;profileDownload.className='lm-dark-btn';profileDownload.onclick=()=>dl.click();profileActions.appendChild(profileDownload);
   const fv=document.createElement('button'); fv.type='button';
   fv.className='favbtn'+(isFav(m.id)?' on':'');
   fv.textContent=isFav(m.id)?'♥  관심얼굴에 등록됨':'♡  관심얼굴로 등록';
@@ -3906,6 +3934,6 @@ render();
 window.LukeAccess?.check?.().then(()=>render());
 window.LukeAuth?.onChange?.(()=>render());
 </script>
-<script src="/model-studio.js?v=20261009-catalog-results"></script>
+<script src="/model-studio.js?v=20261009-casting-wizard"></script>
 </body>
 </html>
