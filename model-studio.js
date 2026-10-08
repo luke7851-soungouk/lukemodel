@@ -144,8 +144,28 @@
     const item={id:crypto.randomUUID(),name:String(name||'선택한 모델'),kind:'기존 모델',url:String(url),prompt:'기존 모델에서 시작',parentId:null,createdAt:new Date().toISOString()};
     items.push(item);selected=item;draw();await save();status('선택한 모델을 기준으로 각도·의상·배경을 제작할 수 있어요.');
   }
-  window.LukeModelStudio={open,openWithModel};
+  async function openWithProduct(id){
+    if(window.LukeAccess&&!await LukeAccess.require())return;
+    await open();
+    try{
+      const auth=window.LukeAuth;await auth.ensure();
+      const response=await fetch(window.LUKE_SHARED.hairBackendUrl+'?action=products-list',{headers:auth.headers()});
+      if(!response.ok)throw new Error('상품 목록을 불러오지 못했어요.');
+      const data=await response.json(),item=(data.products||[]).find(p=>p.id===id);
+      if(!item)throw new Error('상품을 찾지 못했어요.');
+      const image=await fetch(item.image_url);
+      if(!image.ok)throw new Error('상품 사진을 불러오지 못했어요.');
+      product=await readImage(new File([await image.blob()],item.name+'.png',{type:image.headers.get('content-type')?.split(';')[0]||'image/png'}));
+      $('product-preview').src=product;$('product-preview').hidden=false;
+      $('name').value=item.name+' 캠페인';$('brief').value=(item.description||item.name).slice(0,1200);
+      await save();status(item.name+' 상품 사진을 참고 이미지로 불러왔어요.');
+    }catch(error){status(error instanceof Error?error.message:'상품을 불러오지 못했어요.');}
+  }
+  window.LukeModelStudio={open,openWithModel,openWithProduct};
   document.getElementById('model-studio-link')?.addEventListener('click',e=>{e.preventDefault();location.hash='model-studio';open();});
   window.addEventListener('hashchange',()=>{if(location.hash==='#model-studio')open();});
-  if(location.hash==='#model-studio')open();
+  if(location.hash==='#model-studio'){
+    const productId=new URLSearchParams(location.search).get('product');
+    if(productId)openWithProduct(productId);else open();
+  }
 })();
