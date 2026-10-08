@@ -127,7 +127,7 @@ h1.tit{font-size:25px;font-weight:800;letter-spacing:-.5px;margin-bottom:9px;lin
 .lm-violet-btn{border:0;border-radius:10px;padding:11px 16px;background:linear-gradient(135deg,#7b74ff,#5b55e8);color:#fff!important;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 8px 22px #5b55e855}.lm-violet-btn:hover{filter:brightness(1.1)}.lm-violet-btn:disabled{opacity:.5;cursor:default}.lm-dark-btn{border:1px solid #2e3340;border-radius:10px;padding:11px 15px;background:#1c1f28;color:#e7e9ef!important;font-weight:700;font-size:13px;cursor:pointer}.lm-dark-btn:hover{background:#252a36}.lm-dark-btn:disabled{opacity:.45;cursor:default}
 .lm-turn{margin:6px 0 10px}.lm-turn-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:14px}.lm-turn-head h2{font-size:24px;margin:0 0 5px;letter-spacing:-.01em}.lm-turn-head p{margin:0;color:#7f8698;font-size:12.5px;line-height:1.6}.lm-turn-head .lm-violet-btn{flex:none}
 .lm-turn-stage{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;gap:0;padding:18px 18px 8px;border-radius:16px;background:linear-gradient(#ececec,#dcdcdc)}.lm-model-detail .lm-turn-stage{padding:18px 18px 8px}.lm-turn-view{position:relative;display:flex;flex-direction:column;justify-content:flex-start;border:0;padding:0;background:none;cursor:zoom-in}.lm-turn-view img{display:block;width:100%;aspect-ratio:3/5;object-fit:cover;object-position:top;mix-blend-mode:multiply}.lm-turn-view span,.lm-turn-slot span{display:block;padding:8px 0 4px;text-align:center;color:#555b66;font-size:11.5px;font-weight:700}.lm-turn-stage.empty .lm-turn-view img{mix-blend-mode:normal;border-radius:10px}.lm-turn-slot{display:flex;flex-direction:column;justify-content:flex-end;margin:0 0 0 12px;border:1.5px dashed #b9bcc3;border-radius:10px;background:repeating-linear-gradient(135deg,#0000 0 10px,#00000008 10px 20px)}
-.lm-result-modal-inner{background:#1b1d24;border-color:#30343f;border-radius:18px}.lm-result-modal-inner img{border-radius:10px;background:#efefef}.lm-result-modal-actions{justify-content:center}.lm-modal-btn,.lm-modal-del,.lm-modal-close{border-radius:9px;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid #343947;background:#262a34;color:#eef0f5}.lm-modal-del{background:#5a1018;border-color:#7a1a25;color:#ffd5da}.lm-modal-close{background:#fff;color:#111;border-color:#fff}
+.lm-turn-closeups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}.lm-turn-closeups[hidden]{display:none}.lm-turn-close{padding:0;border:0;border-radius:14px;overflow:hidden;background:#1b1d24;cursor:zoom-in}.lm-turn-close img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;object-position:top}.lm-result-modal-inner{background:#1b1d24;border-color:#30343f;border-radius:18px}.lm-result-modal-inner img{border-radius:10px;background:#efefef}.lm-result-modal-actions{justify-content:center}.lm-modal-btn,.lm-modal-del,.lm-modal-close{border-radius:9px;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid #343947;background:#262a34;color:#eef0f5}.lm-modal-del{background:#5a1018;border-color:#7a1a25;color:#ffd5da}.lm-modal-close{background:#fff;color:#111;border-color:#fff}
 @media(max-width:680px){.lm-model-detail .lm-detail-intro{grid-template-columns:120px minmax(0,1fr);gap:14px}.lm-model-detail .lm-detail-intro .hero img{height:170px}.lm-model-detail .lm-detail-intro .lm-profile-summary h1{font-size:22px}.lm-turn-head{flex-direction:column;align-items:flex-start}.lm-turn-stage{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;row-gap:10px}.lm-turn-slot{min-height:180px;margin:0 0 0 8px}}
 .vtabs{display:flex;gap:2px;padding:9px 9px 0;overflow-x:auto}
 .vtabs button{padding:8px 13px;font-size:12.5px;font-weight:700;color:var(--dim);border-radius:7px 7px 0 0;white-space:nowrap}
@@ -1826,7 +1826,8 @@ function renderDetail(app){
   turnButton.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;await window.LukeModelStudio?.openWithModel?.(photoUrl,m.name,true,m.id);};
   turnHead.append(turnText,turnButton);
   const turnStage=document.createElement('div');turnStage.className='lm-turn-stage';
-  turn.append(turnHead,turnStage);left.appendChild(turn);
+  const turnClose=document.createElement('div');turnClose.className='lm-turn-closeups';turnClose.hidden=true;
+  turn.append(turnHead,turnStage,turnClose);left.appendChild(turn);
 
   const modelResults=document.createElement('div');left.appendChild(modelResults);
   const showPhoto=(item,removable)=>{
@@ -1853,7 +1854,10 @@ function renderDetail(app){
       const base=document.createElement('button');base.type='button';base.className='lm-turn-view';const image=document.createElement('img');image.src=photoUrl;image.alt=m.name+' 정면';const label=document.createElement('span');label.textContent='정면 · 등록 사진';base.append(image,label);base.onclick=()=>showPhoto({id:String(m.id),name:m.name,url:photoUrl},false);turnStage.append(base);
       angleOrder.slice(1).forEach(kind=>{const slot=document.createElement('div');slot.className='lm-turn-slot';const label=document.createElement('span');label.textContent=kind;slot.append(label);turnStage.append(slot);});
     }
-    const shoots=results.filter(item=>!angleOrder.includes(item.kind));
+    const closeups=results.filter(item=>item.kind==='클로즈업').slice(0,3);
+    turnClose.replaceChildren();turnClose.hidden=!closeups.length;
+    closeups.forEach(item=>{const b=document.createElement('button');b.type='button';b.className='lm-turn-close';const im=document.createElement('img');im.src=item.url;im.alt=m.name+' 클로즈업';im.loading='lazy';b.append(im);b.onclick=()=>showPhoto(item,true);turnClose.append(b);});
+    const shoots=results.filter(item=>!angleOrder.includes(item.kind)&&item.kind!=='클로즈업');
     const section=document.createElement('section');section.className='lm-result-gallery';const h=document.createElement('h2');h.textContent='화보';const p=document.createElement('p');p.textContent='이 모델로 만든 의상 · 배경 · 클로즈업 이미지입니다. 누르면 크게 보고 다운로드하거나 삭제할 수 있어요.';section.append(h,p);
     if(!shoots.length){const empty=document.createElement('div');empty.className='lm-result-empty';empty.textContent='아직 제작한 화보가 없습니다. 「이 모델로 이미지 만들기」에서 의상과 배경을 바꿔 보세요.';section.append(empty);}
     else{const grid=document.createElement('div');grid.className='lm-result-grid';shoots.forEach(item=>{const card=document.createElement('button');card.type='button';card.className='lm-result-card';const image=document.createElement('img');image.src=item.url;image.alt=item.name;image.loading='lazy';const label=document.createElement('span');label.textContent=item.kind;card.append(image,label);card.onclick=()=>showPhoto(item,true);grid.append(card);});section.append(grid);}
@@ -3934,6 +3938,6 @@ render();
 window.LukeAccess?.check?.().then(()=>render());
 window.LukeAuth?.onChange?.(()=>render());
 </script>
-<script src="/model-studio.js?v=20261009-auto-publish"></script>
+<script src="/model-studio.js?v=20261009-confirm"></script>
 </body>
 </html>

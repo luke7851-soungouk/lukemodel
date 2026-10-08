@@ -17,24 +17,44 @@ function getNote(id){try{return localStorage.getItem(noteKey(id))||'';}catch{ret
 function setNote(id,v){try{localStorage.setItem(noteKey(id),v);}catch{}}
 
 /* ── 목록 ─────────────────────────────────────────── */
+const CATEGORIES=['뷰티·스킨케어','헤어·바디','메이크업','향수','패션·의류','가방·잡화','주얼리·액세서리','식품·음료','리빙·인테리어','디지털·가전','기타'];
+const ALIAS={'뷰티':'뷰티·스킨케어','스킨케어':'뷰티·스킨케어','화장품':'뷰티·스킨케어','헤어':'헤어·바디','바디':'헤어·바디','헤어/바디':'헤어·바디','패션':'패션·의류','의류':'패션·의류','가방':'가방·잡화','잡화':'가방·잡화','주얼리':'주얼리·액세서리','액세서리':'주얼리·액세서리','식품':'식품·음료','음료':'식품·음료','리빙':'리빙·인테리어','인테리어':'리빙·인테리어','전자':'디지털·가전','가전':'디지털·가전','디지털':'디지털·가전'};
+const catOf=p=>{const c=String(p.category||'').trim();return CATEGORIES.includes(c)?c:(ALIAS[c]||c||'기타');};
 function renderList(){
   document.body.classList.remove('detail-mode');
   $('list-view').hidden=false;$('detail-view').hidden=true;
   const filters=$('filters'),grid=$('grid');filters.replaceChildren();grid.replaceChildren();
-  const categories=['전체',...new Set(products.map(p=>p.category||'기타'))];
-  for(const category of categories){const b=btn(category,'chip'+(filter===category?' on':''),()=>{filter=category;renderList();});filters.append(b);}
-  const list=products.filter(p=>filter==='전체'||p.category===filter);
-  $('message').textContent=`${list.length}개 상품 · 최신 등록순`;
-  if(!list.length){grid.append(node('p','등록된 상품이 없습니다. 운영자가 첫 상품을 등록하면 이곳에 표시됩니다.','empty'));return;}
+  const counts={};products.forEach(p=>{const c=catOf(p);counts[c]=(counts[c]||0)+1;});
+  const cats=['전체',...CATEGORIES,...Object.keys(counts).filter(c=>!CATEGORIES.includes(c))];
+  for(const category of cats){const n=category==='전체'?products.length:(counts[category]||0);const b=btn(category,'chip'+(filter===category?' on':''),()=>{filter=category;renderList();});b.append(node('small',String(n)));filters.append(b);}
+  const list=products.filter(p=>filter==='전체'||catOf(p)===filter);
+  $('message').textContent=filter==='전체'?`${list.length}개 제품 · 최신 등록순`:`${filter} · ${list.length}개 제품`;
+  if(!list.length){grid.append(node('p',filter==='전체'?'등록된 제품이 없습니다. 「+ 내 제품 업로드」로 첫 제품을 등록해 보세요.':'이 카테고리에 등록된 제품이 아직 없어요.','empty'));return;}
   for(const p of list){
     const card=node('article',null,'card'),open=node('a',null,'card-open');open.href='?id='+encodeURIComponent(p.id);open.onclick=e=>{e.preventDefault();history.pushState(null,'','?id='+encodeURIComponent(p.id));route();};
     const img=node('img');img.src=p.image_url;img.alt=p.name;img.loading='lazy';img.referrerPolicy='no-referrer';open.append(img);
-    const body=node('div',null,'card-body'),cat=node('small',p.category),title=node('h2',p.name),desc=node('p',p.description),actions=node('div',null,'actions');
-    const studio=node('a','제품 스튜디오');studio.href=open.href;studio.onclick=open.onclick;
-    const use=node('a','모델과 함께 제작','ghost');use.href='/?product='+encodeURIComponent(p.id)+'#model-studio';use.dataset.requiresApproval='';
-    actions.append(studio,use);body.append(cat,title,desc,actions);card.append(open,body);grid.append(card);
+    const body=node('a',null,'card-body');body.href=open.href;body.onclick=open.onclick;body.style.display='block';
+    const top=node('div',null,'card-top');top.append(node('h2',p.name),node('span','상세페이지 · SNS 광고'));
+    const desc=node('p',p.description||'제품 사진으로 상세페이지와 광고 컷을 만들어 보세요.');
+    const chips=node('div',null,'card-chips');[catOf(p),'제품 스튜디오'].forEach(t=>chips.append(node('span',t)));
+    body.append(top,desc,chips);card.append(open,body);grid.append(card);
   }
 }
+function skeleton(){const grid=$('grid');grid.replaceChildren();for(let i=0;i<8;i++)grid.append(node('div',null,'sk-card'));}
+
+/* ── 생성 확인창 (영상과 같은 확인 단계) ─────────────── */
+function confirmGen(rows,count){
+  return new Promise(resolve=>{
+    const ov=node('div',null,'gen-confirm');ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');
+    const box=node('div',null,'gen-confirm-box');box.append(node('h3','이대로 생성할까요?'));
+    const dl=node('dl');rows.forEach(([k,v])=>{dl.append(node('dt',k),node('dd',v));});box.append(dl);
+    const row=node('div',null,'row');const done=v=>{ov.remove();resolve(v);};
+    const cancel=btn('취소','dark-btn',()=>done(false));const go=btn(`생성 시작 ✦ ${count}장`,'violet-btn',()=>done(true));
+    row.append(cancel,go);box.append(row);ov.append(box);ov.onclick=e=>{if(e.target===ov)done(false);};ov.onkeydown=e=>{if(e.key==='Escape')done(false);};
+    document.body.append(ov);go.focus();
+  });
+}
+const MODEL_LABEL='Qwen Image 3 Edit (레퍼런스 고정)';
 
 /* ── 콘셉트 제안 ───────────────────────────────────── */
 function concepts(p){
@@ -96,17 +116,20 @@ async function renderDetail(p){
     shots.forEach(s=>{const card=btn('','pd-shot',()=>showImage(s,async()=>{shots=shots.filter(x=>x.id!==s.id);await saveShots(p.id,shots);drawShots();}));const img=node('img');img.src=s.url;img.alt=s.label;img.loading='lazy';card.append(img,node('span',s.label));rgrid.append(card);});};
   drawShots();
 
-  goBtn.onclick=async()=>{
+  const runCuts=async(seed)=>{
     if(window.LukeAccess&&!await LukeAccess.require())return;
-    const chosen=list.filter(c=>picked.has(c.id));if(!chosen.length)return;
+    const chosen=seed?[seed.concept]:list.filter(c=>picked.has(c.id));if(!chosen.length)return;
+    const plan=seed?`이 톤으로 시리즈 ${cuts}장`:`${chosen.length}개 콘셉트 · ${cuts}컷`;
+    if(!await confirmGen([['생성 모델',MODEL_LABEL],['대상 제품',p.name],['구성',plan],['해상도','1K'],['차감','사장님 Higgsfield 크레딧'],['저장','lukemodel.com 갤러리 자동 등록']],cuts))return;
     goBtn.disabled=true;let done=0,shared=0;pending=cuts;drawShots();
     try{
       await auth.ensure();if(!auth.user()||auth.isAnon()){auth.openAccount?.();throw new Error('로그인한 회원만 제작할 수 있어요.');}
       const r=await fetch(p.image_url);if(!r.ok)throw new Error('제품 사진을 불러오지 못했어요.');const ref=await r.blob();
+      const toneRef=seed?await (await fetch(seed.url)).blob():null;
       for(let i=0;i<cuts;i++){
-        const c=chosen[i%chosen.length];status.textContent=`${c.title} 생성 중 · ${i+1}/${cuts} · 잠시 기다려 주세요.`;
-        const text=['Reference image 1 is the exact PRODUCT. Keep its shape, color, label, typography and packaging identical; do not invent a different product or brand.',c.prompt,prompt.value.trim()?'Extra direction: '+prompt.value.trim():'',note.value.trim()?'Brand note: '+note.value.trim():'',`Product: ${p.name} (${p.category||''}). ${String(p.description||'').slice(0,300)}`,`Aspect ratio ${c.ratio}. Photorealistic commercial product photography, no text overlays, no watermark, one image.`].filter(Boolean).join('\n');
-        const url=await generate(text,ref);
+        const c=chosen[i%chosen.length];status.textContent=`${seed?'시리즈 확장 · ':''}${c.title} 생성 중 · ${i+1}/${cuts} · 잠시 기다려 주세요.`;
+        const text=['Reference image 1 is the exact PRODUCT. Keep its shape, color, label, typography and packaging identical; do not invent a different product or brand.',c.prompt,prompt.value.trim()?'Extra direction: '+prompt.value.trim():'',note.value.trim()?'Brand note: '+note.value.trim():'',`Product: ${p.name} (${p.category||''}). ${String(p.description||'').slice(0,300)}`,seed?'Reference image 2 is a previous shot of this campaign: match its color grading, lighting mood and styling, but create a new composition.':'',`Aspect ratio ${c.ratio}. Photorealistic commercial product photography, no text overlays, no watermark, one image.`].filter(Boolean).join('\n');
+        const url=await generate(text,ref,toneRef);
         const published=await publishShot(p.name+' · '+c.title);if(published)shared++;
         shots.unshift({id:crypto.randomUUID(),url,label:c.title,concept:c.id,createdAt:new Date().toISOString()});done++;pending=cuts-done;
         try{await saveShots(p.id,shots.slice(0,40));}catch{status.textContent='기기 저장 공간이 부족해요. 결과를 다운로드해 주세요.';}
@@ -116,11 +139,15 @@ async function renderDetail(p){
     }catch(e){status.textContent=(e&&e.message||'생성에 실패했어요.')+(done?` 완료된 ${done}컷은 보관돼요.`:'');}
     finally{pending=0;drawShots();goBtn.disabled=false;}
   };
+  goBtn.onclick=()=>runCuts(null);
+  extendSeries=item=>{const c=list.find(x=>x.id===item.concept)||list[0];runCuts({url:item.url,concept:c});};
 }
+let extendSeries=null;
 let lastRemote='';
 async function publishShot(title){if(!lastRemote||!window.LukeHF?.shareResult)return false;try{await LukeHF.shareResult({url:lastRemote,kind:'image',title});return true;}catch(e){console.warn('auto publish failed',e);return false;}}
-async function generate(prompt,refBlob){lastRemote='';
+async function generate(prompt,refBlob,toneBlob){lastRemote='';
   const form=new FormData();form.append('prompt',prompt);form.append('reference',new File([refBlob],'product.png',{type:refBlob.type||'image/png'}));
+  if(toneBlob)form.append('reference',new File([toneBlob],'tone.png',{type:toneBlob.type||'image/png'}));
   const sent=await fetch(endpoint+'?action=model',{method:'POST',headers:auth.headers(),body:form});const started=await sent.json().catch(()=>({}));
   if(!sent.ok)throw new Error(started.error||'제작 요청에 실패했어요.');if(!started.jobId)throw new Error('제작 번호를 받지 못했어요.');
   for(let i=0;i<100;i++){await new Promise(r=>setTimeout(r,3000));await auth.ensure();const c=await fetch(endpoint+'?action=model-status&job='+encodeURIComponent(started.jobId),{headers:auth.headers()});const cur=await c.json().catch(()=>({}));if(!c.ok)throw new Error(cur.error||'제작 상태를 확인하지 못했어요.');
@@ -133,14 +160,14 @@ function showImage(item,onDelete){
   if(onDelete)actions.append(btn('삭제','del-btn',async()=>{if(!confirm('이 컷을 삭제할까요?'))return;await onDelete();ov.remove();}));
   const down=btn('다운로드','dark-btn',async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;try{const r=await fetch(item.url);const u=URL.createObjectURL(await r.blob());const a=node('a');a.href=u;a.download=safeName(item.label)+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(u),30000);}catch{window.open(item.url,'_blank','noopener');}});down.dataset.requiresApproval='';
   const tab=btn('원본 새 탭에서 열기','dark-btn',async()=>{try{const r=await fetch(item.url);const u=URL.createObjectURL(await r.blob());window.open(u,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(u),60000);}catch{window.open(item.url,'_blank','noopener');}});
-  actions.append(down,tab,close);box.append(img,actions);ov.append(box);ov.onclick=e=>{if(e.target===ov)ov.remove();};ov.onkeydown=e=>{if(e.key==='Escape')ov.remove();};document.body.append(ov);close.focus();
+  if(onDelete&&item.concept&&extendSeries){const ext=btn('이 톤으로 시리즈 확장 ✦','violet-btn',()=>{ov.remove();extendSeries(item);});ext.dataset.requiresApproval='';actions.append(down,ext,tab,close);}else actions.append(down,tab,close);box.append(img,actions);ov.append(box);ov.onclick=e=>{if(e.target===ov)ov.remove();};ov.onkeydown=e=>{if(e.key==='Escape')ov.remove();};document.body.append(ov);close.focus();
 }
 
 /* ── 라우팅 ───────────────────────────────────────── */
-function route(){const id=currentId();if(id){const p=products.find(x=>String(x.id)===id);if(p){renderDetail(p);return;}if(products.length){$('message').textContent='상품을 찾지 못했어요.';}}document.title='상품 카테고리 · LUKE MODEL';renderList();}
-async function load(){try{const d=await api('products-list');products=d.products||[];owner=!!d.owner;$('owner-toggle').hidden=!owner;if(!owner)$('owner-form').hidden=true;route();}catch(e){$('message').textContent=e.message;$('grid').replaceChildren();}}
+function route(){const id=currentId();if(id){const p=products.find(x=>String(x.id)===id);if(p){renderDetail(p);return;}if(products.length){$('message').textContent='상품을 찾지 못했어요.';}}document.title='Product Studio · LUKE MODEL';renderList();}
+async function load(){if(!products.length&&!currentId())skeleton();try{const d=await api('products-list');products=d.products||[];owner=!!d.owner;$('owner-toggle').hidden=!owner;if(!owner)$('owner-modal').hidden=true;route();}catch(e){$('message').textContent=e.message;$('grid').replaceChildren();}}
 window.addEventListener('popstate',route);
-$('account').append(auth.chip());$('owner-toggle').onclick=()=>{$('owner-form').hidden=!$('owner-form').hidden;};
-$('owner-form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button');button.disabled=true;try{await api('products-create',Object.fromEntries(new FormData(form)));form.reset();$('owner-form').hidden=true;await load();$('message').textContent='상품을 등록했습니다.';}catch(error){$('message').textContent=error.message;}finally{button.disabled=false;}};
+$('account').append(auth.chip());CATEGORIES.forEach(c=>$('owner-category').add(new Option(c,c)));$('owner-toggle').onclick=()=>{$('owner-modal').hidden=false;$('owner-form').querySelector('input').focus();};$('owner-cancel').onclick=()=>{$('owner-modal').hidden=true;};$('owner-modal').onclick=e=>{if(e.target===$('owner-modal'))$('owner-modal').hidden=true;};
+$('owner-form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]');button.disabled=true;try{await api('products-create',Object.fromEntries(new FormData(form)));form.reset();$('owner-modal').hidden=true;await load();$('message').textContent='제품을 등록했습니다.';}catch(error){$('message').textContent=error.message;}finally{button.disabled=false;}};
 auth.onChange(load);load();
 })();
