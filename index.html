@@ -77,7 +77,7 @@ nav.top button.on{background:var(--panel);color:#fff}
 .cover{position:relative;background:#14171f}
 /* 얼굴 사진은 자르지 않음: 원본 비율 그대로 (불러오기 전에는 4:5 자리) */
 .cover-img{display:block;width:100%;height:auto;aspect-ratio:auto 4/5;object-fit:contain;background:#14171f}
-.lm-card-body{padding:12px 12px 14px}.lm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.lm-card-body .lm-card-top h3{min-height:0;margin:0;font-size:14px;-webkit-line-clamp:1}.lm-card-owner{flex:none;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8c88ff;font-size:11px;font-weight:700}.lm-card-desc{margin:7px 0 10px;color:#8f96a8;font-size:12px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:37px}.lm-card-chips{display:flex;gap:6px;flex-wrap:wrap}.lm-card-chips span{padding:4px 9px;border:1px solid #333a4a;border-radius:999px;background:#12151d;color:#c8cdd9;font-size:11px}
+.lm-card-del{position:absolute;left:10px;top:10px;z-index:3;padding:6px 11px;border:0;border-radius:999px;background:#7a1a25;color:#ffe3e6;font-size:11.5px;font-weight:800;cursor:pointer}.lm-card-del:hover{background:#9b2230}.lm-del-btn{border:1px solid #7a1a25;border-radius:10px;padding:11px 15px;background:#5a1018;color:#ffd5da!important;font-weight:700;font-size:13px;cursor:pointer}.lm-model-detail .lm-detail-intro .lm-profile-summary .lm-profile-actions .lm-del-btn{background:#5a1018;color:#ffd5da}.lm-card-body{padding:12px 12px 14px}.lm-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.lm-card-body .lm-card-top h3{min-height:0;margin:0;font-size:14px;-webkit-line-clamp:1}.lm-card-owner{flex:none;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8c88ff;font-size:11px;font-weight:700}.lm-card-desc{margin:7px 0 10px;color:#8f96a8;font-size:12px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:37px}.lm-card-chips{display:flex;gap:6px;flex-wrap:wrap}.lm-card-chips span{padding:4px 9px;border:1px solid #333a4a;border-radius:999px;background:#12151d;color:#c8cdd9;font-size:11px}
 /* 태그는 사진 아래로 (얼굴·턱을 가리지 않게) */
 .cover .tags{padding:9px 12px 0;background:var(--panel)}
 .heart{position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:50%;background:rgba(8,10,16,.55);color:#fff;font-size:16px;z-index:2;line-height:1}
@@ -504,13 +504,13 @@ nav.top a.nav-pub:hover{background:var(--panel);color:var(--tx)}
 </footer>
 
 <script src="/shared-config.js"></script>
-<script src="/lm-auth.js"></script>
+<script src="/lm-auth.js?v=20261009-admin"></script>
 <script src="/access-gate.js?v=20261009"></script>
 <script src="/hf-core.js"></script>
 <script src="/angle-auto.js?v=20261009-skip-studio"></script>
 <script src="/sheet-split.js"></script>
 <script src="/face-hf.js"></script>
-<script src="/casting.js?v=20260928-shortlist1"></script>
+<script src="/casting.js?v=20261009-hidden"></script>
 <script>
 'use strict';
 /* ===========================================================================
@@ -1025,6 +1025,29 @@ async function resolveFaceRef(m){
 let DB = load();
 if(DB&&Array.isArray(DB.models)) DB.models.forEach(ensureModelFields);
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
+/* ── 운영자 모델 삭제: Supabase hidden_models (읽기 공개, 쓰기는 운영자 계정만 — DB 정책) ── */
+const SITE_ADMIN_EMAIL='luke7851@gmail.com';
+window.LUKE_HIDDEN=new Set();
+function modelKey(m){ return String((m&&m.photoKey)||(m&&m.photos&&m.photos[0])||('name:'+(m&&m.name||''))).slice(0,200); }
+function isHiddenModel(m){ return window.LUKE_HIDDEN.has(modelKey(m)); }
+window.isHiddenModel=isHiddenModel;
+function isSiteAdmin(){ const A=window.LukeAuth; const u=A&&A.user&&A.user(); return !!(u&&!(A.isAnon&&A.isAnon())&&String(u.email||'').toLowerCase()===SITE_ADMIN_EMAIL); }
+async function loadHiddenModels(){
+  try{ const C=window.LUKE_SHARED||{}; if(!C.url) return; const r=await fetch(C.url+'/rest/v1/hidden_models?select=key',{headers:{apikey:C.anonKey}}); if(!r.ok) return;
+    const rows=await r.json(); window.LUKE_HIDDEN=new Set((rows||[]).map(x=>String(x.key))); if(typeof render==='function'&&(view==='browse'||view==='detail'||view==='mine')) render(); }catch(e){}
+}
+async function hideModel(m){
+  if(!isSiteAdmin()){ toast('운영자 계정(luke7851@gmail.com)으로 로그인해야 삭제할 수 있어요','err'); if(window.LukeAuth&&LukeAuth.openAccount) LukeAuth.openAccount(); return; }
+  if(!confirm('「'+m.name+'」 모델을 lukemodel.com에서 삭제할까요?\n모든 방문자에게서 사라집니다.')) return;
+  try{
+    const A=window.LukeAuth, C=window.LUKE_SHARED; if(A.ensure) await A.ensure(); const key=modelKey(m);
+    const r=await fetch(C.url+'/rest/v1/hidden_models',{method:'POST',headers:A.headers({'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({key})});
+    if(!r.ok&&r.status!==409){ let t=''; try{t=(await r.json()).message||'';}catch(e){} throw new Error('('+r.status+') '+t); }
+    window.LUKE_HIDDEN.add(key);
+    if(!m.auto&&!m.photoKey){ const i=DB.models.indexOf(m); if(i>=0){ DB.models.splice(i,1); save(); } }
+    toast('모델을 삭제했습니다','ok'); go('browse');
+  }catch(e){ toast('삭제하지 못했습니다 '+(e&&e.message||''),'err'); }
+}
 
 /* IndexedDB — uploaded weight blobs */
 const IDB_NAME='facenaru.files.v1', IDB_STORE='files';
@@ -1764,6 +1787,7 @@ function emptyBox(t1,t2){ const e=document.createElement('div'); e.className='em
   const b=document.createElement('div'); b.textContent=t2; e.appendChild(a); e.appendChild(b); return e; }
 
 function gridOf(list){
+  list=list.filter(m=>!isHiddenModel(m));
   const g=document.createElement('div'); g.className='grid';
   list.forEach(m=>{
     const c=document.createElement('div'); c.className='card'; c.dataset.id=String(m.id); c.onclick=()=>go('detail',m.id);
@@ -1783,6 +1807,7 @@ function gridOf(list){
     ht.title=isFav(m.id)?'관심얼굴 해제':'관심얼굴 등록';
     ht.onclick=e=>{ e.stopPropagation(); toggleFav(m.id); };
     cv.appendChild(ht);
+    if(isSiteAdmin()){ const del=document.createElement('button'); del.type='button'; del.className='lm-card-del'; del.textContent='삭제'; del.title='이 모델을 사이트에서 삭제'; del.onclick=e=>{ e.stopPropagation(); hideModel(m); }; cv.appendChild(del); }
     cv.appendChild(tg); c.appendChild(cv);
     tg.style.display='none';
     const b=document.createElement('div'); b.className='cbody lm-card-body';
@@ -1803,7 +1828,7 @@ function gridOf(list){
 
 /* ── 상세 ───────────────────────────────────────────────────────────── */
 function renderDetail(app){
-  const m=DB.models.find(x=>x.id===curId); if(!m){ go('browse'); return; }
+  const m=DB.models.find(x=>x.id===curId); if(!m||isHiddenModel(m)){ go('browse'); return; }
   const back=document.createElement('button'); back.className='back'; const fromCast=!!window._lmFromCasting; back.textContent=fromCast?'\u2190 모델 캐스팅으로':'\u2190 모델 탐색으로'; back.onclick=()=>go(fromCast?'casting':'browse'); app.appendChild(back);
 
   const wrap=document.createElement('div'); wrap.className='detail lm-model-detail';
@@ -1954,6 +1979,7 @@ function renderDetail(app){
   profileOpen.onclick=()=>showPhoto({id:String(m.id),name:m.name,url:String(faceSrc(m,0,900,900))},false);
   hero.tabIndex=0;hero.setAttribute('role','button');hero.setAttribute('aria-label','프로필 원본 크게 보기');hero.onclick=()=>profileOpen.click();hero.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();profileOpen.click();}};
   profileActions.append(profileUse,profileOpen);
+  if(isSiteAdmin()){ const profileDelete=document.createElement('button');profileDelete.type='button';profileDelete.className='lm-del-btn';profileDelete.textContent='모델 삭제';profileDelete.onclick=()=>hideModel(m);profileActions.appendChild(profileDelete); }
   profile.append(profileName,profileMeta,profileDesc,useRow,profileActions);
   const intro=document.createElement('section');intro.className='lm-detail-intro';intro.append(hero,profile);wrap.prepend(intro);
   const vb=document.createElement('div'); vb.className='vbody';
@@ -3935,6 +3961,8 @@ let pendingShareCode=null;
 $('q').addEventListener('input', e=>{ filt.q=e.target.value; if(view!=='browse') view='browse'; render(); });
 
 render();
+loadHiddenModels();
+if(window.LukeAuth&&LukeAuth.onChange) LukeAuth.onChange(()=>{ if(view==='browse'||view==='detail') render(); });
 window.LukeAccess?.check?.().then(()=>render());
 window.LukeAuth?.onChange?.(()=>render());
 </script>

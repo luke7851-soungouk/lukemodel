@@ -52,6 +52,7 @@ function vibeOf(txt){ const m=String(txt||'').match(/커리어|캐주얼|프로�
 function build(){
   const out=[], seen=new Set();
   (typeof DB!=='undefined'&&DB.models||[]).slice().sort((a,b)=>(b.photoKey?1:0)-(a.photoKey?1:0)).forEach(m=>{
+    if(window.isHiddenModel&&window.isHiddenModel(m)) return;
     const ph=(m.photos&&m.photos[0])||''; const pm=String(ph).match(/^faces\/([a-z0-9-]+)\.(jpe?g|png|webp)$/i); if(!pm) return;
     const key='r-'+pm[1].toLowerCase(); if(seen.has(key)) return; seen.add(key);
     out.push({key,type:'face',model:m,name:shortName(m.name,m.photoKey||pm[1]),full:m.name,gender:m.gender||'',age:m.age||'',

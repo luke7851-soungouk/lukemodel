@@ -108,7 +108,8 @@ async function ensure(){
 const user=()=>S.session&&S.session.user||null;
 function headers(extra){ const h={apikey:KEY}; const t=S.session&&S.session.access_token; const exp=S.session&&S.session.expires_at;
   if(t&&(!exp||exp*1000>Date.now()+5000)) h.Authorization='Bearer '+t; else if(/^eyJ/.test(KEY)) h.Authorization='Bearer '+KEY; return Object.assign(h,extra||{}); }
-const isMine=row=>{ const u=user(); return !!(S.schemaV2&&u&&row&&row.owner_id&&row.owner_id===u.id); };
+const isSiteAdmin=()=>{ const u=user(); return !!(u&&!u.is_anonymous&&String(u.email||'').toLowerCase()==='luke7851@gmail.com'); };
+const isMine=row=>{ const u=user(); return !!(S.schemaV2&&u&&row&&((row.owner_id&&row.owner_id===u.id)||isSiteAdmin())); };
 const isAnon=()=>{ const u=user(); return !!(u&&(u.is_anonymous||!(u.email||(u.identities||[]).length))); };
 function label(){ const u=user(); if(!u) return '로그인'; if(isAnon()) return '익명 계정'; const ids=(u.identities||[]).map(i=>i.provider);
   return u.email||(u.user_metadata&&(u.user_metadata.user_name||u.user_metadata.name))||(ids[0]||'계정'); }
@@ -189,7 +190,7 @@ async function openAccount(){
 /* 로그인·연결 직후 돌아왔을 때 결과 알림 */
 function takeNotice(){ const n=S.notice; S.notice=null; return n; }
 
-const api={detect,ensure,boot,settings,headers,isMine,isAnon,user,label,chip,openAccount,linkOAuth,signInOAuth,linkEmail,signInEmail,signOut,takeNotice,
+const api={detect,ensure,boot,settings,headers,isMine,isSiteAdmin,isAnon,user,label,chip,openAccount,linkOAuth,signInOAuth,linkEmail,signInEmail,signOut,takeNotice,
   onChange:f=>{ subs.add(f); return ()=>subs.delete(f); },
   enabled:()=>S.schemaV2, get schemaV2(){ return S.schemaV2; }, get checked(){ return S.checked; }, get error(){ return S.err; }, _S:S};
 window.LukeAuth=api;
