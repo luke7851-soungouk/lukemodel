@@ -2270,6 +2270,16 @@ const _saveBlob = typeof saveBlobToDevice==='function' ? saveBlobToDevice : (typ
 const _shareFiles = typeof shareFilesOrFallback==='function' ? shareFilesOrFallback : (typeof shareFilesOrFallback==='function'?shareFilesOrFallback:null);
 const _hash = typeof hashCode==='function' ? hashCode : (typeof hashCode==='function'?hashCode:s=>{let h=0; for(let i=0;i<String(s).length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;} return Math.abs(h);});
 const _mkModel = typeof mkModel==='function' ? mkModel : (typeof mkModel==='function'?mkModel:null);
+/* lm-studio.js「내 모델 업로드」: 프로필 사진 한 장으로 모델 등록. 소개·추천 분야는 lm-studio가 Claude 분석으로 채워서 넘긴다 */
+window.LukeAddModel=function(o){
+  const id=DB.nextId++;
+  const s={ name:String(o.name||'새 모델').slice(0,40), kind:'FaceLORA', gender:GENDERS[o.gender]?o.gender:'female', age:AGES[o.age]?o.age:'twenties', style:'real', consent:'self',
+    user:(DB.user&&DB.user.nick)||'LUKE', base:'SOUL 2.0', desc:String(o.desc||'').slice(0,600), tags:(o.tags||[]).map(x=>String(x).trim()).filter(Boolean).slice(0,6),
+    words:[], photos:[o.photo], kb:0, dl:0, log:[], reviews:[] };
+  const m=_mkModel(s,id,Date.now()); ensureModelFields(m);
+  m.ownerKey=_userKey(); m.file.scan='Success'; m.faceRef=o.photo; m.uploadedProfile=true;
+  DB.models.unshift(m); save(); return id;
+};
 const _dstr = typeof dstr==='function' ? dstr : (typeof dstr==='function'?dstr:(ts=>new Date(ts).toLocaleDateString('ko-KR')));
 const _closeModal = typeof closeModal==='function' ? closeModal : (typeof closeModal==='function'?closeModal:()=>{ const m=$('modal'); if(m)m.textContent=''; });
 const _openLogin = typeof openLogin==='function' ? openLogin : (typeof openLogin==='function'?openLogin:()=>{});
@@ -3970,6 +3980,6 @@ window.LukeAccess?.check?.().then(()=>render());
 window.LukeAuth?.onChange?.(()=>render());
 </script>
 <script src="/model-studio.js?v=20261009-hf-studio"></script>
-<script src="/lm-studio.js?v=20261021-3"></script>
+<script src="/lm-studio.js?v=20261021-4"></script>
 </body>
 </html>

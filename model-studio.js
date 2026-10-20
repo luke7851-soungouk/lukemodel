@@ -95,8 +95,8 @@
     const image=new Image();await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('이미지를 읽지 못했어요.'));image.src=raw;});
     const canvas=document.createElement('canvas'),scale=Math.min(1,1536/Math.max(image.width,image.height));canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/png');}
   function fileInput(parent,label,fn){const l=el('label',label),input=el('input');input.type='file';input.accept='image/png,image/jpeg,image/webp';input.onchange=async()=>{if(busy)return;try{const url=await readImage(input.files[0]);await fn(url);}catch(e){status(e.message);}input.value='';};l.append(input);parent.append(l);}
-  function connections(){return [{id:'lukemodel-owner',name:'LUKE MODEL · Higgsfield',provider:'owner',kind:'image'}];}
-  function refresh(){const s=$('connection'),previous=s.value;s.replaceChildren();connections().forEach(c=>s.add(new Option(c.provider==='owner'?'LUKE MODEL · 서버 Higgsfield 키':c.name+' · '+(c.provider==='higgsfield'?'SOUL V2 / Z-Image':c.model),c.id)));if([...s.options].some(o=>o.value===previous))s.value=previous;}
+  function connections(){return [{id:'lukemodel-subscription',name:'LUKE MODEL · Higgsfield 월 구독',provider:'subscription',kind:'image'},{id:'lukemodel-owner',name:'LUKE MODEL · Higgsfield',provider:'owner',kind:'image'}];}
+  function refresh(){const s=$('connection'),previous=s.value;s.replaceChildren();connections().forEach(c=>s.add(new Option(c.provider==='subscription'?'LUKE MODEL · Higgsfield 월 구독 (운영자 PC)':c.provider==='owner'?'LUKE MODEL · 서버 Higgsfield API 키':c.name+' · '+(c.provider==='higgsfield'?'SOUL V2 / Z-Image':c.model),c.id)));if([...s.options].some(o=>o.value===previous))s.value=previous;}
   async function higgsRefs(refs){
     if(!refs.length)return [];
     if(!higgsUploadApproved){
@@ -126,7 +126,21 @@
   async function generate(prompt,refs,connection,cfg){
     controller=new AbortController();const timer=setTimeout(()=>controller.abort(),300000);
     try{let url,body,headers;
-      if(connection.provider==='owner'){
+      if(connection.provider==='subscription'){
+        // 운영자 Higgsfield 월 구독: gunbaly.com 대기열 → 운영자 PC 작업기 (lm-studio.js)
+        const X=window.LukeStudioX;if(!X)throw new Error('생성 모듈을 불러오지 못했어요. 새로고침해 주세요.');
+        const publicRefs=[];for(const r of refs){if(!safeImage(r))throw new Error('참고 이미지가 손상됐어요.');publicRefs.push(await X.publicUrl(r));}
+        let job=await X.submit({type:'image',model:publicRefs.length?'seedream_v5_pro':'soul_2',aspect:'3:4',count:1,refs:publicRefs,prompt,title:X.tag(cfg?.modelId||'x','casting',(publishMeta?.title||'').slice(0,60))});
+        for(let i=0;i<300;i++){
+          if(stop)throw new DOMException('Stopped','AbortError');
+          await new Promise(resolve=>setTimeout(resolve,4000));
+          job=await X.call('/job/'+job.id);
+          if(job.status==='done'){const url=job.results?.[0]||job.result;const kept=await keepResult(url);publishMeta&&(publishMeta.note=await autoPublish(url));return kept;}
+          if(job.status==='failed')throw new Error(job.error||'생성에 실패했어요.');
+          if(job.note)status(job.note);
+        }
+        throw new Error('제작이 오래 걸리고 있어요. 알림함에서 결과를 확인해 주세요.');
+      }else if(connection.provider==='owner'){
         const auth=window.LukeAuth,server=window.LUKE_SHARED?.hairBackendUrl;
         if(!auth||!server)throw new Error('회원 인증 또는 모델 제작 서버가 연결되지 않았어요.');
         await auth.ensure();
@@ -178,7 +192,7 @@
     if(items.length+jobs.length>40){status('프로젝트당 최대 40장이에요. 프로젝트를 내보낸 뒤 새 프로젝트를 시작해 주세요.');return;}
     {const refCount=kind==='candidate'?[product,...extraRefs].filter(Boolean).length:1;
      const plan=kind==='candidate'?'후보 '+jobs.length+'명':kind==='angles'?'정면·좌측면·우측면·뒷면 + 클로즈업 5장':kind==='outfits'?'의상 3종 비교 3장':jobs[0][0]+' 1장';
-     const ok=await confirmGen([['생성 모델',refCount?'Qwen Image 3 Edit (레퍼런스 고정)':'Higgsfield Soul 2.0'],['대상 모델',kind==='candidate'?(f.name.trim()||'새 캐스팅'):(selected?.name||'')],['구성',plan],['해상도',refCount?'1K':'720p'],['차감','사장님 Higgsfield 크레딧'],['저장','lukemodel.com 갤러리 자동 등록']],jobs.length);
+     const ok=await confirmGen([['생성 모델',c.provider==='subscription'?(refCount?'Seedream 5.0 Pro (레퍼런스 고정)':'Higgsfield Soul 2.0'):(refCount?'Qwen Image 3 Edit (레퍼런스 고정)':'Higgsfield Soul 2.0')],['대상 모델',kind==='candidate'?(f.name.trim()||'새 캐스팅'):(selected?.name||'')],['구성',plan],['해상도',c.provider==='subscription'?'2K':refCount?'1K':'720p'],['차감',c.provider==='subscription'?'사장님 Higgsfield 월 구독 크레딧 (PC 작업기)':'사장님 Higgsfield API 크레딧'],['저장','lukemodel.com 갤러리 자동 등록']],jobs.length);
      if(!ok){status('생성을 취소했어요.');return;}}
     stop=false;lock(true);let done=0;pendingKind=kind;pendingCount=jobs.length;draw();const original=selected,refs=kind==='candidate'?[product,...extraRefs].filter(Boolean).slice(0,4):[original.url,...(['background','outfit','outfits'].includes(kind)&&product?[product]:[])];
     try{for(const [label,direction] of jobs){if(stop)break;status(label+' 생성 중 · '+(done+1)+'/'+jobs.length+' · 잠시 기다려 주세요.');

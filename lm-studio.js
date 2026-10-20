@@ -516,12 +516,76 @@
       box.replaceChildren();
       if (!isAdmin()) return;
       bellEl = el('button', { type: 'button', class: 'btn ghost sm lmx-bell', title: '알림', text: '🔔', onclick: e => { e.stopPropagation(); loadJobs(true).then(openInbox); } });
-      box.append(el('button', { type: 'button', class: 'btn ghost sm', text: '내 작업 받기', onclick: () => openExport() }), bellEl);
+      box.append(el('button', { type: 'button', class: 'btn ghost sm', text: '내 모델 업로드', onclick: () => openModelUpload() }), el('button', { type: 'button', class: 'btn ghost sm', text: '내 작업 받기', onclick: () => openExport() }), bellEl);
       loadJobs().then(renderBell).catch(() => {});
     };
     fill();
     window.LukeAuth?.onChange?.(fill);
     setTimeout(fill, 2500);
+  }
+
+  /* ── 내 모델 업로드: 프로필 사진 한 장 → Claude가 에이전시 소개·추천 분야 작성 → 모델 등록 ── */
+  function openModelUpload() {
+    if (!isAdmin()) return say('관리자(luke7851@gmail.com) 로그인 후 사용할 수 있어요', 'err');
+    const st = { file: null, url: '', gender: 'female', age: 25, busy: false };
+    const ov = el('div', { class: 'lmx-modal', role: 'dialog', 'aria-modal': 'true' });
+    const body = el('div', { class: 'lmx-dbody' });
+    const foot = el('div', { class: 'lmx-dfoot' });
+    ov.append(el('div', { class: 'lmx-dialog', style: 'width:min(640px,100%)' }, el('div', { class: 'lmx-dhead' }, el('span', { text: '내 모델 업로드' }), el('button', { type: 'button', class: 'lmx-btn ghost', text: '✕', onclick: () => ov.remove() })), body, foot));
+    document.body.append(ov);
+    const file = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', hidden: true });
+    const drop = el('button', { type: 'button', class: 'lmx-box', style: 'width:100%;min-height:180px;cursor:pointer;color:#c8cad6;display:flex;align-items:center;justify-content:center;gap:14px' });
+    const nameIn = el('input', { class: 'lmx-in', maxlength: '40', placeholder: '예: 수아' });
+    const ageLabel = el('span', { text: `나이 — ${st.age}세` });
+    const ageIn = el('input', { type: 'range', min: '18', max: '65', value: String(st.age), style: 'width:100%' });
+    ageIn.oninput = () => { st.age = +ageIn.value; ageLabel.textContent = `나이 — ${st.age}세`; };
+    const status = el('div', { class: 'lmx-note', hidden: true });
+    const genderRow = el('div', { class: 'lmx-chips' });
+    const drawGender = () => genderRow.replaceChildren(...[['female', '여성'], ['male', '남성'], ['neutral', '논바이너리']].map(([k, t]) => { const b = el('button', { type: 'button', class: 'lmx-chip' + (st.gender === k ? ' on' : ''), text: t }); b.onclick = () => { st.gender = k; drawGender(); }; return b; }));
+    drawGender();
+    const pick = f => {
+      if (!f || !/^image\/(jpeg|png|webp)$/.test(f.type)) return say('jpg, png, webp 사진만 올릴 수 있어요', 'err');
+      if (f.size > 15e6) return say('15MB 이하 사진만 올릴 수 있어요', 'err');
+      st.file = f;
+      drop.replaceChildren(el('img', { src: URL.createObjectURL(f), alt: '', style: 'max-height:240px;border-radius:10px' }), el('span', { text: '다른 사진으로 바꾸려면 누르세요' }));
+    };
+    drop.append(el('span', { text: '사진을 끌어다 놓거나 눌러서 고르기' }));
+    drop.onclick = () => file.click();
+    drop.ondragover = e => e.preventDefault();
+    drop.ondrop = e => { e.preventDefault(); pick(e.dataTransfer.files[0]); };
+    file.onchange = () => { pick(file.files[0]); file.value = ''; };
+    body.append(file,
+      el('p', { style: 'color:#9aa0b5;font-size:13px;line-height:1.6;margin-top:0', text: '이미 가지고 있는 모델 이미지를 등록하면, 그 인물 그대로 턴어라운드와 패션 화보를 바로 생성할 수 있어요. 얼굴이 선명하게 보이는 정면 위주 사진일수록 결과물의 인물 일관성이 좋아집니다.' }),
+      el('div', { class: 'lmx-label', text: '프로필 이미지' }), drop,
+      el('div', { class: 'lmx-note' }, el('b', { text: '이런 사진이 좋아요  ' }), '✓ 정면에 가까운 얼굴  ✓ 얼굴이 선명하게  ✓ 한 사람만   ✕ 선글라스·마스크  ✕ 강한 필터·여러 명'),
+      el('div', { class: 'lmx-label', text: '모델 이름 *' }), nameIn,
+      el('div', { class: 'lmx-label', text: '성별' }), genderRow,
+      el('div', { class: 'lmx-label' }, ageLabel), ageIn,
+      el('p', { style: 'color:#8b8fa3;font-size:12.5px', text: '등록하면 Claude가 프로필 사진을 보고 에이전시 소개와 추천 분야를 자동으로 작성합니다. 생성 크레딧은 들지 않아요.' }),
+      status);
+    const go = el('button', { type: 'button', class: 'lmx-btn', text: '모델 등록하고 스튜디오 열기' });
+    go.onclick = async () => {
+      const name = nameIn.value.trim();
+      if (!st.file) return say('프로필 사진을 골라 주세요', 'err');
+      if (!name) { nameIn.focus(); return say('모델 이름을 적어 주세요', 'err'); }
+      if (typeof window.LukeAddModel !== 'function') return say('새로고침 후 다시 시도해 주세요', 'err');
+      go.disabled = true; status.hidden = false;
+      try {
+        status.textContent = '사진 올리는 중…';
+        const url = (await call('/upload', st.file, st.file.type)).url;
+        status.textContent = 'Claude가 프로필 사진을 읽고 소개를 쓰고 있어요… (보통 30초~1분)';
+        let job = await submit({ type: 'analyze', task: 'profile', images: [url], title: tag('upload', 'analyze'), context: `모델 이름: ${name} · 성별: ${({ female: '여성', male: '남성', neutral: '논바이너리' })[st.gender]} · 나이: ${st.age}세` });
+        while (!['done', 'failed'].includes(job.status)) { await new Promise(r => setTimeout(r, 3000)); job = await call('/job/' + job.id); if (job.note) status.textContent = job.note; }
+        let r = {};
+        if (job.status === 'done') { try { r = JSON.parse(job.text); } catch {} } else status.textContent = '소개 자동 작성은 실패했지만 모델은 등록할게요: ' + (job.error || '');
+        const ageKey = st.age < 20 ? 'teen' : st.age < 30 ? 'twenties' : st.age < 40 ? 'thirties' : st.age < 50 ? 'forties' : 'senior';
+        const id = window.LukeAddModel({ name, gender: st.gender, age: ageKey, photo: url, desc: r.intro || `${name} · ${st.age}세 모델`, tags: [...(r.fields || []), r.mood, ...(r.tags || [])].filter(Boolean) });
+        ov.remove();
+        say('모델을 등록했어요. 이제 턴어라운드·패션 화보·영상을 만들 수 있어요.', 'ok');
+        if (typeof window.go === 'function') window.go('detail', id);
+      } catch (e) { status.textContent = e.message; go.disabled = false; }
+    };
+    foot.append(el('button', { type: 'button', class: 'lmx-btn ghost', text: '취소', onclick: () => ov.remove() }), go);
   }
 
   /* ── 내 작업 받기 (zip) ── */
@@ -581,7 +645,7 @@
     };
   }
 
-  window.LukeStudioX = { mountDetail, viewerActions, openVideoWizard, openExport, openInbox, headerButtons, submit, call, publicUrl, loadJobs, jobsFor, tag, parseTag, watch, onJobs: f => { subs.add(f); return () => subs.delete(f); } };
+  window.LukeStudioX = { mountDetail, viewerActions, openVideoWizard, openExport, openModelUpload, openInbox, headerButtons, submit, call, publicUrl, loadJobs, jobsFor, tag, parseTag, watch, onJobs: f => { subs.add(f); return () => subs.delete(f); } };
   // 로그인 상태가 바뀌면 진행 중인 작업을 다시 지켜본다
   setTimeout(() => { if (isAdmin()) loadJobs(true).then(js => { js.forEach(watch); renderBell(); }).catch(() => {}); }, 1500);
 })();

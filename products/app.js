@@ -54,7 +54,9 @@ function confirmGen(rows,count){
     document.body.append(ov);go.focus();
   });
 }
-const MODEL_LABEL='Qwen Image 3 Edit (레퍼런스 고정)';
+const SUBS=()=>!!window.LukeStudioX; /* 운영자 Higgsfield 월 구독 (gunbaly 대기열 → 운영자 PC) */
+const MODEL_LABEL=SUBS()?'GPT Image 2.5 (레퍼런스 고정)':'Qwen Image 3 Edit (레퍼런스 고정)';
+let curProduct=null;
 
 /* ── 콘셉트 제안 ───────────────────────────────────── */
 function concepts(p){
@@ -109,6 +111,17 @@ async function renderDetail(p){
   /* 결과 */
   const rSec=node('section',null,'pd-section');const rh=node('div',null,'pd-sec-head');const rht=node('div');rht.append(node('h2','생성한 컷'),node('p','완성된 컷은 lukemodel.com 공개 갤러리에도 자동 등록되고, 이 브라우저에도 보관돼요. 누르면 크게 보고 다운로드할 수 있어요.'));rh.append(rht);rSec.append(rh);
   const rgrid=node('div',null,'pd-results');rSec.append(rgrid);view.append(rSec);
+  curProduct=p;
+  if(window.LukeStudioX){
+    const X=window.LukeStudioX;
+    const mSec=node('section',null,'pd-section');const mh=node('div',null,'pd-sec-head');const mht=node('div');mht.append(node('h2','모션 루프'),node('p','컷을 눌러 「모션 루프 만들기」를 고르면 처음과 끝이 이어지는 5초 제품 영상이 만들어져요.'));mh.append(mht);mSec.append(mh);
+    const mgrid=node('div',null,'lmx-grid');mSec.append(mgrid);view.append(mSec);
+    const drawLoops=()=>{if(!mgrid.isConnected&&mgrid.dataset.shown)return;if(mgrid.isConnected)mgrid.dataset.shown='1';const jobs=X.jobsFor('p'+p.id,'product').filter(j=>X.parseTag(j.title).extra==='모션 루프');
+      mgrid.replaceChildren();if(!jobs.length){mgrid.append(node('p','아직 만든 모션 루프가 없어요.','empty'));return;}
+      for(const j of jobs){X.watch(j);if(j.status==='done'){for(const u of j.results||[]){const v=node('video');v.src=u;v.muted=true;v.loop=true;v.autoplay=true;v.playsInline=true;v.style.cssText='width:100%;border-radius:12px;background:#000';const a=node('a','⬇ 다운로드','dark-btn');a.href=u+'?download=1';a.style.cssText='display:inline-block;margin-top:6px';const w=node('div');w.append(v,a);mgrid.append(w);}}
+        else{const w=node('div',null,'lmx-wait');w.append(node('div',null,'lmx-spin'),node('span',j.status==='failed'?'실패: '+(j.error||''):'만드는 중…'));mgrid.append(w);}}};
+    X.onJobs(drawLoops);X.loadJobs(true).then(drawLoops).catch(()=>{});drawLoops();
+  }
   let shots=await loadShots(p.id);if(token!==detailToken)return;
   let pending=0;
   const drawShots=()=>{rgrid.replaceChildren();for(let i=0;i<pending;i++){const sk=node('div',null,'pd-shot pd-skeleton');sk.append(node('div',null,'pd-sk'),node('span','생성 중…'));rgrid.append(sk);}
@@ -120,7 +133,7 @@ async function renderDetail(p){
     if(window.LukeAccess&&!await LukeAccess.require())return;
     const chosen=seed?[seed.concept]:list.filter(c=>picked.has(c.id));if(!chosen.length)return;
     const plan=seed?`이 톤으로 시리즈 ${cuts}장`:`${chosen.length}개 콘셉트 · ${cuts}컷`;
-    if(!await confirmGen([['생성 모델',MODEL_LABEL],['대상 제품',p.name],['구성',plan],['해상도','1K'],['차감','사장님 Higgsfield 크레딧'],['저장','lukemodel.com 갤러리 자동 등록']],cuts))return;
+    if(!await confirmGen([['생성 모델',MODEL_LABEL],['대상 제품',p.name],['구성',plan],['해상도','1K'],['차감',SUBS()?`사장님 Higgsfield 월 구독 (컷당 약 0.25크레딧)`:'사장님 Higgsfield 크레딧'],['저장','lukemodel.com 갤러리 자동 등록']],cuts))return;
     goBtn.disabled=true;let done=0,shared=0;pending=cuts;drawShots();
     try{
       await auth.ensure();if(!auth.user()||auth.isAnon()){auth.openAccount?.();throw new Error('로그인한 회원만 제작할 수 있어요.');}
@@ -129,7 +142,7 @@ async function renderDetail(p){
       for(let i=0;i<cuts;i++){
         const c=chosen[i%chosen.length];status.textContent=`${seed?'시리즈 확장 · ':''}${c.title} 생성 중 · ${i+1}/${cuts} · 잠시 기다려 주세요.`;
         const text=['Reference image 1 is the exact PRODUCT. Keep its shape, color, label, typography and packaging identical; do not invent a different product or brand.',c.prompt,prompt.value.trim()?'Extra direction: '+prompt.value.trim():'',note.value.trim()?'Brand note: '+note.value.trim():'',`Product: ${p.name} (${p.category||''}). ${String(p.description||'').slice(0,300)}`,seed?'Reference image 2 is a previous shot of this campaign: match its color grading, lighting mood and styling, but create a new composition.':'',`Aspect ratio ${c.ratio}. Photorealistic commercial product photography, no text overlays, no watermark, one image.`].filter(Boolean).join('\n');
-        const url=await generate(text,ref,toneRef);
+        const url=await generate(text,ref,toneRef,c.ratio);
         const published=await publishShot(p.name+' · '+c.title);if(published)shared++;
         shots.unshift({id:crypto.randomUUID(),url,label:c.title,concept:c.id,createdAt:new Date().toISOString()});done++;pending=cuts-done;
         try{await saveShots(p.id,shots.slice(0,40));}catch{status.textContent='기기 저장 공간이 부족해요. 결과를 다운로드해 주세요.';}
@@ -145,7 +158,16 @@ async function renderDetail(p){
 let extendSeries=null;
 let lastRemote='';
 async function publishShot(title){if(!lastRemote||!window.LukeHF?.shareResult)return false;try{await LukeHF.shareResult({url:lastRemote,kind:'image',title});return true;}catch(e){console.warn('auto publish failed',e);return false;}}
-async function generate(prompt,refBlob,toneBlob){lastRemote='';
+async function generate(prompt,refBlob,toneBlob,ratio){lastRemote='';
+  const X=window.LukeStudioX;
+  if(X){
+    const refs=[];for(const b of [refBlob,toneBlob].filter(Boolean)){const u=URL.createObjectURL(b);try{refs.push(await X.publicUrl(u));}finally{URL.revokeObjectURL(u);}}
+    let job=await X.submit({type:'image',model:'gpt_image_2_5',aspect:ratio||'4:5',count:1,refs,prompt,title:X.tag('p'+(curProduct?.id??'x'),'product','컷')});
+    for(let i=0;i<300;i++){await new Promise(r=>setTimeout(r,4000));job=await X.call('/job/'+job.id);
+      if(job.status==='done'){lastRemote=job.results?.[0]||job.result;const b=await (await fetch(lastRemote)).blob();if(!/^image\//.test(b.type))throw new Error('결과 이미지를 받지 못했어요.');return await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);});}
+      if(job.status==='failed')throw new Error(job.error||'생성에 실패했어요.');}
+    throw new Error('제작이 오래 걸리고 있어요. 알림함에서 확인해 주세요.');
+  }
   const form=new FormData();form.append('prompt',prompt);form.append('reference',new File([refBlob],'product.png',{type:refBlob.type||'image/png'}));
   if(toneBlob)form.append('reference',new File([toneBlob],'tone.png',{type:toneBlob.type||'image/png'}));
   const sent=await fetch(endpoint+'?action=model',{method:'POST',headers:auth.headers(),body:form});const started=await sent.json().catch(()=>({}));
@@ -160,6 +182,7 @@ function showImage(item,onDelete){
   if(onDelete)actions.append(btn('삭제','del-btn',async()=>{if(!confirm('이 컷을 삭제할까요?'))return;await onDelete();ov.remove();}));
   const down=btn('다운로드','dark-btn',async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;try{const r=await fetch(item.url);const u=URL.createObjectURL(await r.blob());const a=node('a');a.href=u;a.download=safeName(item.label)+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(u),30000);}catch{window.open(item.url,'_blank','noopener');}});down.dataset.requiresApproval='';
   const tab=btn('원본 새 탭에서 열기','dark-btn',async()=>{try{const r=await fetch(item.url);const u=URL.createObjectURL(await r.blob());window.open(u,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(u),60000);}catch{window.open(item.url,'_blank','noopener');}});
+  if(window.LukeStudioX&&curProduct){const loop=btn('모션 루프 만들기 ✦ 5','violet-btn',async()=>{loop.disabled=true;try{const X=window.LukeStudioX;await X.submit({type:'video',model:'seedance_2_0_mini',image:await X.publicUrl(item.url),duration:5,aspect:'3:4',resolution:'720p',audio:false,title:X.tag('p'+curProduct.id,'product','모션 루프'),prompt:'Seamless looping product motion video. The product stays exactly as in the first frame: same shape, label, typography and colors. Subtle elegant motion only: a slow camera push-in or gentle orbit, soft light sweeping across the surface, a few floating particles. End on the same framing as the start so the clip loops seamlessly. No text, no hands.'});ov.remove();const s=document.querySelector('.pd-status');if(s)s.textContent='모션 루프를 요청했어요. 아래 「모션 루프」에 결과가 올라와요.';}catch(e){const s=document.querySelector('.pd-status');if(s)s.textContent=e.message;loop.disabled=false;}});loop.dataset.requiresApproval='';actions.append(loop);}
   if(onDelete&&item.concept&&extendSeries){const ext=btn('이 톤으로 시리즈 확장 ✦','violet-btn',()=>{ov.remove();extendSeries(item);});ext.dataset.requiresApproval='';actions.append(down,ext,tab,close);}else actions.append(down,tab,close);box.append(img,actions);ov.append(box);ov.onclick=e=>{if(e.target===ov)ov.remove();};ov.onkeydown=e=>{if(e.key==='Escape')ov.remove();};document.body.append(ov);close.focus();
 }
 
@@ -169,5 +192,6 @@ async function load(){if(!products.length&&!currentId())skeleton();try{const d=a
 window.addEventListener('popstate',route);
 $('account').append(auth.chip());CATEGORIES.forEach(c=>$('owner-category').add(new Option(c,c)));$('owner-toggle').onclick=()=>{$('owner-modal').hidden=false;$('owner-form').querySelector('input').focus();};$('owner-cancel').onclick=()=>{$('owner-modal').hidden=true;};$('owner-modal').onclick=e=>{if(e.target===$('owner-modal'))$('owner-modal').hidden=true;};
 $('owner-form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]');button.disabled=true;try{await api('products-create',Object.fromEntries(new FormData(form)));form.reset();$('owner-modal').hidden=true;await load();$('message').textContent='제품을 등록했습니다.';}catch(error){$('message').textContent=error.message;}finally{button.disabled=false;}};
+window.LukeProducts={api,reload:load,open:id=>{history.pushState(null,'','?id='+encodeURIComponent(id));route();}};
 auth.onChange(load);load();
 })();
