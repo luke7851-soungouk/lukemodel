@@ -1023,6 +1023,7 @@ async function resolveFaceRef(m){
 }
 
 let DB = load();
+window.LukeModels=()=>DB.models; /* lm-studio.js(내 작업 받기)가 모델 이름을 찾을 때 사용 */
 if(DB&&Array.isArray(DB.models)) DB.models.forEach(ensureModelFields);
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
 /* ── 운영자 모델 삭제: Supabase hidden_models (읽기 공개, 쓰기는 운영자 계정만 — DB 정책) ── */
@@ -1464,6 +1465,7 @@ function render(){
   if(window.LukeAuth?.chip)au.appendChild(LukeAuth.chip());
   const make=document.createElement('button'); make.className='btn'; make.textContent='+ AI 모델 만들기'; make.onclick=()=>{location.hash='model-studio';window.LukeModelStudio?.open?.();}; au.appendChild(make);
   if(window.LukeAccess?.owner){const manage=document.createElement('a');manage.className='btn ghost sm';manage.href='/admin/access/';manage.textContent='회원 승인 관리';au.appendChild(manage);}
+  window.LukeStudioX?.headerButtons?.(au);
 
   const app=$('app'); app.textContent='';
   if(view==='browse') renderBrowse(app);
@@ -1864,7 +1866,7 @@ function renderDetail(app){
     const down=document.createElement('button');down.className='lm-modal-btn';down.textContent='다운로드';down.onclick=async()=>{if(window.LukeAccess&&!await LukeAccess.require())return;const link=document.createElement('a');link.href=item.url;link.download='luke-model-'+item.id+'.png';document.body.append(link);link.click();link.remove();};
     const openTab=document.createElement('button');openTab.className='lm-modal-btn';openTab.textContent='원본 새 탭에서 열기';openTab.onclick=async()=>{try{const blob=await (await fetch(item.url)).blob();const url=URL.createObjectURL(blob);window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),60000);}catch{window.open(item.url,'_blank','noopener');}};
     if(removable){const remove=document.createElement('button');remove.className='lm-modal-del';remove.textContent='삭제';remove.onclick=async()=>{if(!confirm('이 생성 사진을 이 브라우저의 프로젝트에서 삭제할까요?'))return;try{if(await window.LukeModelStudio.deleteResultForModel(m.id,item.id)){overlay.remove();showModelResults();}}catch(error){toast('삭제하지 못했습니다: '+error.message,'err');}};actions.append(remove);}
-    actions.append(down,openTab,close);inner.append(image,actions);overlay.append(inner);overlay.onclick=event=>{if(event.target===overlay)overlay.remove();};overlay.onkeydown=event=>{if(event.key==='Escape')overlay.remove();};document.body.append(overlay);close.focus();
+    actions.append(down,openTab,close);window.LukeStudioX?.viewerActions?.(actions,item,{modelId:m.id,name:m.name,close:()=>overlay.remove()});inner.append(image,actions);overlay.append(inner);overlay.onclick=event=>{if(event.target===overlay)overlay.remove();};overlay.onkeydown=event=>{if(event.key==='Escape')overlay.remove();};document.body.append(overlay);close.focus();
   };
   const showModelResults=async()=>{
     const results=await window.LukeModelStudio?.resultsForModel?.(m.id)||[];
@@ -1889,6 +1891,7 @@ function renderDetail(app){
     modelResults.append(section);
   };
   showModelResults();
+  window.LukeStudioX?.mountDetail?.({left,turn,modelResults,model:{id:m.id,name:m.name,photo:photoUrl}});
 
   /* 얼굴 속성 */
   const s2=document.createElement('div'); s2.className='sec';
@@ -3967,5 +3970,6 @@ window.LukeAccess?.check?.().then(()=>render());
 window.LukeAuth?.onChange?.(()=>render());
 </script>
 <script src="/model-studio.js?v=20261009-hf-studio"></script>
+<script src="/lm-studio.js?v=20261021-1"></script>
 </body>
 </html>
