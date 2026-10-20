@@ -506,12 +506,22 @@
     document.body.append(box);
     setTimeout(() => document.addEventListener('click', function off(e) { if (!box.contains(e.target)) { box.remove(); document.removeEventListener('click', off); } }), 0);
   }
+  // 로그인 확인이 헤더보다 늦게 끝나므로, 로그인 상태가 바뀔 때마다 다시 채운다
   function headerButtons(container) {
-    if (!container || !isAdmin()) return;
-    bellEl = el('button', { type: 'button', class: 'btn ghost sm lmx-bell', title: '알림', text: '🔔', onclick: e => { e.stopPropagation(); loadJobs(true).then(openInbox); } });
-    const exp = el('button', { type: 'button', class: 'btn ghost sm', text: '내 작업 받기', onclick: () => openExport() });
-    container.append(exp, bellEl);
-    loadJobs().then(renderBell).catch(() => {});
+    if (!container) return;
+    const box = el('span', { style: 'display:contents' });
+    container.append(box);
+    const fill = () => {
+      if (!box.isConnected) return;
+      box.replaceChildren();
+      if (!isAdmin()) return;
+      bellEl = el('button', { type: 'button', class: 'btn ghost sm lmx-bell', title: '알림', text: '🔔', onclick: e => { e.stopPropagation(); loadJobs(true).then(openInbox); } });
+      box.append(el('button', { type: 'button', class: 'btn ghost sm', text: '내 작업 받기', onclick: () => openExport() }), bellEl);
+      loadJobs().then(renderBell).catch(() => {});
+    };
+    fill();
+    window.LukeAuth?.onChange?.(fill);
+    setTimeout(fill, 2500);
   }
 
   /* ── 내 작업 받기 (zip) ── */
