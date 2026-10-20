@@ -95,7 +95,7 @@
     }
     // 처음 화면은 참고 사이트와 같은 조합(드로퍼 / 앰플 · 프로스티드 글래스)으로 시작
     st.form = '드로퍼 / 앰플'; st.material = '프로스티드 글래스'; fit(false); st.line = '';
-    const summary = () => [st.form, st.material, st.color].filter(Boolean).join(' · ') + ` — ${st.moods.join('·')} 무드 — ${st.position} ${st.cat[1]}` + (st.line ? ' · ' + st.line : '') + (st.item ? ' · ' + st.item : '');
+    const summary = () => [st.form, st.material, st.color].filter(Boolean).join(' · ') + ` — ${st.moods.join(' / ')} 무드 — ${st.position} ${st.cat[1]}` + (st.line ? ' · ' + st.line : '') + (st.item ? ' · ' + st.item : '');
 
     const root = el('div', { class: 'pdx', role: 'dialog', 'aria-modal': 'true', 'aria-label': '새 제품 디자인' });
     document.body.append(root);
