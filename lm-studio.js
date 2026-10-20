@@ -509,7 +509,8 @@
   // 로그인 확인이 헤더보다 늦게 끝나므로, 로그인 상태가 바뀔 때마다 다시 채운다
   function headerButtons(container) {
     if (!container) return;
-    const box = el('span', { style: 'display:contents' });
+    if (container.querySelector('.lmx-hb')) return;
+    const box = el('span', { class: 'lmx-hb', style: 'display:contents' });
     container.append(box);
     const fill = () => {
       if (!box.isConnected) return;
@@ -646,6 +647,9 @@
   }
 
   window.LukeStudioX = { mountDetail, viewerActions, openVideoWizard, openExport, openModelUpload, openInbox, headerButtons, submit, call, publicUrl, loadJobs, jobsFor, tag, parseTag, watch, onJobs: f => { subs.add(f); return () => subs.delete(f); } };
+  // 헤더(#auth)는 이 파일보다 먼저 그려지고 로그인 때마다 다시 그려지므로, 비워질 때마다 버튼을 다시 붙인다
+  const authBox = document.getElementById('auth');
+  if (authBox) { headerButtons(authBox); new MutationObserver(() => headerButtons(authBox)).observe(authBox, { childList: true }); }
   // 로그인 상태가 바뀌면 진행 중인 작업을 다시 지켜본다
   setTimeout(() => { if (isAdmin()) loadJobs(true).then(js => { js.forEach(watch); renderBell(); }).catch(() => {}); }, 1500);
 })();
